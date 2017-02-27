@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="import" href="@frame.html">
+  <script type="text/javascript">
+var interface_def = {
+    name : "plugin_interface",
+    base : "",
+    namespace : [],
+    comments : ["Interface declaration: [namespace::]name, path"],
+    creators : [
+        {
+            comments : ["Interface creator"],
+            return_value : {
+                type : "iref<plugin_interface>",
+                basetype : "iref<plugin_interface>",
+                comment : ""
+            },
+            name : "get",
+            args : [
+
+            ],
+            const_method : false
+        }
+    ],
+    methods : [
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "set_value",
+            args : [
+                {
+                    name : "x",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "int",
+                basetype : "int",
+                comment : ""
+            },
+            name : "get_value",
+            args : [
+
+            ],
+            const_method : true
+        }
+    ],
+    "events" : [
+
+    ]
+};
+  </script>
+</head>
+<body>
+  <script>
+    (function() {
+      if(location.search == '') window.location.href = "../index.html?iface=plugin_interface"; else build_interface_markup();
+    })();
+  </script>
+</body>
+</html>

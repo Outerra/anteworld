@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\intergen\intergen.cpp" />
+    <ClCompile Include="..\..\..\intergen\ig-method.cpp" />
+    <ClCompile Include="..\..\..\intergen\ig-class.cpp" />
+    <ClCompile Include="..\..\..\intergen\ig-lexer.cpp" />
+    <ClCompile Include="..\..\..\intergen\rl-method.cpp" />
+    <ClCompile Include="..\..\..\intergen\ig-arg.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="metagen">
+      <UniqueIdentifier>{8941bbac-9747-464e-9381-cbcdb25ba062}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\intergen\ig.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\intergen\metagen\interface.js.h.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\interface.h.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\template.inl.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\file.intergen.cpp.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\file.intergen.js.cpp.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\interface.doc.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\file.intergen.lua.cpp.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\interface.lua.h.mtg">
+      <Filter>metagen</Filter>
+    </None>
+  </ItemGroup>
+</Project>

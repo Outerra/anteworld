@@ -1,0 +1,814 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+
+
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  
+  
+  <title>Formatting stream</title>
+</head>
+
+
+<body>
+
+
+
+
+
+
+
+
+<h3>Formatting stream requirements</h3>
+
+
+
+
+
+
+
+
+<br>
+
+
+
+
+
+
+
+
+The formatting binstream is just an ordinary <a href="binstream.html">binstream</a>, although it has to fulfill certain requirements to be used as the formatting stream by the metastream object.<br>
+
+
+
+
+
+
+
+
+<br>
+
+
+
+
+
+
+
+
+<ul>
+
+
+
+
+
+
+
+
+  <li>It should use the bstype::key type to&nbsp;output and parse the
+identifiers - member variable names. The key type is generally interpreted as
+char and used solely in array (as string)&nbsp;in normal binstreams,
+but here a character string and an identifier should parse differently<br>
+
+
+
+
+
+
+
+    <br>
+
+
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+
+
+  <li>The STRUCTBGN and STRUCTEND binstream tokens should be implemented for writing and reading structured data<br>
+
+
+
+
+
+
+
+    <br>
+
+
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+
+
+  <li>The ARRAYBGN and ARRAYEND binstream tokens should be implemented for writing and reading arrays. The <code>write_array_separator()</code> and <code>read_array_separator()</code> virtual methods should be implemented to write and match an array separator <span style="font-weight: bold;">or an array end</span>.<br>
+
+
+
+
+The formatting binstream should test for an array end marker in
+    <code>read_array_separator</code> method when matching a separator, and return <code>ersNO_MORE</code> error code if the end marker is found instead of the separator.<br>
+
+
+
+
+
+
+
+
+Note: the end marker should be pushed back to be consequently matched
+by ARRAYEND token, or alternatively the ARRAYEND token should not try
+to match the end marker when it is consumed by the separator matching.<br>
+
+
+
+
+    <br>
+
+
+
+
+
+The bstype::char and bstype::key binstream primitive types are used in arrays for
+strings and identifiers, respectively, and as such they don't use any
+separator between elements (characters). This distinction can be
+optimized by overloading the <code>write_primitive_array()</code> and <code>read_primitive_array()</code> virtual binstream methods, so that the&nbsp;<code>write_array_separator()</code> and <code>read_array_separator()</code> won't get called at all for strings and identifiers.<br>
+
+
+
+
+    <br>
+
+
+
+
+
+
+
+    </li>
+
+
+
+
+
+
+  <li>A call to write_array_separator and read_array_separator
+methods is being made before each write or read of an array element (except when bypassed by write/read_primitive_array).
+The write_array_separator method gets called with argument end=1 after the whole
+array has been written, to write a terminating token. The
+read_array_separator can return <code>ersNO_MORE</code> error code upon encountering
+the terminator, that is understood as signalization of an array end.</li>
+
+
+
+
+
+
+  <li>The write_array_separator (and read_array_separator) method can use the <code>bstype::is_next_array_element()</code>
+method that returns value true for every but first element of the
+array, to omit writing a separator in front of the first element.<br>
+
+
+
+
+    <br>
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+
+
+  <li>When matching an identifier (bstype::key string), an additional check for STRUCTEND token should be performed and <code>ersNO_MORE</code> error code returned upon match. The STRUCTEND should be pushed back, though, so that next call to match it will succeed.<br>
+
+
+
+
+
+
+
+
+ This is needed to support default values for struct members that may not be present in the input stream.<br>
+
+
+
+
+
+
+    <br>
+
+
+
+
+
+
+  </li>
+
+
+
+
+
+
+  <li>Some types may be formatted differently depending upon whether
+they come as array elements or standalone values. The char type would
+be rendered as single character when in array, but enclosed in
+aphostrophes if standalone, for example. The method <code>bstype::is_array_element()</code> returns true if the call to binstream's write or read method manipulates an array element.<br>
+
+
+
+
+    <br>
+
+
+
+
+
+  </li>
+
+
+
+
+
+  <li>virtual <code>reset()</code> method of the formatting binstream
+should bring it to the default state so the next read or write won't be
+affected by a previous potential failure. The reset method is called by
+the metastream before any reading or writing.</li>
+
+
+
+
+
+
+</ul>
+
+
+
+
+
+
+<br>
+<h3><a name="json"></a>fmtstreamjson</h3>
+
+
+
+Formatting stream for generating and parsing <a href="http://www.json.org">JSON</a>
+formatted data. This is preferred format when processing the response
+from server, mainly because core javascript function eval() can take a
+chunk of json-formatted input and directly produce its javascript
+object representation.<br>
+<br>
+<h3><a name="xml"></a>fmtstreamxml</h3>
+
+
+
+Formatting stream for generating and parsing xml formatted data. There
+exist various ways to encode the information in xml; we can focus
+on&nbsp;own lightweight format, gabby xml-rpc standart, and possibly
+SOAP too.<br>
+<br>
+Basically, 2 types of tags are used:&nbsp;m* and a* tags.<br>
+
+
+
+
+
+
+The m* tags introduce class members. A simple <span style="font-weight: bold;">&lt;m&gt;</span> tag denotes a compound member variable. An <span style="font-weight: bold;">&lt;mi&gt;</span> tag denotes an integer variable, and so on.<br>
+
+
+
+
+
+
+The a* tags introduce arrays. Here too, a simple <span style="font-weight: bold;">&lt;a&gt;</span> tag denotes an array of compounds, and for example the <span style="font-weight: bold;">&lt;ai&gt;</span> tag wraps an array of integers. Single elements within the array are wrapped in <span style="font-weight: bold;">&lt;m&gt;...&lt;/m&gt;</span> tags as the xml doesn't like less wordy way of writing arrays.<br>
+
+
+
+
+
+
+Note that the type attribute is optional.<br>
+
+
+
+
+
+
+<br>
+
+
+<br>
+<h3><a name="cxx"></a>fmtstreamcxx</h3>
+Similar to the JSON format, but somewhat nicer. Used mainly as format
+for storing and reading configuration files, and in AJAX&nbsp;to send
+data to the server.<br>
+Optional type names are enclosed in parentheses as in <code>(Person)</code>, structure members are enclosed in curly braces <code>{}</code>, and array elements are enclosed in square brackets <code>[]</code>.
+String values are enclosed in "". The fmtstreamcxx formatting stream
+can use custom separators between braces, members, array elements and for indentation,
+so the output could look like this too:<br>
+
+
+
+<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);"><code>(Person){name="jozko mrkvicka";age=33;stuff=["hallo","there"]}</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+<br>
+<br>
+<h3>Examples</h3>
+Here are examples of possible output&nbsp;from streaming an instance of given C++ type (People):<br>
+<table style="text-align: left; background-color: rgb(255, 229, 204); width: 283px; height: 360px;" border="1" cellpadding="2" cellspacing="2">
+  <tbody>
+    <tr>
+      <td style="background-color: rgb(255, 255, 255);" nowrap="nowrap"><code>using namespace std;<br>
+
+      <br>
+
+struct People <br>
+
+{<br>
+
+&nbsp; &nbsp;&nbsp;vector&lt;Person&gt; persons;<br>
+
+};<br>
+
+      <br>
+
+struct Person<br>
+
+{<br>
+
+&nbsp; &nbsp;&nbsp;string name;<br>
+
+&nbsp; &nbsp; unsigned int age;<br>
+
+&nbsp; &nbsp;&nbsp;list&lt;Gadget&gt; gadgets;<br>
+
+&nbsp; &nbsp;&nbsp;vector&lt;string&gt; stuff;<br>
+
+};<br>
+
+      <br>
+
+struct Gadget<br>
+
+{<br>
+
+&nbsp; &nbsp;&nbsp;string name;<br>
+
+&nbsp; &nbsp; bool powered;<br>
+
+};</code></td>
+    </tr>
+  </tbody>
+</table>
+<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+
+<table style="text-align: left; background-color: rgb(255, 229, 204); width: 1009px; height: 616px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+
+
+
+  <tbody>
+
+
+
+
+
+
+    <tr>
+
+      <td style="text-align: center;" nowrap="nowrap">json representation</td>
+      <td style="text-align: center;" nowrap="nowrap">xml representation</td>
+      <td style="text-align: center;" nowrap="nowrap">cxx representation</td>
+
+      
+    </tr>
+
+    <tr>
+
+
+
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap">{<code><br>
+&nbsp; "persons" : [<br>
+&nbsp; &nbsp; {<br>
+&nbsp; &nbsp; &nbsp; "name" : "joe carrot",<br>
+&nbsp; &nbsp; &nbsp; "age" : 33,<br>
+&nbsp; &nbsp; &nbsp; "gadgets" : [<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp;{<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp;"name" : "turbo fan",<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp;"powered" : true<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp;},<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp;{<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp;"name" : "turbine",<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp;"powered" : false<br>
+&nbsp; &nbsp; &nbsp;&nbsp; &nbsp;}],<br>
+&nbsp; &nbsp; &nbsp; "stuff" : ["hallo","there"]<br>
+&nbsp; &nbsp; },<br>
+&nbsp; &nbsp; {<br>
+&nbsp; &nbsp; &nbsp; "name" : "frank brick",<br>
+&nbsp; &nbsp; &nbsp; "age" : 45,<br>
+&nbsp; &nbsp; &nbsp; "gadgets" : [<br>
+&nbsp; &nbsp; &nbsp; &nbsp; {<br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "name" : "stick",<br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "powered" : false<br>
+&nbsp; &nbsp; &nbsp; &nbsp; }],<br>
+&nbsp; &nbsp; &nbsp; &nbsp;"stuff" : []<br>
+&nbsp; &nbsp; &nbsp;}]<br>
+}<br>
+      </code></td>
+      <td style="background-color: rgb(255, 255, 204);"><code>&lt;root&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&lt;m type="People"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &lt;a name="persons"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;m type="Person"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s name="name"&gt;</code><code>joe carrot</code><code>&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;mu name="age"&gt;33&lt;/mu&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;a name="gadgets"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;m type="Gadget"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s
+name="name"&gt;turbo fan&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;mb
+name="powered"&gt;true&lt;/mb&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/m&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;m type="Gadget"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s
+name="name"&gt;turbine&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;mb
+name="powered"&gt;false&lt;/mb&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/m&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/a&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;a name="stuff"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s&gt;hallo&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s&gt;there&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/a&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/m&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;m type="Person"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s name="name"&gt;</code><code>frank brick</code><code>&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;mu name="age"&gt;45&lt;/mu&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;a name="gadgets"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;m type="Gadget"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;s
+name="name"&gt;stick&lt;/s&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;mb
+name="powered"&gt;false&lt;/mb&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/m&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/a&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;a name="stuff"&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/a&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &lt;/m&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &lt;/a&gt;<br>
+
+
+
+&nbsp;&nbsp; &nbsp;&lt;/m&gt;<br>
+
+
+
+&lt;/root&gt;</code></td>
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>(People) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; persons = [<br>
+
+
+
+&nbsp;&nbsp;&nbsp; (Person) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; name = "</code><code>joe carrot</code><code>"<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; age = 33<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; gadgets = [<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; (Gadget) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; name = "turbo fan"<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; powered = true<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; }, <br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; (Gadget) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; name = "turbine"<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; powered = false<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; }]<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; stuff = ["hallo", "there"]<br>
+
+
+
+&nbsp;&nbsp;&nbsp; }, <br>
+
+
+
+&nbsp;&nbsp;&nbsp; (Person) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; name = "</code><code>frank brick</code><code>"<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; age = 45<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; gadgets = [<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; (Gadget) {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; name = "stick"<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; powered = false<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; }]<br>
+
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; stuff = []<br>
+
+
+
+&nbsp;&nbsp;&nbsp; }]<br>
+
+
+
+}</code></td>
+
+      
+
+
+
+
+
+    </tr>
+
+
+
+
+
+
+  
+  
+  
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+
+
+<br>
+<br>
+<br>
+
+
+
+
+
+
+
+
+</body>
+</html>

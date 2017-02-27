@@ -1,0 +1,1239 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+
+
+
+
+  
+  
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"><title>Code generator</title></head><body>
+
+
+
+<h3>Metagen</h3>
+
+
+
+<br>
+
+
+
+&nbsp;&nbsp;&nbsp; The <code>metagen</code> tool is a text generator,
+that can be used to generate complex documents -&nbsp;html reports,
+source files etc. - directly from C++ objects using provided document
+template and metastream operators on the C++ classes used. Metagen evolved from a simple program that takes an input
+file and a set of key-substitution pairs, and performs replacements of
+all <code>$<span style="font-style: italic;">key</span>$</code> tokens found in the input file with the string value bound to the corresponding key from the set. <br>
+
+
+<br>&nbsp;&nbsp;&nbsp; Metagen is no longer just a simple text
+substitutor - it can generate repeating blocks of text with tags that
+bind to an array-type variables; it can contain conditions that drive
+the generation, etc.<br>&nbsp;&nbsp;&nbsp; Metagen takes a pattern file
+as the input, that is describing how the output should be generated.
+Additionally it takes a C++ object that
+is used to provide the actual values for the substitution. The pattern
+file
+contains&nbsp;static text with tags. The static text is copied verbatim
+to the output, whereas the tags are replaced with actual values from
+the input objects.<br>
+
+
+<br>
+
+<br>
+
+
+<h4>Simple value substitution</h4>
+
+
+
+Let's have a file containing the following text:<br>
+
+
+
+<code></code>
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>My name is $name$.</code><br>
+
+
+
+      </td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<code><br>
+
+
+
+</code>When invoking the code generator with the file and with simple variable 'name' bound to 'John', it generates expected output:<br>
+
+
+
+<code></code>
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(214, 255, 214);" nowrap="nowrap"><code>My name is John.</code><br>
+
+
+
+      </td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<code></code><br>
+
+
+&nbsp;&nbsp;&nbsp; A simple word between two <code>$</code> characters
+is a&nbsp;variable name, whose value will be&nbsp;substituted there. If
+such&nbsp;variable doesn't exist, an empty string is inserted, unless
+the <code style="color: rgb(102, 102, 204);">default</code> attribute was provided. The string associated
+with the default attribute is used only when the variable doesn't
+exist, but not when it contains an empty string.<br>
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+  <tbody>
+
+
+    <tr>
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code></code>
+
+  
+    
+      <code>My name is $name default="Frank"$.</code></td>
+
+
+    </tr>
+
+
+  
+  
+  </tbody>
+</table>
+
+
+<br>
+
+&nbsp;&nbsp;&nbsp; Attributes such as <code style="color: rgb(102, 102, 204);">default</code> are used to refine the behavior of
+metagen, majority of them exists for the array specific tags, described
+later.<br>
+
+<br>
+
+<h4>Compound variables</h4>
+
+&nbsp;&nbsp;&nbsp; Variables provided to metagen can be primitive
+string values, but also complex structures or arrays. If the requested
+value&nbsp;is a property of compound object, it can be accessed
+using the <code>.</code> dot operator after the compound object name. Multiple chained dot operators can be used to get down to the property needed.<br>
+
+<br>
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>My name is $person.name$.<br>
+
+Born on $person.birth.month$ $person.birth.day$, $person.birth.year$.</code></td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; To avoid the need to repeat the constant
+part of the variable name, part of the input file can be wrapped within
+<span style="font-weight: bold;">structure tags</span>, that cause every variable access to be relative to the
+path specified in the tag. The structure opening and closing tags are written as <code>${<span style="font-style: italic;">name</span>}$</code> and <code>${/<span style="font-style: italic;">name</span>}$</code>, respectively. The above line can be then rewritten to:<br>
+
+<br>
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>Born on ${person.birth}$$month$ $day$, $year$${/person.birth}$.</code></td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; Structure tags must be nested properly, so it's not
+really required for the closing structure tag to specify the path
+again, except for verification purposes. Otherwise it can be reduced to
+<code>${/}$</code> tag.<br>
+
+<br>
+
+<h4>Accessing outer scope variables</h4>
+
+&nbsp;&nbsp;&nbsp; If the variable name either in simple tags or in structure or array tags starts with a dot (<code>.</code>), it means accessing variables from outside of the nearest structure (or array) tag. So for example, from within the <code>${person.birth}$</code> tags, specifying <code>$.name$</code> would refer to a variable from the scope of the <code>person</code> variable, i.e. it would refer to <code>person.name</code> variable.<br><br>It's
+possible to put more than one dot in front of a name, each one emerging
+up from the nearest structure/array scope to its parent.<br>
+
+<br>
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>${person.birth}$$.name$ was</code><code> born on&nbsp;$month$ $day$, $year$${/}$.</code></td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+<br>
+
+
+<h4>Generating sequences from arrays</h4>
+
+
+
+&nbsp;&nbsp;&nbsp; In addition to the compound objects and simple variables, the input object can contain
+arrays of values or objects. A variable containing an array can be
+bound to a special array-tag, that is invoked for each array element
+subsequently. Example:<br>
+
+
+
+<br>
+
+
+
+Given the file:<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>class $class$ {<br>
+
+
+
+$[param]$<br>
+
+
+
+&nbsp;&nbsp;&nbsp; $type$ $name$;<br>
+
+
+
+$[/param]$<br>
+
+
+
+};</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<br>
+
+
+
+<code></code>and the argument being an instance of C++ class containing (here streamed&nbsp;in cxx format):
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 222, 173);" nowrap="nowrap"><code>class = "Foo"<br>
+
+
+
+param = [{ type = "int", name = "i" } { type = "float", name = "f" }]</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<code></code><br>
+
+
+
+the generator outputs the following text:<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(214, 255, 214);" nowrap="nowrap"><code>class Foo {<br>
+
+
+
+&nbsp;&nbsp;&nbsp; int i;<br>
+
+
+
+&nbsp;&nbsp;&nbsp; float f;<br>
+
+
+
+};</code><br>
+
+
+
+      </td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<br>
+
+
+
+<br>
+
+
+
+&nbsp;&nbsp;&nbsp; Fragments enclosed in <code>$[<span style="font-style: italic;">name</span>]$</code> and <code>$[/<span style="font-style: italic;">name</span>]$</code>tags
+should be bound to an array-type variable, and are subsequently
+invoked for each array element. Substitutions within this fragment
+do address variables defined in the currently accessed array element;
+to reach a variable from the outer scope, the name should be preceded
+with one or more&nbsp;dot <code>(.)</code> characters, as described in the section <span style="font-style: italic;">Accessing outer scope variables</span>.<br>
+
+
+
+<br>
+&nbsp;&nbsp;&nbsp; The fragment may contain additional attributes that
+define
+the generator behavior in certain cases. For example, it's possible to
+specify chunks of text to be inserted before the first and each of the
+rest&nbsp;elements (used for placing separators between the elements
+when needed).
+Or to define chunks of text to be inserted after the last element but
+only when the array is
+non-empty.<br>
+
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;This info can be provided either in tag-format
+or in attribute-format. The difference is that in the tag format the
+text is interpreted literally (except the nested <code>$...$</code>
+tags), with all newlines respected etc, while in the attribute format
+the text is processed and the escape sequences are translated.<br>
+
+
+
+<br>
+
+
+
+So it's possible to write either<br>
+
+
+
+<code></code>
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[param rest]$<br>
+
+
+
+      <span style="font-style: italic;"></span>$[param]$<br>
+
+
+
+...<br>
+
+
+
+$[/param]$</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<code></code>or<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[param rest="\n"]$<br>
+
+
+
+...<br>
+
+
+
+$[/param]$</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+Notice that the first form inserts a newline before each element after the first one.<br>
+
+
+
+<br>Allowed tags are specified in the following table:<br>
+
+
+
+<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <th style="white-space: nowrap; text-align: center;">as a tag</th>
+
+
+
+      <th style="white-space: nowrap; text-align: center;">as&nbsp;attribute</th>
+
+
+
+      <th style="white-space: nowrap; text-align: center;">function</th>
+
+
+
+    </tr>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name first]$<br>
+
+
+
+...</code></td>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name first="..."]$</code></td>
+
+
+
+      <td>text inserted before the first element </td>
+
+
+
+    </tr>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name rest]$<br>
+
+
+
+...</code></td>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name rest="..."]$</code></td>
+
+
+
+      <td>text inserted before all elements except the first one</td>
+
+
+
+    </tr>
+
+
+
+    
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name after]$<br>
+
+
+
+...</code></td>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code>$[name after="..."]$</code></td>
+
+
+
+      <td>text inserted after the last element, if there was at least one element evaluated (see below)</td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table><br>The array tag can contain additional conditional
+attributes, that are applied element-wise to determine whether the
+particular array element should be taken into consideration. So for
+example given the following tag, its content will be evaluated for each
+element of the <code>args</code> array, but only if the element contains a variable <code>filled</code> which value can be interpreted as true:<br><table style="text-align: left; width: 640px; height: 32px;" border="1" cellpadding="2" cellspacing="2"><tbody><tr><td style="background-color: rgb(255, 255, 204);"><code>$[args rest=" ," filled.true?]$ .... $[/args]$</code></td></tr></tbody></table><br>Note that the <code>after</code> tag is evaluated only when at least one element passed these conditions and has been evaluated.<br><br><br>
+
+
+
+Then to generate a simple list of classes and their methods, one can write the following template:<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code><span style="color: rgb(51, 51, 255);">$[class rest]$</span><br>
+
+
+
+      <br>
+
+
+
+//////////////////////////////////////////////////////////////////////////////<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[class]$</span><br>
+
+
+
+class <span style="color: rgb(51, 51, 255);">$name$</span><br>
+
+
+
+{<br>
+
+
+
+public:<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[method]$</span><br>
+
+
+
+&nbsp;&nbsp;&nbsp; void <span style="color: rgb(51, 51, 255);">$name$</span>(<span style="color: rgb(51, 51, 255);">$[param&nbsp;rest=<span style="color: rgb(0, 0, 0);">","</span> after=<span style="color: rgb(0, 0, 0);">" "</span>]$ $type$ $name$$[/param]$</span>);<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[/method]$</span><br>
+
+
+
+};<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[/class]$</span></code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<br>
+
+
+
+The code generator is given the template along with&nbsp;bindings, that
+can be either set programmatically or from a structured file (xml or
+cxx or any metastream formatted type file would work):<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(255, 222, 173);" nowrap="nowrap"><code>class = [<br>
+
+
+
+&nbsp; &nbsp; {name = "Foo",<br>
+
+
+
+&nbsp; &nbsp; method = [<br>
+
+
+
+&nbsp; &nbsp; {name = "foo", param = [{type="int", name="i"}, {type="float", name="f"}]}<br>
+
+
+
+      </code><code>&nbsp; &nbsp; {name = "bar", param = [{type="const char*", name="s"}]}<br>
+
+
+
+&nbsp; &nbsp; ]}<br>
+
+
+
+      <br>
+
+
+
+&nbsp; &nbsp; {name = "Bar",<br>
+
+
+
+      </code><code>&nbsp; &nbsp; method = [<br>
+
+
+
+&nbsp; &nbsp; {name = "foo", param = [{type="void*", name="p"}, {type="uint", name="n"}]}<br>
+
+
+
+      </code><code>&nbsp; &nbsp; ]}<br>
+
+
+
+      </code><code>]</code><code></code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+<br>
+
+
+
+And the output will be<br>
+
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+  <tbody>
+
+
+
+    <tr>
+
+
+
+      <td style="background-color: rgb(214, 255, 214);" nowrap="nowrap"><code>class Foo<br>
+
+
+
+{<br>
+
+
+
+      </code><code>&nbsp;&nbsp;&nbsp; void foo( int i, float f );<br>
+
+
+
+&nbsp; &nbsp; void bar( const char* s );<br>
+
+
+
+};<br>
+
+
+
+      <br>
+
+
+
+      </code><code>//////////////////////////////////////////////////////////////////////////////<br>
+
+
+
+class Bar<br>
+
+
+
+{<br>
+
+
+
+&nbsp; &nbsp; void foo( void* p, uint n );<br>
+
+
+
+};</code></td>
+
+
+
+    </tr>
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+<br>
+Special array variables:<br>
+@index - return current element index (0 based) in array<br>@order - return the position of the current element in a filtered array<br>
+@value - return array element&nbsp;value (arrays of primitive types)<br>
+@size - return the array size<br>
+
+
+<br>
+<br>
+For simple processing of arrays of strings also the simple tag can be
+used. Let's say stuff is an array of strings, then $stuff$ will simply
+output a string concatenated from the individual elements.
+Additionally, the first/rest/after attributes can be used with the
+simple tag as well:<br>
+
+
+
+
+<code></code>
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+
+
+  <tbody>
+
+
+
+    <tr>
+      <td style="vertical-align: top;">attribute<br>
+      </td>
+      <td style="vertical-align: top;">example<br>
+      </td>
+      <td style="vertical-align: top;">description<br>
+      </td>
+    </tr>
+<tr>
+
+
+
+      <td style="background-color: rgb(255, 255, 204); text-align: center; font-family: monospace;" nowrap="nowrap"><code><br>
+</code></td><td style="vertical-align: top; background-color: rgb(255, 255, 204); text-align: center; font-family: monospace;"><code>$stuff$</code></td>
+      <td style="vertical-align: top;">a tightly concatenated string made of array elements<br>
+      <br>
+      </td>
+
+
+
+
+    </tr><tr>
+      <td style="vertical-align: top; background-color: rgb(255, 255, 204); text-align: center; font-family: monospace;">first<br>
+      </td>
+      <td style="vertical-align: top; background-color: rgb(255, 255, 204); text-align: center; font-family: monospace;">$stuff first="-"$<br>
+      </td>
+      <td style="vertical-align: top;">prefix the first element by given string (only for non-empty arrays)<br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top; text-align: center; background-color: rgb(255, 255, 204); font-family: monospace;">rest<br>
+      </td>
+      <td style="vertical-align: top; text-align: center; background-color: rgb(255, 255, 204); font-family: monospace;">$stuff rest="."$</td>
+      <td style="vertical-align: top;">infix separator, a string to put before all elements but the first one<br>
+      </td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top; text-align: center; background-color: rgb(255, 255, 204); font-family: monospace;">after<br>
+      </td>
+      <td style="vertical-align: top; text-align: center; background-color: rgb(255, 255, 204); font-family: monospace;">$stuff after=";"$<br>
+      </td>
+      <td style="vertical-align: top;">suffix after the last element, if the array is not empty<br>
+      </td>
+    </tr>
+
+
+
+
+  
+  
+  
+  </tbody>
+</table>
+
+
+
+
+<code></code><br>
+The attributes can be freely combined.<br>
+
+To get the tag to generate escaped text, use <code>$stuff\"$</code> or <code>$stuff\'$</code>. THe escape sign should appear after all optional attributes.
+
+
+<br>
+
+
+<h4>Conditions</h4>
+&nbsp;&nbsp;&nbsp;&nbsp;Tags formatted as <code>$(if&nbsp;</code><span style="font-style: italic;">cond</span><code>)$ ... $(/if)$</code>&nbsp;allow
+to conditionally insert&nbsp;a chunk of text depending upon the condition. If a simple variable name is
+provided, the tag content is processed&nbsp;if the variable is defined. With the use of aditional
+tag attributes it's possible to condition the content processing depending on whether the variable&nbsp;is (non)empty, is
+(not) an array, etc. Such conditional attributes end&nbsp;either with
+the <code>?</code> character or with the <code>!</code> character. The use with exclamation mark inverts the meaning of the condition.<br>
+
+
+<br><table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2"><tbody><tr><th style="white-space: nowrap; text-align: center; width: 171px;">conditional tag</th><th style="white-space: nowrap; text-align: center; width: 449px;">description (do if)</th></tr><tr><td style="background-color: rgb(255, 255, 204);"><code>$(if <span style="font-style: italic;">var</span>?)$</code></td><td>variable is a non-empty array (also a string), compound or non-zero number</td></tr><tr><td style="background-color: rgb(255, 255, 204);"><code>$(if <span style="font-style: italic;">var</span>!)$<br>$(if !<span style="font-style: italic;">var</span>?)$</code></td><td>variable is an empty array, empty string, or&nbsp;number zero</td></tr><tr><td style="background-color: rgb(255, 255, 204);"><code>$(if <span style="font-style: italic;">var</span>?="<span style="font-style: italic;">string</span>")$</code></td><td>variable converted to string contains the specified string</td></tr><tr><td style="background-color: rgb(255, 255, 204);"><code>$(if <span style="font-style: italic;">var</span>!="<span style="font-style: italic;">string</span>")$</code></td><td>variable converted to string does not contain the specified string</td></tr></tbody></table><br><br>
+
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+  <tbody>
+
+
+    <tr>
+
+
+      <th style="white-space: nowrap; text-align: center; width: 171px;">conditional tag</th>
+
+
+      <th style="white-space: nowrap; text-align: center; width: 449px;">description (do if)</th>
+
+
+    </tr>
+
+
+    <tr>
+
+
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">defined</span>?)$</code></td>
+
+
+      <td style="width: 449px;">variable is defined</td>
+
+
+    </tr>
+
+
+    <tr>
+
+
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code></code><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">nonzero</span>?)$<br></code><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">true</span>?)$</code></td>
+
+
+      <td style="width: 449px;">variable is a non-empty array (also a string), compound or non-zero number</td>
+
+
+    </tr>
+
+
+    <tr>
+
+
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">array</span>?)$</code></td>
+
+
+      <td style="width: 449px;">variable is array</td>
+
+
+    </tr>
+
+
+    
+    <tr><td style="background-color: rgb(255, 255, 204); width: 171px;"><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">empty</span>?)$<br></code><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;">false</span>?)$</code></td><td style="width: 449px;">if var is an array, returns true if empty</td></tr><tr>
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code>$(elif)$</code></td>
+      <td style="width: 449px;" nowrap="nowrap">always true, used as unconditional <span style="font-style: italic;">else</span> clause</td>
+    </tr>
+    <tr>
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code>$(elif <span style="font-style: italic;">cond</span>)$</code></td>
+      <td style="width: 449px;">used as an <span style="font-style: italic;">else if</span> clause, processed only after previous blocks didn't met the condition<span style="font-style: italic;"><code></code></span></td>
+    </tr>
+    <tr>
+      <td style="background-color: rgb(255, 255, 204); width: 171px;" nowrap="nowrap"><code>$(/if)$</code></td>
+      <td style="width: 449px;" nowrap="nowrap">end of the condition</td>
+    </tr>
+
+
+  
+  
+  </tbody>
+</table>
+
+
+<br><br>Conditions can be inverted by prefixing it with exclamation mark, or
+by replacing the trailing question mark by the exclamation mark:<br><br><table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2"><tbody><tr><td style="width: 171px; background-color: rgb(255, 255, 204);"><code>$(if !<span style="font-style: italic;">var</span>.<span style="font-weight: bold;">nonzero</span>?)$<br></code><code>$(if <span style="font-style: italic;">var</span>.<span style="font-weight: bold;"><span style="font-family: monospace;">nonzero</span></span>!)$</code></td><td style="width: 449px;">the condition body is evaluated when <span style="font-weight: bold;">it's not true</span> that the variable is&nbsp;a non-empty array (also a string), compound&nbsp;or non-zero number</td></tr></tbody></table><br><br>Example:<br><br><table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+
+  <tbody>
+
+
+    <tr>
+
+
+      <td style="background-color: rgb(255, 255, 204);" nowrap="nowrap"><code><span style="color: rgb(51, 102, 255);">$(if !client.defined?)$</span><br>
+
+
+#include "server.h"<br>
+
+
+      <span style="color: rgb(51, 102, 255);">$(elif client.empty?)$</span><br>
+
+
+#include "generic_client.h"<br>
+
+
+      <span style="color: rgb(51, 102, 255);">$(elif)$<br>
+
+
+      </span>#include "<span style="color: rgb(255, 102, 0);">$client$</span><span style="color: rgb(51, 102, 255);">$(if&nbsp;client.ends!=".h")$</span>.h<span style="color: rgb(51, 102, 255);">$(/if)$</span>"<br>
+
+
+      <span style="color: rgb(51, 102, 255);"></span><span style="color: rgb(51, 102, 255);">$(/if)$</span></code></td>
+
+
+    </tr>
+
+
+  
+  
+  </tbody>
+</table>
+
+
+<br><br><h3>Removing newlines</h3>&nbsp;&nbsp;&nbsp; The metagen outputs verbatim all static text found outside tags. This means that any
+newlines after a tag are written to output too, even if the newline was
+intended just for clarity of the document template, and it's not
+desired to appear in the output.<br>&nbsp;&nbsp;&nbsp; If&nbsp;tag contains a '<code>-</code>' character just after the leading <code>$</code>
+character or just before the trailing one, it is interpreted as a
+request to remove one newline in front or behind the tag,
+respectively, alongwith any additional spaces or tabs in between.<br><br>In the following example are the hyphens added to remove extra newlines after the <code>[class]</code> and <code>[method]</code> tags.<br><table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2"><tbody><tr><td style="background-color: rgb(255, 255, 204);"><code>
+
+
+
+//////////////////////////////////////////////////////////////////////////////<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[class]-$</span><br>
+
+
+
+class <span style="color: rgb(51, 51, 255);">$name$</span><br>
+
+
+
+{<br>
+
+
+
+public:<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[method]-$</span><br>
+
+
+
+&nbsp;&nbsp;&nbsp; void <span style="color: rgb(51, 51, 255);">$name$</span>(<span style="color: rgb(51, 51, 255);">$[param&nbsp;rest=<span style="color: rgb(0, 0, 0);">","</span> after=<span style="color: rgb(0, 0, 0);">" "</span>]$ $type$ $name$$[/param]$</span>);<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[/method]$</span><br>
+
+
+
+};<br>
+
+      <span style="color: rgb(51, 51, 255);">
+
+$[/class]$</span></code></td></tr></tbody></table><br>
+<h3>Using metagen from code</h3>
+
+
+
+&nbsp;&nbsp;&nbsp; Suppose you have some objects representing data that you want to generate from. If you provide <code>metastream</code>
+operators for all the complex types you have used, you can use the
+metastream and a selected formatting stream to dump the object to a
+file in specific format - be it XML, JSON or cxx or any other format
+implemented for the metastream. The metastream invokes the formatting
+stream's operators to output the desired file format from the actual
+instance give.<br>
+
+
+
+<br>
+
+
+
+&nbsp;&nbsp;&nbsp; Formatting stream, however, doesn't have to be only
+something that formats values given with accordance to the required
+format and outputs them to a transport stream. Why, it can actually
+output nothing, and instead build a hierarchical, lookupable and
+iteratable representation of the objects streamed into metastream. This
+representation can be then used by the <code>metagen</code> to generate output according to the document template provided.<br>
+
+
+
+Now this representation-building formatting stream is actually hidden
+inside the metagen, and the metagen itself poses as a formatting stream
+for the metastream.<br>
+
+
+
+&nbsp;&nbsp;&nbsp; So the usage is&nbsp;following - used complex types
+are equipped with metastream and binstream operators, then metagen is
+given a document template, and bound to the metastream. Finally, for
+actual object x, one calls <code>stream_out(x)</code> method of the metastream class. Similarly to the <code>metastream</code> class, <code>metagen</code> too uses another transport binstream through which the final output is streamed - it may be a file stream, a memory buffer etc.<br>
+
+
+
+<br>
+
+
+
+<br>
+
+<h3>Internals - parsing the template document</h3>
+
+&nbsp;&nbsp;&nbsp; The template document may contain either standalone tags <code>$name$</code>, or paired array <code>$[name]$ ... $[/name]$</code> or structure <code>${name}$ ... ${/name}$</code> or conditional <code>$(name)$ ... $(/name)$</code> tags. These are separated by chunks of static text that is normally copied verbatim to the output.<br>
+<br>
+&nbsp;&nbsp;&nbsp; The template document parser stores pairs containing
+chunk
+of static text and a pointer to the subsequent tag. These are normally
+laid into a linear array in the order they are encountered. However,
+structure and array tags will contain their own linear array of these
+pairs,
+for processing of pattern contained within the opening and ending tags.
+The parsing process thus seeks for a tag, and if it finds one, it
+stores the preceding text and the tag object at the end of the array.
+If it finds an opening tag of some complex tag type, it creates the tag
+object for the particular tag type and gives it the input stream to
+consume the input up to the closing tag.<br>
+<br>
+
+
+
+The tag objects are not reused, because every one may contain different
+attributes or correspond to a different level when the tags nest.<br>
+<br>
+<br>
+
+
+
+</body></html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="import" href="@frame.html">
+  <script type="text/javascript">
+var interface_def = {
+    name : "$name$",
+    base : "$base$",
+    namespace : [$[ns rest=", "]$"$@value$"$[/ns]$],
+    comments : [$[docs rest=", "]$"$@value\"$"$[/docs]$],
+    creators : [
+$[method static? rest=",\n"]-$
+        {
+            comments : [$[docs rest=", "]$"$@value\"$"$[/docs]$],
+            return_value : {
+                type : "iref<$..ns rest="::" after="::"$$..name$>",
+                basetype : "iref<$..ns rest="::" after="::"$$..name$>",
+                comment : "$return.doc\"$"
+            },
+            name : "$name$",
+            args : [
+$[args rest=",\n"]-$
+                {
+                    name : "$name$",
+                    type : "$type$",
+                    basetype : "$basetype$",
+                    comment : "$doc\"$",
+                    string : $token$,
+                    inarg : $inarg$,
+                    outarg : $outarg$,
+                    size : "$size$",
+                    defval : "$defval$",
+                    noscript : $nojs$
+                }$[/args]$
+            ],
+            const_method : $const$
+        }$[/method]$
+    ],
+    methods : [
+$[method !static? !destroy? rest=",\n"]-$
+        {
+            comments : [$[docs rest=", "]$"$@value\"$"$[/docs]$],
+            return_value : {
+                type : "$return.type$",
+                basetype : "$return.basetype$",
+                comment : "$return.doc\"$"
+            },
+            name : "$name$",
+            args : [
+$[args rest=",\n"]-$
+                {
+                    name : "$name$",
+                    type : "$type$",
+                    basetype : "$basetype$",
+                    comment : "$doc\"$",
+                    string : $token$,
+                    inarg : $inarg$,
+                    outarg : $outarg$,
+                    size : "$size$",
+                    defval : "$defval$"
+                }$[/args]$
+            ],
+            const_method : $const$
+        }$[/method]$
+    ],
+    "events" : [
+$[event !static? !destroy? rest=",\n"]-$
+        {
+            comments : [$[docs rest=", "]$"$@value\"$"$[/docs]$],
+            return_value : {
+                type : "$return.type$",
+                basetype : "$return.basetype$",
+                comment : "$return.doc\"$"
+            },
+            name : "$name$",
+            args : [
+$[args rest=",\n"]-$
+                {
+                    name : "$name$",
+                    type : "$type$",
+                    basetype : "$basetype$",
+                    comment : "$doc\"$",
+                    string : $token$,
+                    inarg : $inarg$,
+                    outarg : $outarg$,
+                    size : "$size$",
+                    defval : "$defval$"
+                }$[/args]$
+            ],
+            const_method : $const$
+        }$[/event]$
+    ]
+};
+  </script>
+</head>
+<body>
+  <script>
+    (function() {
+      if(location.search == '') window.location.href = "../index.html?iface=$name$"; else build_interface_markup();
+    })();
+  </script>
+</body>
+</html>

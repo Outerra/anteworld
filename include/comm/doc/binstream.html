@@ -1,0 +1,541 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+
+  
+  <title>binstream</title>
+</head>
+
+
+<body>
+
+<h3><br>
+
+</h3>
+
+<h3>The binstream class</h3>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; The <span style="font-family: monospace; color: rgb(153, 51, 0);">binstream</span><span style="color: rgb(153, 51, 0);">
+</span>class is abstract base class designed for streaming data.
+Binstream
+supports transferring of both binary and text data, but it's primarily
+designated for binary data, since it's easier and more logical to build
+text-based transfer as a wrapper around the binary mode, and not vice
+versa.
+<p>&nbsp;&nbsp;&nbsp; With <span style="font-family: monospace; color: rgb(153, 51, 0);">binstream</span><span style="color: rgb(153, 51, 0);">
+</span>- derived classes it's possible to use once written <span style="font-family: monospace;">&lt;&lt;</span> and <span style="font-family: monospace;">&gt;&gt;</span> operators for <span style="font-family: monospace; color: rgb(153, 51, 0);">binstream</span><span style="color: rgb(153, 51, 0);">
+</span>and any class or type to transmit objects and data through
+network,
+save and load them from files and memory buffers, convert from binary
+to text and from text to binary format, encrypt or compress streamed
+data and objects on the fly, etc.<br>
+
+</p>
+
+<p>If you want to be able to stream your objects, you should write two
+operators for your classes:<br>
+
+</p>
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">struct </span>YourClass</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; {</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">int </span>x;</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">const char</span>*
+str;</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; };</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <br>
+
+&nbsp;&nbsp;&nbsp; <span style="color: rgb(153, 51, 0);">binstream</span>&amp;
+<span style="font-weight: bold;">operator </span>&lt;&lt; ( <span style="color: rgb(153, 51, 0);">binstream</span>&amp; sink, <span style="font-weight: bold;">const </span>YourClass&amp; p )<br>
+
+&nbsp;&nbsp;&nbsp; {<br>
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sink &lt;&lt; p.x &lt;&lt; p.str;<br>
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">return
+</span>sink;<br>
+
+&nbsp;&nbsp;&nbsp; }<br style="font-family: monospace;">
+
+</span><span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <br>
+
+&nbsp;&nbsp;&nbsp; <span style="color: rgb(153, 51, 0);">binstream</span>&amp;
+<span style="font-weight: bold;">operator </span>&gt;&gt; ( <span style="color: rgb(153, 51, 0);">binstream</span>&amp; source,
+YourClass&amp; p )<br>
+
+&nbsp;&nbsp;&nbsp; {<br>
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; source &gt;&gt; p.x &gt;&gt;
+p.str;<br>
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">return
+</span>source;<br>
+
+&nbsp;&nbsp;&nbsp; }<br style="font-family: monospace;">
+
+</span>
+<p>&nbsp;&nbsp;&nbsp; You should stream all members that need to be
+streamed, i.e. those that cannot be reconstructed on target from
+existing data. Stream operators are defined only for generic <span style="font-family: monospace;">binstream</span> class, they (usually)
+do not
+need to know what actual binstream they stream to. In some cases they
+can use <span style="font-family: monospace;">binstream_attributes(
+bool in0out1 )</span> method to determine the type.<br>
+
+&nbsp;&nbsp;&nbsp; These operators alone are enough to be able to use
+all kinds of binstreams, if you want to persist your objects into file,
+or be able to use your type over network, or to see text dump of your
+method call.<br>
+
+<br>
+
+</p>
+
+<h4>Types of <span style="font-family: monospace;">binstream</span>
+classes<br>
+
+</h4>
+
+Currently existing binstream classes are divided into two groups:<br>
+
+<ul>
+
+  <li>streams associated with a medium</li>
+
+  <li>wrapper streams</li>
+
+</ul>
+
+Streams associated with medium are input and output file streams, tcp
+and udp network streams, memory buffer streams and nullstream.<br>
+
+Wrapper streams usually take another binstream class as an argument and
+format or direct flowing data. Currently existing wrapper binstreams
+include caching stream, text converting and formatting streams,
+hexadecimal formatter,
+compression streams and stream merging and diverging binstreams.<br>
+
+<br>
+
+<h4>Binstream internals</h4>
+
+Essential virtual methods that should be implemented by derived
+binstream class are:<br>
+
+<br>
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">virtual </span><a href="opcd_type.html">opcd</a>
+<span style="color: rgb(51, 153, 153);">write_raw_ref</span>( <span style="font-weight: bold;">const void</span>* p, <span style="font-weight: bold;">uint</span>&amp; <span style="color: rgb(0, 153, 0);">len</span> ) = 0;</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">virtual </span><a href="opcd_type.html">opcd</a>
+<span style="color: rgb(51, 153, 153);">read_raw_ref</span>( <span style="font-weight: bold;">void</span>* p, <span style="font-weight: bold;">uint</span>&amp; <span style="color: rgb(0, 153, 0);">len</span> ) = 0;</span><br style="font-family: monospace;">
+
+and<br>
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">virtual </span><a href="opcd_type.html">opcd</a>
+<span style="color: rgb(51, 153, 153);">write_ref</span>( <span style="font-weight: bold;">const void</span>* p, <span style="font-weight: bold;">uint</span>&amp; <span style="color: rgb(0, 153, 0);">num</span>, <span style="color: rgb(153, 51, 0);">binstream::type</span> t );</span><br style="font-family: monospace;">
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">virtual </span><a href="opcd_type.html">opcd</a>
+<span style="color: rgb(51, 153, 153);">read_ref</span>( <span style="font-weight: bold;">void</span>* p, <span style="font-weight: bold;">uint</span>&amp; <span style="color: rgb(0, 153, 0);">num</span>, <span style="color: rgb(153, 51, 0);">binstream::type</span> t );</span><br style="font-family: monospace;">
+
+<br>
+
+&nbsp;&nbsp;&nbsp; The <span style="font-family: monospace;"><span style="color: rgb(51, 153, 153);">write_raw_ref</span> </span>and<span style="font-family: monospace;"> <span style="color: rgb(51, 153, 153);">read_raw_ref</span>
+</span>are pure virtual methods and must be implemented for
+instantiatable derived classes. These methods are used to write and
+read
+raw binary data, without knowing any type information, only the
+requested size in <span style="font-style: italic; font-weight: bold;">bytes</span>.
+The <span style="font-family: monospace;"><span style="color: rgb(0, 153, 0);">len</span> </span>parameter is an
+input-output parameter, before call to the methods it contains
+requested number of bytes to be written or read, after the call it
+should return the number of bytes actually written or read. <br>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; The <span style="font-family: monospace;"><span style="color: rgb(51, 153, 153);">write_ref</span> </span>and<span style="font-family: monospace;"> <span style="color: rgb(51, 153, 153);">read_ref</span>
+</span>methods are used to write or read data while knowing some type
+information. They receive <span style="font-style: italic; font-weight: bold;">a number
+of objects</span> of given type to write or read in the <span style="font-family: monospace; color: rgb(0, 153, 0);">num</span>
+parameter, and return back actual count written or read.<br>
+
+The type information is passed in as object of <span style="font-family: monospace; color: rgb(153, 51, 0);">binstream::type</span>
+class. Essentially it's object of size of <span style="font-family: monospace;">int</span>, that encodes basic
+properties of types, that are needed for binstream to work:<br>
+
+<ul>
+
+  <li>primitive type</li>
+
+  <li>size of object in bytes</li>
+
+  <li>type attributes</li>
+
+</ul>
+
+Primitive types are possible basic types of data that need to be
+distinguished by various binstreams. Existing types are listed in the
+following table:<br>
+
+<br>
+
+<table style="width: 457px; height: 220px; text-align: left; margin-left: auto; margin-right: auto;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="vertical-align: top; text-align: center; font-weight: bold;">type<br>
+
+      </td>
+
+      <td style="vertical-align: top; text-align: center; font-weight: bold;">description<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; text-align: center; height: 8%;">
+      
+      <div style="text-align: left;"><span style="font-family: monospace;">tTYPE_BINARY</span></div>
+
+      </td>
+
+      <td style="vertical-align: top;">binary data<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_INT</span></td>
+
+      <td style="vertical-align: top;">signed integer<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_UINT</span></td>
+
+      <td style="vertical-align: top;">unsigned integer<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_FLOAT</span></td>
+
+      <td style="vertical-align: top;">floating point value<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_CHAR</span></td>
+
+      <td style="vertical-align: top;">character<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_BOOL</span></td>
+
+      <td style="vertical-align: top;">boolean value<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_BGNSTRUCT</span></td>
+
+      <td style="vertical-align: top;">beginning of compound type<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_ENDSTRUCT</span></td>
+
+      <td style="vertical-align: top;">end of compound type<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_ERRCODE</span></td>
+
+      <td style="vertical-align: top;">error code value<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_COMPOUND</span></td>
+
+      <td style="vertical-align: top;">compound type<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; height: 8%;"><span style="font-family: monospace;">tTYPE_FORMAT</span></td>
+
+      <td style="vertical-align: top;">formatting or control tokens<br>
+
+      </td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+<br>
+
+Type attributes describe additional properties of type: <br>
+
+<br>
+
+<table style="width: 450px; text-align: left; margin-left: auto; margin-right: auto;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="vertical-align: top; text-align: center; font-weight: bold;" rowspan="1" colspan="2">attribute<br>
+
+      </td>
+
+      <td style="vertical-align: top; text-align: center; font-weight: bold;">description<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace;" rowspan="1" colspan="2">fSTORE_COUNT<br>
+
+      </td>
+
+      <td style="vertical-align: top;">count of objects should be
+stored with the streamed data<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace; text-align: center;" rowspan="3" colspan="1">ALLOC_TYPE<br>
+
+      </td>
+
+      <td style="vertical-align: top; font-family: monospace;">tALLOC_NONE<br>
+
+      
+      <div style="text-align: center;">(default)<br>
+
+      </div>
+
+      </td>
+
+      <td style="vertical-align: top;">the pointer refers to already
+allocated memory<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace;">tALLOC_NEW<br>
+
+      </td>
+
+      <td style="vertical-align: top;">the pointer refers to a pointer
+variable that points to actual object, read should allocate the memory
+using <span style="font-family: monospace;">new</span><br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace;">tALLOC_DYN<br>
+
+      </td>
+
+      <td style="vertical-align: top;">the pointer refers to a pointer
+variable that points to actual object, read should allocate the memory
+using <span style="font-family: monospace;">dynarray</span> -
+compatible allocator<span style="font-family: monospace;"></span></td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; Binary oriented streams typically use only the byte
+size component of <span style="font-family: monospace; color: rgb(153, 51, 0);">binstream::type</span>
+parameter, and write the raw binary data to its output. Attribute <span style="font-family: monospace;">fSTORE_COUNT </span>forces binary
+binstreams to push the number of objects to the stream first,
+immediately followed by the data. When reading, a caller can (and
+should) specify the expected count of objects equal to zero, if the
+type says the binstream should store count of written components. The <span style="font-family: monospace; color: rgb(51, 153, 153);">read_ref</span>
+method then reads actual count from stream first and allocates space
+for that number of objects using requested allocation method.<br>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; On the contrary, text oriented streams use
+formatting characters to mark and detect number of components. For
+example a string (array of characters) is enclosed in quotation marks
+and the quotation mark alone is written using escape sequences, so a <span style="font-family: monospace; color: rgb(153, 51, 0);">txtparstream</span>
+reading input would read whole string and return the number of
+characters.<br>
+
+<br>
+
+There are other virtual methods that should be overridden by different
+binstream implementations:<br>
+
+<br>
+
+<table style="text-align: left; width: 100%;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="vertical-align: top;"><span style="font-family: monospace;">virtual bool <span style="color: rgb(51, 153, 153);">is_open</span>() const = 0;</span></td>
+
+      <td style="vertical-align: top;">returns <span style="font-family: monospace;">true</span> if the stream is open for
+reading</td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top;"><span style="font-family: monospace;">virtual void <span style="color: rgb(51, 153, 153);">flush</span>() = 0;</span></td>
+
+      <td style="vertical-align: top;">flushes pending output, or end
+of current communication cycle (message)<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace;">virtual
+void <span style="color: rgb(51, 153, 153);">acknowledge</span>( bool
+eat=false ) = 0;</td>
+
+      <td style="vertical-align: top;">acknowledge end of current
+communications cycle<br>
+
+throws exception <span style="font-family: monospace;">ersIO_ERROR </span>if
+not all input was read, unless the <span style="font-family: monospace;">eat</span> parameter was set to <span style="font-family: monospace;">true</span><br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; font-family: monospace;">virtual
+void <span style="color: rgb(51, 153, 153);">reset</span>() = 0;</td>
+
+      <td style="vertical-align: top;">reset reading stream<br>
+
+      </td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top;"><span style="font-family: monospace;">virtual uint <span style="color: rgb(51, 153, 153);">binstream_attributes</span>( bool
+in0out1 ) const = 0</span><br>
+
+      </td>
+
+      <td style="vertical-align: top;">return stream attributes, see
+code<br>
+
+      </td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+In some binstreams (netstream, netstreamudp, logstream ..) the <span style="font-family: monospace; color: rgb(51, 153, 153);">flush</span><span style="color: rgb(51, 153, 153);"> </span>and <span style="font-family: monospace; color: rgb(51, 153, 153);">acknowledge</span><span style="color: rgb(51, 153, 153);"> </span>calls are used to mark end
+of communication turns. The turns are used to bind method calls across
+remote streams, and every call to <span style="font-family: monospace; color: rgb(51, 153, 153);">flush </span>on
+one side should be matched by corresponding call to <span style="font-family: monospace; color: rgb(51, 153, 153);">acknowledge </span>on
+the other side, otherwise the streams generate exceptions (underflow
+and overflow). The <span style="font-family: monospace; color: rgb(51, 153, 153);">flush </span>method
+is often used to mark the end of a message, for example in the <span style="font-family: monospace; color: rgb(153, 51, 0);">logstream</span>
+class.<br>
+
+<br>
+
+Pushing <span style="font-family: monospace; font-weight: bold;">BINSTREAM_FLUSH</span>
+to binstream <span style="font-family: monospace;">(binstream &lt;&lt;
+BINSTREAM_FLUSH)</span> is equivalent to calling the <span style="font-family: monospace; color: rgb(51, 153, 153);">flush </span>method.
+Accordingly, popping <span style="font-family: monospace; font-weight: bold;">BINSTREAM_ACK</span>
+is equivalent to calling <span style="font-family: monospace;"><span style="color: rgb(51, 153, 153);">acknowledge</span>()</span> on the
+binstream and popping <span style="font-family: monospace; font-weight: bold;">BINSTREAM_ACK_EAT</span>
+is equivalent to calling <span style="font-family: monospace;"><span style="color: rgb(51, 153, 153);">acknowledge</span>(true)</span>.<br>
+
+<br>
+
+<span style="font-family: monospace;">&nbsp;</span><br>
+
+</body>
+</html>

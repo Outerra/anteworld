@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="igc_plugin.cpp" />
+    <ClCompile Include="plugin.intergen.cpp" />
+    <ClCompile Include="plugin.intergen.js.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ifc">
+      <UniqueIdentifier>{27ccea8e-23c8-4be3-b1ab-597c3d5dd967}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ifc\plugin_interface.h">
+      <Filter>ifc</Filter>
+    </ClInclude>
+    <ClInclude Include="ifc\plugin_interface.js.h">
+      <Filter>ifc</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

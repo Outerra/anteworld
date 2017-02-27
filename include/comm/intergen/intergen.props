@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup
+    Condition="'$(hppBeforeTargets)' == '' and '$(hppAfterTargets)' == '' and '$(ConfigurationType)' != 'Makefile'">
+    <hppBeforeTargets>Midl</hppBeforeTargets>
+    <hppAfterTargets>CustomBuild</hppAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup>
+    <hppDependsOn
+      Condition="'$(ConfigurationType)' != 'Makefile'">_SelectedFiles;$(hppDependsOn)</hppDependsOn>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <hpp>
+      <CommandLineTemplate>"$(MSBuildThisFileDirectory)..\bin\intergen.exe" [inputs] "$(MSBuildThisFileDirectory)\metagen"</CommandLineTemplate>
+      <Outputs>%(RootDir)%(Directory)%(Filename).inl;%(RootDir)%(Directory)%(Filename).intergen.cpp;%(RootDir)%(Directory)%(Filename).intergen.js.cpp;%(RootDir)%(Directory)%(Filename).intergen.lua.cpp</Outputs>
+      <AdditionalDependencies>$(MSBuildThisFileDirectory)\metagen\template.inl.mtg;$(MSBuildThisFileDirectory)\metagen\interface.h.mtg;$(MSBuildThisFileDirectory)\metagen\interface.js.h.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.js.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.lua.cpp.mtg</AdditionalDependencies>
+    </hpp>
+  </ItemDefinitionGroup>
+</Project>

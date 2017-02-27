@@ -1,0 +1,767 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+
+
+  
+  
+  <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+
+  
+  
+  <title>OPCD</title>
+</head>
+
+
+<body>
+
+
+<span style="font-family: monospace;"></span>
+<h3>The <span style="font-family: monospace;">opcd</span> type<br>
+
+
+</h3>
+
+
+<p>&nbsp;&nbsp;&nbsp; Type<span style="font-family: monospace;"> opcd </span>is
+used throughout the COID framework to propagate all errors. Its main
+feature is that it only takes 4 bytes, yet it can return also a static
+string that describes concrete reason why error occurred. The following
+examples show how it's used together with <span style="font-family: monospace;">ers*</span> macros that help build the
+error code:<br>
+
+
+</p>
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">opcd</span> e = ersDENIED;&nbsp;&nbsp;
+&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp; // assign
+error code</span><br style="font-family: monospace;">
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">opcd</span> ex = ersNOT_FOUND "unknown
+name";&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; // assign
+error code with extra string info<br>
+
+
+</span><span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">return</span> ersINVALID_PARAMS "null or
+empty string";&nbsp; // return an INVALID_PARAMS error<br>
+
+
+&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">return</span>
+0;&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; // no error<br>
+
+
+</span><br>
+
+
+The ers* macros create a static (compile-time) error object, that can
+be used to construct the opcd object via implicit constructor. Checking
+if
+an <span style="font-family: monospace;">opcd</span> variable or
+a return value of a function with return type <span style="font-family: monospace;">opcd</span> signals that no error
+occured can be done simply by testing if
+the variable is null:<br>
+
+
+<br>
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; opcd e = foo();<br>
+
+
+&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">if</span>(!e)<br>
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; ... //no error<br>
+
+
+<br>
+
+
+</span><span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">if</span>( e == 0 )<br>
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; ... //no error<br>
+
+
+<br>
+
+
+</span>Test for the specific error code can be done in
+following ways:<br>
+
+
+<br>
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">if</span>( e == opcd::NO_MATCH
+)&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; // using codes defined in opcd
+struct<br>
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; ...<br>
+
+
+<br>
+
+
+&nbsp;&nbsp;&nbsp; <span style="font-weight: bold;">if</span>( e ==
+ersNO_MATCH )&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; //
+using the macros again<br>
+
+
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; ...<br>
+
+
+</span><br>
+
+
+Additional informations can be retrieved by
+calling some of<span style="font-family: monospace;"> opcd</span>
+methods:<br>
+
+
+<br>
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; //opcd e<br>
+
+
+&nbsp;&nbsp;&nbsp; e.text();&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+//returns error text or an empty string<br>
+
+
+&nbsp;&nbsp;&nbsp; e.error_desc();&nbsp;&nbsp; &nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp; &nbsp; &nbsp; //returns the description
+of
+main error code<br>
+
+
+<br>
+</span>The <span style="font-family: monospace;">opcd</span> type can be used
+to return custom error text, because it basically is a pointer to <span style="font-family: monospace;">opcd::errcode</span> structure, that
+holds the actual error codes, and can be followed by an optional static
+error text. The last byte of the <span style="font-family: monospace;">errcode</span>
+structure is also the first byte of the text. If zero, no text is
+present.<br>
+<br>
+<span style="font-weight: bold; font-style: italic;"><br>
+Note for VisualC users</span>: if you put the following line in the&nbsp;\Common\MSDev98\Bin\AUTOEXP.DAT file of your visual studio 6 installation:<br>
+<code><br>
+&nbsp; &nbsp; coid::opcd=&lt;_ptr-&gt;_desc,s&gt;<br>
+<br>
+</code>you will have debugger window showing you directly the error code abbreviation followed by the custom error text, like this:<br>
+&nbsp;&nbsp;&nbsp; {"SynErclass name mismatch"}<br>
+<code></code>which stands for "Syntax error" code with custom string "class name mismatch".<br>
+
+
+<br>
+
+
+<h4>Streaming <span style="font-family: monospace;">opcd</span> objects<br>
+
+
+</h4>
+
+
+&nbsp;&nbsp;&nbsp; As the <span style="font-family: monospace;">opcd</span>
+type is basically a pointer
+to a static data (the <code>opcd::errcode</code> structure), it would be
+valid
+only in the process that created it, and it could not be transfered to
+other processes as such. We can't pass the pointer value
+(an address) to a remote client, because the address the pointer points
+to surely doesn't contain the error code in another process.<br>
+
+
+<br>
+
+The opcd::errcode structure contains a 16bit error id and 6-byte error
+code, that contains an abbreviation of the error code text. That makes
+it easier to discover what error it is. See the error code
+abbreviations listed in the table below.<br>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; The <code>opcd</code> type is streamed through&nbsp;<span style="font-family: monospace;"></span><a style="font-family: monospace;" href="binstream.html">binstream</a><span style="font-family: monospace;"></span> as a 16bit integer, that contains the error id from <code>opcd::errcode</code>. The custom text is not streamed, so after passing through binstream opcd always contains an empty custom error text.<br>
+
+<br>
+
+
+<h4 style="font-family: monospace;">opcd_formatter</h4>
+
+
+The <span style="font-family: monospace;">opcd_formatter</span> class
+can be used to print opcd error code to a <a href="binstream.html">binstream</a>.
+<br>
+
+
+<br>
+
+
+<span style="font-family: monospace;">//binstream bin, opcd e</span><br style="font-family: monospace;">
+
+
+<span style="font-family: monospace;">bin &lt;&lt; "error: " &lt;&lt;
+opcd_formatter(e);</span><br style="font-family: monospace;">
+
+
+<br>
+
+
+<h4>Error codes</h4>
+
+
+&nbsp;&nbsp;&nbsp; Following table lists currently existing error codes:<br>
+
+<br>
+
+<table style="text-align: left; width: 1171px; height: 1212px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="text-align: center; width: 254px;">name</td>
+
+      <td style="text-align: center; width: 69px;">code</td>
+
+      <td style="text-align: center; width: 54px;">str</td>
+
+      <td style="text-align: center; width: 756px;"></td>
+
+    </tr>
+
+    <tr>
+
+      <td style="vertical-align: top; white-space: nowrap; width: 254px;"><code>ersUNKNOWN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersFRAMEWORK_ERROR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersSPECIFIC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersABORT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersALREADY_DELETED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersALREADY_EXISTS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersBUSY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersDENIED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersEXCEPTION&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersEXIT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersFAILED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersFAILED_ASSERTION&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersIGNORE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersIMPROPER_STATE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersINTERNAL_ERROR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersINVALID_CREDENTIALS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersINVALID_NAME&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersINVALID_PARAMS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersINVALID_TYPE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersINVALID_VERSION&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersINVALID_LOGIN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersINVALID_LOGIN_NAME&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersINVALID_LOGIN_PASSWORD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersIO_ERROR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersMISMATCHED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersNO_CHANGE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersNO_MATCH&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersNO_MORE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersNOT_ENOUGH_MEM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersNOT_ENOUGH_VIRTUAL_MEM&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersNOT_FOUND&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersNOT_IMPLEMENTED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersNOT_READY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersOBSOLETE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersOUT_OF_RANGE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersREJECTED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersRETRY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersSYNTAX_ERROR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersTIMEOUT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersUNAVAILABLE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersUNKNOWN_CMD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersFE_ALREADY_CONNECTED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersFE_CHANNEL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+ersFE_DENIED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersFE_DISCONNECTED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+ersFE_EXCEPTION&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersFE_INVALID_SERVER_VER&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_INVALID_SVC_VER&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NO_ACCESS_MODE_FITS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NO_SUCH_SERVICE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NONLOCAL_AUTO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NOT_ATTACHED_SVC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NOT_AUTHENTIFIED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NOT_PRIMARY_SVC&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_NOT_YET_READY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_SVC_ALREADY_DELETED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_UNKNOWN_METHOD&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_UNREACHABLE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_UNRECG_REQUEST&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+ersFE_UNKNOWN_ERROR&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<br>
+
+ersINTEGER_OVERFLOW&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</code></td>
+
+      <td style="vertical-align: top; width: 69px;"><code>01<br>
+
+02<br>
+
+03<br>
+
+04<br>
+
+05<br>
+
+06<br>
+
+07<br>
+
+08<br>
+
+09<br>
+
+0A<br>
+
+0B<br>
+
+0C<br>
+
+0D<br>
+
+0E<br>
+
+0F<br>
+
+10<br>
+
+11<br>
+
+12<br>
+
+13<br>
+
+14<br>
+
+15<br>
+
+16<br>
+
+17<br>
+
+18<br>
+
+19<br>
+
+1A<br>
+
+1B<br>
+
+1C<br>
+
+1D<br>
+
+1E<br>
+
+1F<br>
+
+20<br>
+
+21<br>
+
+22<br>
+
+23<br>
+
+24<br>
+
+25<br>
+
+26<br>
+
+27<br>
+
+28<br>
+
+29<br>
+
+&nbsp; <br>
+
+2A<br>
+
+2B<br>
+
+2C<br>
+
+2D<br>
+
+2E<br>
+
+2F<br>
+
+30<br>
+
+31<br>
+
+32<br>
+
+33<br>
+
+34<br>
+
+35<br>
+
+36<br>
+
+37<br>
+
+38<br>
+
+39<br>
+
+3A<br>
+
+3B<br>
+
+3C<br>
+
+&nbsp; <br>
+
+3D</code></td>
+
+      <td style="vertical-align: top; width: 54px;"><code>"?????"<br>
+
+"FrErr"<br>
+
+"Spec "<br>
+
+"Abort"<br>
+
+"ADel "<br>
+
+"Exist"<br>
+
+"Busy "<br>
+
+"Deny "<br>
+
+"Exc&nbsp; "<br>
+
+"Exit "<br>
+
+"Fail "<br>
+
+"Assrt"<br>
+
+"Ignor"<br>
+
+"State"<br>
+
+"IntEr"<br>
+
+"ICred"<br>
+
+"IName"<br>
+
+"IParm"<br>
+
+"IType"<br>
+
+"IVer "<br>
+
+"ILgn "<br>
+
+"LGnam"<br>
+
+"LGpwd"<br>
+
+"IOerr"<br>
+
+"Misma"<br>
+
+"NChng"<br>
+
+"NMtch"<br>
+
+"NMore"<br>
+
+"!Mem "<br>
+
+"!VMem"<br>
+
+"!Fnd "<br>
+
+"!Impl"<br>
+
+"!Rdy "<br>
+
+"Obslt"<br>
+
+"OoRng"<br>
+
+"Rjctd"<br>
+
+"Retry"<br>
+
+"SynEr"<br>
+
+"TimeO"<br>
+
+"!Avlb"<br>
+
+"?Cmd "<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+"FEcon"<br>
+
+"FEchn"<br>
+
+"FEden"<br>
+
+"FEdis"<br>
+
+"FEexc"<br>
+
+"FEvSr"<br>
+
+"FEvSc"<br>
+
+"FEacc"<br>
+
+"FEnss"<br>
+
+"FEnla"<br>
+
+"FE!at"<br>
+
+"FE!au"<br>
+
+"FE!pr"<br>
+
+"FE!rd"<br>
+
+"FEdlt"<br>
+
+"FE?m "<br>
+
+"FErch"<br>
+
+"FErcg"<br>
+
+"FE???"<br>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br>
+
+"intOv"</code></td>
+
+      <td style="vertical-align: top; width: 756px; white-space: nowrap;"><code>unknown error<br>
+
+framework error, generic code that matches any ersFE_* error<br>
+
+application-specific error<br>
+
+abort </code><code>(reply)</code><br>
+
+      <code>object already deleted<br>
+
+object already exists, cannot be created<br>
+
+host busy<br>
+
+      </code><code>request denied, insufficient access rights</code><br>
+
+      <code>internal exception<br>
+
+      </code><code>exit </code><code>(reply)</code><br>
+
+      <code>failure (general)<br>
+
+assertion failed<br>
+
+ignore (reply)<br>
+
+object is in improper state for the operation<br>
+
+internal error<br>
+
+invalid credentials<br>
+
+invalid name or string<br>
+
+invalid parameters<br>
+
+invalid type specified<br>
+
+invalid version<br>
+
+invalid login name or password<br>
+
+invalid login<br>
+
+invalid password<br>
+
+io error during processing<br>
+
+mismatched (format of something)<br>
+
+no change from last call (cache)<br>
+
+no object matches the requisites<br>
+
+no more (data)<br>
+
+not enough allocatable memory<br>
+
+out of address space<br>
+
+requested object not found<br>
+
+method not implemented<br>
+
+object not ready (asynchronous)<br>
+
+obsolete (version)<br>
+
+index or value out of range<br>
+
+request rejected<br>
+
+retry </code><code>(reply)</code><br>
+
+      <code>syntax error, format invalid<br>
+
+timeout<br>
+
+operation is unavailable at this time/state<br>
+
+unknown/unrecognized command<br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+      <br>
+
+integer overflow (conversion)</code></td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+<br>
+
+<code></code><br>
+
+<br>
+
+
+<br>
+
+
+</body>
+</html>

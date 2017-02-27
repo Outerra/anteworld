@@ -1,0 +1,96 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema
+      Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml" />
+    <AvailableItemName
+      Include="hpp">
+      <Targets>_hpp</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+  <UsingTask
+    TaskName="hpp"
+    TaskFactory="XamlTaskFactory"
+    AssemblyName="Microsoft.Build.Tasks.v4.0">
+    <Task>$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml</Task>
+  </UsingTask>
+
+  <Target
+    Name="_hpp"
+    BeforeTargets="$(hppBeforeTargets)"
+    AfterTargets="$(hppAfterTargets)"
+    Condition="'@(hpp)' != ''"
+    DependsOnTargets="$(hppDependsOn);ComputehppOutput"
+    Outputs="%(hpp.Outputs)"
+    Inputs="%(hpp.Identity);%(hpp.AdditionalDependencies)">
+    <ItemGroup
+      Condition="'@(SelectedFiles)' != ''">
+      <hpp
+        Remove="@(hpp)"
+        Condition="'%(Identity)' != '@(SelectedFiles)'" />
+    </ItemGroup>
+    <ItemGroup>
+      <hpp_tlog
+        Include="%(hpp.Outputs)"
+        Condition="'%(hpp.Outputs)' != '' and '%(hpp.ExcludedFromBuild)' != 'true'">
+        <Source>@(hpp, '|')</Source>
+      </hpp_tlog>
+    </ItemGroup>
+    <Message
+      Importance="High"
+      Text="%(hpp.ExecutionDescription)" />
+    <WriteLinesToFile
+      Condition="'@(hpp_tlog)' != '' and '%(hpp_tlog.ExcludedFromBuild)' != 'true'"
+      File="$(IntDir)$(ProjectName).write.1.tlog"
+      Lines="^%(hpp_tlog.Source);@(hpp_tlog-&gt;'%(Fullpath)')" />
+    <hpp
+      Condition="'@(hpp)' != '' and '%(hpp.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="%(hpp.CommandLineTemplate)"
+      AdditionalOptions="%(hpp.AdditionalOptions)"
+      StandardOutputImportance="High"
+      StandardErrorImportance="High"
+      EchoOff="true"
+      Inputs="%(hpp.Identity)" />
+  </Target>
+  <PropertyGroup>
+    <ComputeLinkInputsTargets>
+            $(ComputeLinkInputsTargets);
+            ComputehppOutput;
+          </ComputeLinkInputsTargets>
+    <ComputeLibInputsTargets>
+            $(ComputeLibInputsTargets);
+            ComputehppOutput;
+          </ComputeLibInputsTargets>
+  </PropertyGroup>
+  <Target
+    Name="ComputehppOutput"
+    Condition="'@(hpp)' != ''">
+    <ItemGroup>
+      <hppDirsToMake
+        Condition="'@(hpp)' != '' and '%(hpp.ExcludedFromBuild)' != 'true'"
+        Include="%(hpp.Outputs)" />
+      <Link
+        Include="%(hppDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <Lib
+        Include="%(hppDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <ImpLib
+        Include="%(hppDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+    </ItemGroup>
+    <MakeDir
+      Directories="@(hppDirsToMake-&gt;'%(RootDir)%(Directory)')" />
+  </Target>
+  
+  <Target
+    Name = "Clean"
+    Condition="'@(hpp)' != ''">
+      <ItemGroup>
+          <FilesToDelete Include="%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).inl;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.cpp;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.js.cpp;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.lua.cpp"/>
+      </ItemGroup>
+
+      <!--<Delete Files="@(FilesToDelete)" TreatErrorsAsWarnings="true" />-->
+      <Exec Command="del /F /Q &quot;@(FilesToDelete,'&quot; &quot;')&quot;"/>
+  </Target>   
+</Project>

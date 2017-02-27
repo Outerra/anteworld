@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="import" href="@frame.html">
+  <script type="text/javascript">
+var interface_def = {
+    name : "other",
+    base : "",
+    namespace : ["ns"],
+    comments : [],
+    creators : [
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::other>",
+                basetype : "iref<ns::other>",
+                comment : ""
+            },
+            name : "create",
+            args : [
+                {
+                    name : "str",
+                    type : "const coid::charstr&",
+                    basetype : "coid::charstr",
+                    comment : "",
+                    string : true,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                }
+            ],
+            const_method : false
+        }
+    ],
+    methods : [
+        {
+            comments : [],
+            return_value : {
+                type : "const coid::charstr&",
+                basetype : "coid::charstr",
+                comment : ""
+            },
+            name : "get_str",
+            args : [
+
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "set_str",
+            args : [
+                {
+                    name : "new_str",
+                    type : "const coid::token&",
+                    basetype : "coid::token",
+                    comment : "",
+                    string : true,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "some_fun1",
+            args : [
+                {
+                    name : "a",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "c",
+                    type : "int*",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        }
+    ],
+    "events" : [
+
+    ]
+};
+  </script>
+</head>
+<body>
+  <script>
+    (function() {
+      if(location.search == '') window.location.href = "../index.html?iface=other"; else build_interface_markup();
+    })();
+  </script>
+</body>
+</html>

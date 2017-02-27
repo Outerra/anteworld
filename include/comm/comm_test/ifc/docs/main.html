@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="import" href="@frame.html">
+  <script type="text/javascript">
+var interface_def = {
+    name : "main",
+    base : "",
+    namespace : ["ns"],
+    comments : [],
+    creators : [
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::main>",
+                basetype : "iref<ns::main>",
+                comment : ""
+            },
+            name : "create",
+            args : [
+
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::main>",
+                basetype : "iref<ns::main>",
+                comment : ""
+            },
+            name : "create_special",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "b",
+                    type : "iref<ns::other>",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "c",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "d",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "e",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "-1",
+                    noscript : false
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::main>",
+                basetype : "iref<ns::main>",
+                comment : ""
+            },
+            name : "create_wp",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "b",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : true,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "c",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : "",
+                    noscript : false
+                },
+                {
+                    name : "d",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "-1",
+                    noscript : false
+                }
+            ],
+            const_method : false
+        }
+    ],
+    methods : [
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::other>",
+                basetype : "iref<ns::other>",
+                comment : ""
+            },
+            name : "some_get",
+            args : [
+                {
+                    name : "a",
+                    type : "coid::charstr&",
+                    basetype : "coid::charstr",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "int",
+                basetype : "int",
+                comment : ""
+            },
+            name : "get_a",
+            args : [
+
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "set_a",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "fun1",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "const ns1::dummy&",
+                    basetype : "ns1::dummy",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "c",
+                    type : "float*",
+                    basetype : "float",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "d",
+                    type : "ns1::dummy&",
+                    basetype : "ns1::dummy",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "e",
+                    type : "int*",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "f",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "g",
+                    type : "const coid::charstr&",
+                    basetype : "coid::charstr",
+                    comment : "",
+                    string : true,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "coid::charstr",
+                basetype : "coid::charstr",
+                comment : ""
+            },
+            name : "fun2",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "iref<ns::other>",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "c",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "d",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        }
+    ],
+    "events" : [
+        {
+            comments : [],
+            return_value : {
+                type : "void",
+                basetype : "void",
+                comment : ""
+            },
+            name : "evt1",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "int*",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "d",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "coid::charstr",
+                basetype : "coid::charstr",
+                comment : ""
+            },
+            name : "evt2",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "int*",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "c",
+                    type : "ns1::dummy&",
+                    basetype : "ns1::dummy",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "d",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "e",
+                    type : "iref<ns::other>",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::other>",
+                basetype : "iref<ns::other>",
+                comment : ""
+            },
+            name : "evt3",
+            args : [
+                {
+                    name : "msg",
+                    type : "const coid::token&",
+                    basetype : "coid::token",
+                    comment : "",
+                    string : true,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                }
+            ],
+            const_method : false
+        },
+        {
+            comments : [],
+            return_value : {
+                type : "iref<ns::main>",
+                basetype : "iref<ns::main>",
+                comment : ""
+            },
+            name : "evt4",
+            args : [
+                {
+                    name : "a",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "b",
+                    type : "iref<ns::other>",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "c",
+                    type : "int&",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "d",
+                    type : "iref<ns::other>&",
+                    basetype : "iref<ns::other>",
+                    comment : "",
+                    string : false,
+                    inarg : false,
+                    outarg : true,
+                    size : "",
+                    defval : ""
+                },
+                {
+                    name : "e",
+                    type : "int",
+                    basetype : "int",
+                    comment : "",
+                    string : false,
+                    inarg : true,
+                    outarg : false,
+                    size : "",
+                    defval : "-1"
+                }
+            ],
+            const_method : false
+        }
+    ]
+};
+  </script>
+</head>
+<body>
+  <script>
+    (function() {
+      if(location.search == '') window.location.href = "../index.html?iface=main"; else build_interface_markup();
+    })();
+  </script>
+</body>
+</html>

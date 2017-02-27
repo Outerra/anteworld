@@ -1,0 +1,13 @@
+Copy usertype.dat to \Microsoft Visual Studio 10.0\Common7\IDE\usertype.dat
+
+For Visual Studio 2010:
+Copy autoexp.dat to \Microsoft Visual Studio 10\Common7\Packages\Debugger\autoexp.dat file.
+
+For Visual Studio 2012:
+Copy coid.natvis into \Microsoft Visual Studio 11\Common7\Packages\Debugger\Visualizers\ directory.
+
+For Visual Studio 2013:
+Copy coid.natvis into \Microsoft Visual Studio 12\Common7\Packages\Debugger\Visualizers\ directory.
+
+For Visual Studio 2015:
+Copy coid.natvis into \Microsoft Visual Studio 14\Common7\Packages\Debugger\Visualizers\ directory.

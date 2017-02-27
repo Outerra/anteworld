@@ -1,0 +1,435 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+
+
+
+
+
+  
+  
+  
+  
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+
+
+
+
+
+  
+  
+  
+  
+  
+  <title>Metastream</title></head>
+
+<body>
+
+
+
+
+
+<br>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; The metastream class uses operator &lt;&lt; with
+metastream and custom type as arguments to retrieve description of a
+type. The operator uploads information about&nbsp;type name and
+recursively calls metastream operator on member variables. Metastream
+uses gathered&nbsp;information to build a description tree, to be used
+to&nbsp;control the streaming process.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; When streaming an object to the metastream, it will
+first build the description tree by recursively calling the metastream
+operators for any members of the type. If the description tree has been
+built already, an early lookup for the type name will skip this part.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; For streaming the data, metastream uses a <a href="formatting_stream.html">formatting binstream</a> and a bound&nbsp;physical <a href="binstream.html">binstream</a>.
+The formatting binstream is used to generate and parse streamed object
+names and values. Object names are streamed as bstype::key and they
+are&nbsp;usually written as a plain text, whereas string values are of
+type bstype::char and are typically wrapped in quotation marks.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; The metastream calls the formatting binstream write
+or read method sequentially with&nbsp;bstype::key type parameter first
+and value type parameter second for each variable. If the variable type
+is a compound structure, it additionally performs a call
+with&nbsp;STRUCTBNG token before the value, and closes&nbsp;it with a
+call with&nbsp;STRUCTEND parameter. The formatting binstream can use it
+to insert indentation and/or braces.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+<h4>Streaming metadata</h4>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; To be able to use metadata, custom types must have
+written a metastream &lt;&lt; operator, that mimics binstream operator
+for the type. The metastream operator&nbsp;uses MM or MMT macros to mark member
+variable names, so that these can be used in&nbsp;formatting output and
+parsing the input later. Also, the metastream operator must use
+MSTRUCT_OPEN and MSTRUCT_CLOSE macros to mark the beginning and end of
+the member variable streaming. The metastream uses these to build the
+descriptor tree. Otherwise it would not be able to differentiate
+between another primitive member variable of current type and a
+primitive variable of nested compound type.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+note: MSTRUCT_OPEN carries also the structure type name. There's
+additional macro, MTEMPL_OPEN, that has to be used for abstract types,
+before the MSTRUCT_OPEN. The template argument types are declared using
+the MT macros. MTEMPL_OPEN just switches the metastream to template
+name constructing mode, and MT macro just invokes metastream &lt;&lt;
+operators on specified template arguments. These can either lead to
+code beginning with MSTRUCT_OPEN, MTEMPL_OPEN or primitive type
+operator. In this mode we only need the name, though, so the recursion
+is disabled.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+note: metadata building mode is invoked as part of data streaming, if
+the descriptors have been built already, it just sets the root for
+processing, otherwise it builds the descriptor tree first.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+<h4>Streaming output</h4>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; For streaming physical data out, the metastream uses
+internal binstream that&nbsp;inserts formatting tokens as it gets
+called to output sequential primitive&nbsp;data and control tokens.
+When outputting the data, the order in which the binstream primitive
+operators are called matches the order specified with the metastream
+operator for given type (unless there'd be a mismatch in the two). The
+internal binstream just marches along the descriptor tree upon each
+call to primitive or raw write, checks if the type matches with current
+descriptor item, and outputs formating tokens followed by the value
+writes.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+note: value type can be a compound structure, in which case metastream
+invokes a call with&nbsp;STRUCTBGN instead of a primitive value, and
+sets the type of the member atop the stack. Next call to write a
+primitive type will operate on the member type. After streaming the
+last member variable,&nbsp;the&nbsp;STRUCTEND token is invoked and the
+last entry removed from stack.<br>
+
+
+
+
+
+<br>
+
+
+
+
+
+<h4>Streaming input</h4>
+
+
+
+
+
+&nbsp;&nbsp;&nbsp; Since the input stream may contain data for member
+variables in an arbitrary order, metastream must be able to call
+an appropriate binstream operator (only binstream operators can read the
+actual data). The problem is that metastream should utilize existing
+binstream operators written for the particular type, wherein the order in
+which the member variables are streamed is fixed. This means that
+metastream must provide a binstream interface that would be able to stream data
+in the predefined order, even though the input from the formatter
+binstream can be out of order.<br>
+
+
+
+
+<br>
+
+
+
+
+Metastream handles this by using an internal binstream
+(metastream::binstreamhook), that normally uses the formatting stream
+directly for parsing. However, if the input stream contains data
+arranged in different order than the order of calls in corresponding
+binstream &gt;&gt; operator, metastream parses and caches the input
+data while it's unordered, and the internal binstream then uses the
+cache to provide data requested for by the &gt;&gt; operator of the
+type.<br>
+
+
+
+
+&nbsp;&nbsp; &nbsp;<br>
+
+
+
+
+Dev note: the binary representation could be the same as the binary
+output of metastream representation, i.e. without the textual
+formatting binstream so it can be used in binary form too.<br>
+
+
+<br>
+
+
+<h4>Caching input data</h4>
+
+
+&nbsp;&nbsp;&nbsp; Method <code>metastream::fmts_or_cache_read_key()</code>
+normally reads next key from the formatting stream, to prepare for the
+next child object of the current variable. However, when the key read
+is different from the one expected -&nbsp;the one that follows in
+binstream operators for the current structure - the <code>cache_fill_member()</code> method reads all member variables into the cache until it founds the one requested. The <code>cache_member()</code>
+method is recursively called to store all primitive values, array
+information etc. Later when the next child object is to be read, it's
+first looked for&nbsp;in the cache.<br>
+
+
+<br>
+
+
+&nbsp;&nbsp;&nbsp; The cache contains child object offset map at the
+beginning, that specifies where the data for particular child object
+can be located within the cache. Child objects can be compounds too, so the
+same table is present&nbsp;at the start of every other compound object
+deeper in the hierarchy, because their children object could be
+reordered in the input stream too. Note - currently, when compound
+object&nbsp;cached is a part of an array and not a member variable
+directly, the table is followed by additional word containing offset
+past the object's cache entry - this may change, however.<br>
+
+
+&nbsp;&nbsp;&nbsp; If the child object is an array, its cache entry will start with one word containing its actual size.<br>
+
+
+<br>
+
+<h4>Cache layout</h4>
+&nbsp;&nbsp;&nbsp; Suppose the members are ordered in the input stream
+as m1, m2 ...mx and in the structure (or more preciselly in the
+binstream/metastream operators) they are ordered as n1, n2 ... nx.
+When such a structure is being read to the cache, initially an empty
+offset table with size of <span style="font-style: italic;">x</span> is inserted.<br>
+
+<br>
+
+<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="background-color: rgb(153, 255, 153);" nowrap="nowrap">off n1</td>
+
+      <td style="background-color: rgb(153, 255, 153);" nowrap="nowrap">off n2</td>
+
+      <td style="background-color: rgb(153, 255, 153);" nowrap="nowrap">off n..</td>
+
+      <td style="background-color: rgb(153, 255, 153);" nowrap="nowrap">off nx</td>
+
+      <td nowrap="nowrap">data m1</td>
+
+      <td nowrap="nowrap">data m2</td>
+
+      <td nowrap="nowrap">data m..</td>
+
+      <td nowrap="nowrap">data mx</td>
+
+    </tr>
+
+  
+  </tbody>
+</table>
+
+<br>
+
+&nbsp;&nbsp;&nbsp; The offset part contains offsets to the cache where each child element starts.<br>
+
+&nbsp;&nbsp;&nbsp; Note that normally the cache is created only after
+the first out of order element is encountered in the input stream, so
+not all entries have to be present in the data part of the stream and
+the corresponding offset entries are set to -1.<br>
+
+<br>
+The elements contained in the cache can be either
+primitive values, compound objects or arrays of either ones.<br>
+<ul>
+  <li>Primitive value is stored directly in the data part of the cache.</li>
+  <li>Compound value consist of&nbsp;an offset table (since its members can be reordered), and the data part.</li>
+  <li>Arrays start with one word containing actual number of the elements in the
+array, followed by subsequent array elements.</li>
+</ul>
+If the compound object or another array is an element of an array, at the very beginning
+it contains a size header with offset past the end of the data part,
+for easy traversal through parent's array elements.<br>
+
+
+<br>Array of primitive element types:<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="white-space: nowrap; background-color: rgb(153, 255, 153);">count</td>
+
+      <td style="background-color: rgb(255, 255, 255);" nowrap="nowrap">elem0</td>
+
+      <td style="background-color: rgb(255, 255, 255);" nowrap="nowrap">elem1</td>
+
+      <td style="background-color: rgb(255, 255, 255);" nowrap="nowrap">...</td>
+
+      <td nowrap="nowrap">elem<span style="font-style: italic; color: rgb(153, 255, 153);">count-1</span></td>
+
+      
+
+      
+
+      
+
+    </tr>
+
+  
+  </tbody>
+</table>
+<br>Array of compound element types:<table style="text-align: left; width: 640px;" border="1" cellpadding="2" cellspacing="2">
+
+  <tbody>
+
+    <tr>
+
+      <td style="white-space: nowrap; background-color: rgb(153, 255, 153);">count</td>
+
+      <td style="background-color: rgb(209, 255, 209);" nowrap="nowrap">size0</td>
+
+      <td style="background-color: rgb(255, 255, 255);" nowrap="nowrap">elem0</td>
+
+      <td style="background-color: rgb(209, 255, 209);" nowrap="nowrap">size1</td>
+
+      <td nowrap="nowrap">elem3</td>
+
+      <td style="background-color: rgb(209, 255, 209);" nowrap="nowrap">...</td>
+
+      <td nowrap="nowrap">...</td>
+
+      
+
+    </tr>
+
+  
+  </tbody>
+</table>
+<h4><br></h4><h4>Reading from the cache</h4>
+
+
+&nbsp;&nbsp;&nbsp; When a member object to be read is found in the
+cache, methods that normally read from the input formatter are
+redirected to the cache, using auxiliary iterator that keeps track of
+what was already read. After a variable is read from the cache, it's
+marked as such into its parent offset table.<br>
+
+
+<br>
+
+
+&nbsp;&nbsp;&nbsp; It's possible to use the cache to construct whole
+object hierarchy, and later to use it for dynamic lookups for more
+advanced output generator - metagen. The metagen can access the data
+randomly and not as a stream, so the whole representation must be
+available all the time. When metagen is used as the output formatter,
+the reads are always into cache, and output can be generated from an
+input format directly. Now, the cache needed for this can be built not
+only when reading through metastream, but also when writting to
+metastream, when cache is built instead of sending data to the output
+formatter. Likewise, it's possible to output the cached
+data&nbsp;through a formatting stream - the cache can hold entire
+representation.<br>
+
+
+<br>
+
+
+
+</body></html>
