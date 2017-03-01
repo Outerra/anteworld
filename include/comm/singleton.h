@@ -42,6 +42,7 @@
 #include "commtypes.h"
 
 #include "pthreadx.h"
+#include <type_traits>
 
 ///Retrieves module (current dll/exe) singleton object of given type T
 # define SINGLETON(T) \
@@ -177,6 +178,10 @@ public:
 		if(node)
 			return *node;
 
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1700
+        static_assert(std::is_default_constructible<T>::value, "type is not default constructible");
+#endif
+
         node = (T*)singleton_register_instance(
             &create, &destroy, &init_module,
             typeid(T).name(), file, line, module_local);
@@ -192,6 +197,10 @@ public:
 
     ///Local singleton constructor, use through LOCAL_SINGLETON macro
     singleton() {
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1700
+        static_assert(std::is_default_constructible<T>::value, "type is not default constructible");
+#endif
+
         _p = (T*)singleton_register_instance(
             &create, &destroy, &init_module,
             typeid(T).name(), 0, 0, Module);
@@ -204,11 +213,11 @@ public:
             typeid(T).name(), 0, 0, Module);
     }
 
-    singleton(T&& obj) {
-        _p = (T*)singleton_register_instance(
-            singleton_local_creator(new T(std::forward<T>(obj))), &destroy, &init_module,
-            typeid(T).name(), 0, 0, Module);
-    }
+    //singleton(T&& obj) {
+    //    _p = (T*)singleton_register_instance(
+    //        singleton_local_creator(new T(std::forward<T>(obj))), &destroy, &init_module,
+    //        typeid(T).name(), 0, 0, Module);
+    //}
 
     T* operator -> () { return _p; }
 

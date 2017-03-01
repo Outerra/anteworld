@@ -404,5 +404,6 @@
     <ClInclude Include="..\..\..\intergen\ifc.lua.h">
       <Filter>intergen</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\taskmaster.h" />
   </ItemGroup>
 </Project>

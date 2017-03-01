@@ -283,9 +283,6 @@
     <ClInclude Include="..\..\..\atomic\basic_pool.h">
       <Filter>atomic</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\atomic\queue_base.h">
-      <Filter>atomic</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\atomic\stack_base.h">
       <Filter>atomic</Filter>
     </ClInclude>
@@ -356,6 +353,10 @@
       <Filter>intergen</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\bitrange.h" />
+    <ClInclude Include="..\..\..\sync\queue.h">
+      <Filter>sync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\taskmaster.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -369,9 +370,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\alloc\memtrack.cpp">
       <Filter>alloc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\assert.cpp">
-      <Filter>cxx</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\comm.cpp">
       <Filter>cxx</Filter>
@@ -462,6 +460,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\coder\bufpack_lz4.h">
       <Filter>coder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\commassert.cpp">
+      <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

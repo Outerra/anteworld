@@ -669,6 +669,7 @@
     <ClInclude Include="..\..\..\str.h" />
     <ClInclude Include="..\..\..\strgen.h" />
     <ClInclude Include="..\..\..\substring.h" />
+    <ClInclude Include="..\..\..\taskmaster.h" />
     <ClInclude Include="..\..\..\timer.h" />
     <ClInclude Include="..\..\..\token.h" />
     <ClInclude Include="..\..\..\tokenizer.h" />

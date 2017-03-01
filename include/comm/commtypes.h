@@ -201,6 +201,15 @@ typedef int8                schar;
 typedef size_t              uints;
 typedef ptrdiff_t           ints;
 
+//bound to sized integers instead of size_t
+#ifdef SYSTYPE_64
+typedef uint64              uints_sized;
+typedef int64               ints_sized;
+#elif defined(SYSTYPE_32)
+typedef uint32              uints_sized;
+typedef int32               ints_sized;
+#endif
+
 } //namespace coid
 
 #ifndef COID_COMMTYPES_IN_NAMESPACE

@@ -143,6 +143,7 @@ public:
     ///Cancel current thread if it was signalled to cancel
     static void self_test_cancel( uint exitcode );
 
+    static void wait( uint ms );
     //@}
 
 

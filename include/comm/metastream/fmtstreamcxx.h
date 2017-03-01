@@ -56,19 +56,24 @@ protected:
     int lexid, lexstr, lexchr, lexstre, lexchre, lexcode;
 
 public:
-    fmtstreamcxx( bool utf8=false ) : fmtstream_lexer(utf8)
+    fmtstreamcxx( bool utf8=false )
+        : fmtstream_lexer(utf8)
     { init(0,0); }
     
-    fmtstreamcxx( binstream& b, bool utf8=false ) : fmtstream_lexer(utf8)
+    fmtstreamcxx( binstream& b, bool utf8=false )
+        : fmtstream_lexer(utf8)
     { init( &b, &b ); }
     
-    fmtstreamcxx( binstream* br, binstream* bw, bool utf8=false ) : fmtstream_lexer(utf8)
+    fmtstreamcxx( binstream* br, binstream* bw, bool utf8=false )
+        : fmtstream_lexer(utf8)
     { init( br, bw ); }
 
     ~fmtstreamcxx() {}
 
     void init( binstream* br, binstream* bw )
     {
+        separators_are_optional = false;
+
         _binr = _binw = 0;
         if(bw)  bind( *bw, BIND_OUTPUT );
         if(br)  bind( *br, BIND_INPUT );

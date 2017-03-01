@@ -82,6 +82,12 @@ ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const vo
 #define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Warning, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Error, src ); if(q) {q->str() << msg; }} while(0)
 
+#ifdef _DEBUG
+#define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
+#else
+#define coidlog_devdbg(src, msg)
+#endif
+
 
 #ifdef COID_VARIADIC_TEMPLATES
 
@@ -234,7 +240,9 @@ protected:
 
 public:
 
-	logger( bool std_out=false );
+    //@param std_out true if messages should be printed to stdout as well
+    //@param cache_msgs true if messages should be cached until the log file is specified with open()
+	logger( bool std_out, bool cache_msgs );
     virtual ~logger() {}
 
     static void terminate();
@@ -297,7 +305,7 @@ class stdoutlogger : public logger
 {
 public:
 
-    stdoutlogger() : logger(true)
+    stdoutlogger() : logger(true, false)
     {}
 };
 

@@ -227,6 +227,16 @@ struct aabb
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+//@return signed square root of absolute value
+template<class T>
+inline T signsqrt(T v)
+{
+    T av = sqrt(fabs(v));
+    return v < 0 ? -av : av;
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 ///
 template<class T>
 inline bool is_equal(const T& a, const T& b, const T& tolerance)

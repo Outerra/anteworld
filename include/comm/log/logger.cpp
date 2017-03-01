@@ -38,7 +38,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 #include "logwriter.h"
-#include "../atomic/pool.h"
+//#include "../atomic/pool.h"
 #include "../atomic/pool_base.h"
 
 #include "../binstream/filestream.h"
@@ -175,6 +175,7 @@ class logger_file
     charstr _logpath;
     bool _stdout;
 
+
     bool check_file_open()
     {
         if(_logfile.is_open() || !_logpath)
@@ -190,7 +191,7 @@ class logger_file
     }
 
 public:
-    logger_file() : _stdout(true) {}
+    explicit logger_file( bool std_out ) : _stdout(std_out) {}
     logger_file( const token& path, bool std ) : _logpath(path), _stdout(std)
     {}
 
@@ -249,11 +250,13 @@ void logmsg::finalize( policy_msg* p )
 
 
 ////////////////////////////////////////////////////////////////////////////////
-logger::logger( bool std_out )
-	: _logfile(new logger_file)
-    , _stdout(std_out)
+logger::logger( bool std_out, bool cache_msgs )
+	: _stdout(std_out)
 {
 	SINGLETON(log_writer);
+
+    if (cache_msgs)
+        _logfile = ref<logger_file>(new logger_file(std_out));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,6 +333,9 @@ void logger::post( const token& txt, const token& prefix )
 ////////////////////////////////////////////////////////////////////////////////
 void logger::open(const token& filename)
 {
+    if (!_logfile)
+        _logfile = ref<logger_file>(new logger_file(_stdout));
+
     _logfile->open(filename, _stdout);
 }
 
@@ -369,12 +375,16 @@ void log_writer::terminate()
 ////////////////////////////////////////////////////////////////////////////////
 void* log_writer::thread_run()
 {
-	while(1) {
+	while (!coid::thread::self_should_cancel()) {
         flush();
-		if(coid::thread::self_should_cancel())
-            break;
-		coid::sysMilliSecondSleep(500);
+
+#ifdef _DEBUG
+		coid::sysMilliSecondSleep(1);
+#else
+        coid::sysMilliSecondSleep(500);
+#endif
 	}
+
     flush();
 
 	return 0;

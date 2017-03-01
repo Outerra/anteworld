@@ -351,6 +351,7 @@
     <ClInclude Include="..\..\..\intergen\lua_utils.h">
       <Filter>intergen</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\bitrange.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -364,9 +365,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\alloc\memtrack.cpp">
       <Filter>alloc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\assert.cpp">
-      <Filter>cxx</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\comm.cpp">
       <Filter>cxx</Filter>
@@ -453,6 +451,9 @@
       <Filter>alloc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\binstream\stdstream.cpp">
+      <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\commassert.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>

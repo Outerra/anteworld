@@ -346,6 +346,7 @@
       <Filter>coder</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\range.h" />
+    <ClInclude Include="..\..\..\bitrange.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -359,9 +360,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\alloc\memtrack.cpp">
       <Filter>alloc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\assert.cpp">
-      <Filter>cxx</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\comm.cpp">
       <Filter>cxx</Filter>
@@ -452,6 +450,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\coder\bufpack_lz4.h">
       <Filter>coder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\commassert.cpp">
+      <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

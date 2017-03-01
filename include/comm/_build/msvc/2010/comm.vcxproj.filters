@@ -54,9 +54,6 @@
     <ClCompile Include="..\..\..\alloc\memtrack.cpp">
       <Filter>alloc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\assert.cpp">
-      <Filter>cxx</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\comm.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
@@ -124,6 +121,9 @@
       <Filter>sync</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\interface.cpp">
+      <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\commassert.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>

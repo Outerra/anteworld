@@ -17,7 +17,7 @@
  *
  * The Initial Developer of the Original Code is
  * Outerra.
- * Portions created by the Initial Developer are Copyright (C) 2013
+ * Portions created by the Initial Developer are Copyright (C) 2013-2017
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -41,7 +41,7 @@
 #define __COID_COMM_SLOTALLOC__HEADER_FILE__
 
 #include <new>
-#include "../atomic/atomic.h"
+#include <atomic>
 #include "../namespace.h"
 #include "../commexception.h"
 #include "../dynarray.h"
@@ -215,6 +215,16 @@ public:
 
     ///Add range of objects initialized with default constructors
     T* add_range( uints n ) {
+        if (n == 0)
+            return 0;
+        if (n == 1) {
+            bool newitem;
+            T* p = add(&newitem);
+            if (nreused)
+                *nreused = newitem ? 0 : 1;
+            return p;
+        }
+
         uints old;
         T* p = alloc_range(n, &old);
 
@@ -244,6 +254,16 @@ public:
     //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
     //@note if nreused == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
     T* add_range_uninit( uints n, uints* nreused = 0 ) {
+        if (n == 0)
+            return 0;
+        if (n == 1) {
+            bool newitem;
+            T* p = add_uninit(&newitem);
+            if (nreused)
+                *nreused = newitem ? 0 : 1;
+            return p;
+        }
+
         uints old;
         T* p = alloc_range(n, &old);
 
@@ -282,11 +302,30 @@ public:
             p->~T();
         clear_bit(id);
 
-        if(ATOMIC)
-            atomic::dec(&_count);
-        else
-            --_count;
+        --_count;
     }
+
+    ///Del range of objects
+    void del_range( T* p, uints n ) {
+        if (n == 0)
+            return;
+        if (n == 1)
+            return del(p);
+
+        uints id = get_item_id(p);
+
+        if (!POOL) {
+            auto b = _array.ptr() + id;
+            auto e = b + n;
+            for (; b < e; ++b)
+                b->~T();
+        }
+
+        clear_bitrange(id, n, _allocated.ptr());
+
+        _count -= n;
+    }
+
 
     ///Delete object by id
     void del( uints id )
@@ -366,10 +405,7 @@ public:
 
             set_bit(id);
 
-            if(ATOMIC)
-                atomic::inc(&_count);
-            else
-                ++_count;
+            ++_count;
 
             if(is_new) *is_new = true;
             return p;
@@ -397,10 +433,7 @@ public:
 
         set_bit(id);
 
-        if(ATOMIC)
-            atomic::inc(&_count);
-        else
-            ++_count;
+        ++_count;
 
         if(is_new) *is_new = true;
         return _array.ptr() + id;
@@ -426,10 +459,14 @@ public:
             : UMAXS;
     }
 
-    //@return true if item is valid
-    bool is_valid_item( uints id ) const
-    {
+    //@return true if item with id is valid
+    bool is_valid_id( uints id ) const {
         return get_bit(id);
+    }
+
+    //@return true if item is valid
+    bool is_valid_item( const T* p ) const {
+        return get_bit(get_item_id(p));
     }
 
     bool operator == (const slotalloc_base& other) const {
@@ -457,10 +494,7 @@ public:
             extarray_reset();
         }
 
-        if(ATOMIC)
-            atomic::exchange(&_count, 0);
-        else
-            _count = 0;
+        _count = 0;
 
         extarray_reset_count();
 
@@ -481,10 +515,7 @@ public:
             _allocated.set_size(0);
         }
 
-        if(ATOMIC)
-            atomic::exchange(&_count, 0);
-        else
-            _count = 0;
+        _count = 0;
 
         _array.discard();
         _allocated.discard();
@@ -707,38 +738,37 @@ public:
     const dynarray<uints>& get_bitarray() const { return _allocated; }
 
     //@{ functions for bit array
-    static void set_bit( dynarray<uints>& bitarray, uints k )
+    template <class T>
+    static void set_bit( dynarray<T>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        static const int NBITS = 8 * sizeof(T);
+        using U = underlying_bitrange_type_t<T>;
+        uints s = k / NBITS;
+        uints b = k % NBITS;
 
-        if(ATOMIC)
-            atomic::aor(const_cast<uint_type*>(&bitarray.get_or_addc(s)), uints(1) << b);
-        else
-            bitarray.get_or_addc(s) |= uints(1) << b;
+        bitarray.get_or_addc(s) |= U(1) << b;
     }
 
-    static void clear_bit( dynarray<uints>& bitarray, uints k )
+    template <class T>
+    static void clear_bit( dynarray<T>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        static const int NBITS = 8 * sizeof(T);
+        using U = underlying_bitrange_type_t<T>;
+        uints s = k / NBITS;
+        uints b = k % NBITS;
 
-        if(ATOMIC)
-            atomic::aand(const_cast<uint_type*>(&bitarray.get_or_addc(s)), ~(uints(1) << b));
-        else
-            bitarray.get_or_addc(s) &= ~(uints(1) << b);
+        bitarray.get_or_addc(s) &= ~(U(1) << b);
     }
 
-    static bool get_bit( const dynarray<uints>& bitarray, uints k )
+    template <class T>
+    static bool get_bit( const dynarray<T>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        static const int NBITS = 8 * sizeof(T);
+        using U = underlying_bitrange_type_t<T>;
+        uints s = k / NBITS;
+        uints b = k % NBITS;
 
-        if(ATOMIC)
-            return s < bitarray.size()
-            && (*const_cast<uint_type*>(bitarray.ptr()+s) & (uints(1) << b)) != 0;
-        else
-            return s < bitarray.size() && (bitarray[s] & (uints(1) << b)) != 0;
+        return s < bitarray.size() && (bitarray[s] & (U(1) << b)) != 0;
     }
     //@}
 
@@ -777,7 +807,7 @@ public:
         changeset_t* che = chs->ptre();
 
         for(changeset_t* ch=chb; ch<che; p+=MASK_BITS) {
-            uints m = p<e ? *p : 0U;
+            uints m = p<e ? uints(*p) : 0U;
 
             for(int i=0; ch<che && i<MASK_BITS; ++i, m>>=1, ++ch)
                 ch->mask = (ch->mask & preserve) | (m & 1);
@@ -786,12 +816,12 @@ public:
 
 private:
 
-    typedef typename std::conditional<ATOMIC, volatile uints, uints>::type uint_type;
+    typedef typename std::conditional<ATOMIC, std::atomic<uints>, uints>::type uint_type;
 
     static const int MASK_BITS = 8 * sizeof(uint_type);
 
     dynarray<T> _array;                 //< main data array
-    dynarray<uints> _allocated;         //< bit mask for allocated/free items
+    dynarray<uint_type> _allocated;     //< bit mask for allocated/free items
     uint_type _count;                   //< active element count
 
     ///Helper to expand all ext arrays
@@ -898,22 +928,14 @@ private:
         if(pid)
             *pid = id;
 
-        if(ATOMIC) {
-            atomic::aor(p, uints(1) << bit);
+        *p |= uints(1) << bit;
+        ++_count;
 
-            atomic::inc(&_count);
-        }
-        else {
-            *p |= uints(1) << bit;
-            ++_count;
-        }
         return _array.ptr() + id;
     }
 
     T* alloc_range( uints n, uints* old )
     {
-        DASSERT( _count + n <= _array.size() );
-
         uints id = find_zero_bitrange(n, _allocated.ptr(), _allocated.ptre());
         uints nslots = align_to_chunks(id + n, MASK_BITS);
         
@@ -927,10 +949,7 @@ private:
             _array.add_uninit(nadd);
         *old = n - nadd;
 
-        if(ATOMIC)
-            atomic::add(&_count, n);
-        else
-            _count += n;
+        _count += n;
 
         DASSERT(!TRACKING);
 
@@ -945,11 +964,7 @@ private:
         set_bit(count);
 
         extarray_expand();
-
-        if(ATOMIC)
-            atomic::inc(&_count);
-        else
-            ++_count;
+        ++_count;
 
         if(TRACKING)
             tracker_t::set_modified(count);

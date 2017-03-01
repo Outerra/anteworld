@@ -1,4 +1,3 @@
-
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -33,45 +32,52 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef __COMM_LOGWRITTER_H__
-#define __COMM_LOGWRITTER_H__
+#ifndef __COMM_ATOMIC_QUEUE_H__
+#define __COMM_ATOMIC_QUEUE_H__
 
-#include "../sync/queue.h"
-#include "logger.h"
-//#include "../pthreadx.h"
+#include "../namespace.h"
+#include "../list.h"
+#include "guard.h"
+#include "mutex.h"
+
 
 COID_NAMESPACE_BEGIN
 
-class log_writer
+template<class T>
+class queue : protected list<T>
 {
 protected:
-	coid::thread _thread;
-	coid::queue<logmsg_ptr> _queue;
+
+    comm_mutex _mutex;
 
 public:
-	log_writer();
 
-	~log_writer();
+    queue()
+        : list<T>()
+        , _mutex(500, false)
+    {}
 
-    static void* thread_run_fn( void* p ) {
-        return reinterpret_cast<log_writer*>(p)->thread_run();
+    ~queue()
+    {}
+
+    void push(const T& item) { GUARDTHIS(_mutex); this->push_back(item); }
+
+    void push(T&& item) {
+        GUARDTHIS(_mutex);
+        this->push_back(std::forward<T>(item));
     }
 
-	void* thread_run();
+    bool pop(T& item) { GUARDTHIS(_mutex); return this->pop_front(item); }
 
-	void addmsg(logmsg_ptr&& m) {
-        _queue.push(std::forward<logmsg_ptr>(m));
-    }
+    void clear() { GUARDTHIS(_mutex); list<T>::clear(); }
 
-	void flush();
+    void push_front(const T& item) { GUARDTHIS(_mutex); list<T>::push_front(item); }
 
-    void terminate();
+    void push_front(T&& item) { GUARDTHIS(_mutex); list<T>::push_front(std::forward<T>(item)); }
 
-    bool is_empty() const {
-        return _queue.is_empty();
-    }
+    bool is_empty() const { GUARDTHIS(_mutex); return list<T>::is_empty(); }
 };
 
 COID_NAMESPACE_END
 
-#endif // __COMM_LOGWRITTER_H__
+#endif // __COMM_ATOMIC_QUEUE_H__
