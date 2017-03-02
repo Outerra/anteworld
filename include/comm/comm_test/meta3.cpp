@@ -4,7 +4,7 @@
 #include "comm/metastream/metastream.h"
 #include "comm/metastream/fmtstreamjson.h"
 #include "comm/ref.h"
-#include "comm/metastream/metagen.h"
+//#include "metagen.h"
 
 using namespace coid;
 
@@ -147,61 +147,15 @@ static void metastream_test3x()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-struct testmtg {
-    dynarray<charstr> as;
-    dynarray<int> ar;
-    charstr name;
-    int k;
-
-    friend metastream& operator || (metastream& m, testmtg& p) {
-        return m.compound_type(p, [&]() {
-            m.member("as", p.as);
-            m.member("ar", p.ar);
-            m.member("name", p.name);
-            m.member("k", p.k);
-        });
-    }
-};
-
-static void metagen_test()
-{
-    testmtg t;
-    t.as.push("abc");
-    t.as.push("def");
-    t.ar.push(1);
-    t.ar.push(3);
-    t.name = "jozo";
-    t.k = 47;
-
-    const token mtg = "\
-test\n\
-numba $k$\n\
-$[as rest=\" \"]$$@value$$[/as]$\n\
-$[ar]$$@value$$[/ar]$\n\
-$[ar final=\"$@order$\"]$$[/ar]$";
-
-    metagen m;
-    m.parse(mtg);
-
-    binstreambuf dst;
-
-    m.generate(t, dst);
-    token res = dst;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void metastream_test3()
 {
-    metagen_test();
-
     metastream_test3x();
-/*
+
     dynarray<ref<FooA>> ar;
     ar.add()->create(new FooA(1, 2));
 
-    dynarray<ref<FooA>>::dynarray_binstream_container bc(ar);
-    binstream_dereferencing_containerT<FooA,uints> dc(bc);
+    dynarray<ref<FooA>>::dynarray_binstream_container bc(ar, 0, 0);
+    binstream_dereferencing_containerT<FooA,uints> dc(bc,0,0);
 
     binstreambuf txt;
     fmtstreamjson fmt(txt);
@@ -209,5 +163,5 @@ void metastream_test3()
 
     meta.stream_array_out(dc);
     meta.stream_flush();
-    //txt.swap(json);*/
+    //txt.swap(json);
 };

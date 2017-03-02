@@ -334,7 +334,7 @@ struct Interface
 {
     dynarray<charstr> nss;
     charstr name;
-    charstr relpath, relpathjs, relpathlua;
+    charstr relpath, relpathjs;
     charstr hdrfile;
     charstr storage;
     charstr varname;
@@ -408,7 +408,6 @@ struct Interface
             m.member("name",p.name);
             m.member("relpath",p.relpath);
             m.member("relpathjs",p.relpathjs);
-            m.member("relpathlua", p.relpathlua);
             m.member("hdrfile",p.hdrfile);
             m.member("storage",p.storage);
             m.member("method",p.method);

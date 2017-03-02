@@ -601,8 +601,6 @@
     <ClInclude Include="..\..\..\interface.h" />
     <ClInclude Include="..\..\..\intergen\ifc.h" />
     <ClInclude Include="..\..\..\intergen\ifc.js.h" />
-    <ClInclude Include="..\..\..\intergen\ifc.lua.h" />
-    <ClInclude Include="..\..\..\intergen\lua_utils.h" />
     <ClInclude Include="..\..\..\metastream\fmtstream.h" />
     <ClInclude Include="..\..\..\metastream\fmtstreamnull.h" />
     <ClInclude Include="..\..\..\metastream\fmtstream_lexer.h" />
@@ -610,8 +608,6 @@
     <ClInclude Include="..\..\..\metastream\fmtstreamjson.h" />
     <ClInclude Include="..\..\..\metastream\fmtstreamxml.h" />
     <ClInclude Include="..\..\..\metastream\fmtstreamxml2.h" />
-    <ClInclude Include="..\..\..\metastream\fmtstream_lua_capi.h" />
-    <ClInclude Include="..\..\..\metastream\fmtstream_v8.h" />
     <ClInclude Include="..\..\..\metastream\metagen.h" />
     <ClInclude Include="..\..\..\metastream\metastream.h" />
     <ClInclude Include="..\..\..\metastream\metavar.h" />

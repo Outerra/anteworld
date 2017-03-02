@@ -325,11 +325,9 @@
   <ItemGroup>
     <None Include="..\..\..\intergen\metagen\file.intergen.cpp.mtg" />
     <None Include="..\..\..\intergen\metagen\file.intergen.js.cpp.mtg" />
-    <None Include="..\..\..\intergen\metagen\file.intergen.lua.cpp.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.doc.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.js.h.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.h.mtg" />
-    <None Include="..\..\..\intergen\metagen\interface.lua.h.mtg" />
     <None Include="..\..\..\intergen\metagen\template.inl.mtg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

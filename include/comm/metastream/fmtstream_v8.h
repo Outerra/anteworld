@@ -46,18 +46,12 @@
 
 #include "../range.h"
 #include "../str.h"
-#include "../ref.h"
 #include "metastream.h"
+
 
 namespace v8 {
 
 #ifdef V8_MAJOR_VERSION
-    
-    #define NEWTYPE2(iso,t,a)   v8::t::New(iso, a)
-    
-    #define NULLv8(iso)         v8::Null(iso)
-
-
 
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
         return String::NewFromOneByte(Isolate::GetCurrent(), (const uint8*)tok.ptr(), String::kInternalizedString, tok.len());
@@ -78,12 +72,7 @@ namespace v8 {
     }
 
 #else
-    
-    #define NULLv8(iso)         v8::Null()
 
-    #define NEWTYPE2(iso,t,a)   v8::t::New(a)
-
-    
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
         return String::NewSymbol(tok.ptr(), tok.len());
     }
@@ -260,28 +249,6 @@ public:
 
         return a;
     }
-};
-
-///Generic iref<T> partial specialization
-template<class T> class v8_streamer<iref<T>> {
-public:
-    static v8::Handle<v8::Value> to_v8(const iref<T>& v) {
-        v8::Isolate * iso = v8::Isolate::GetCurrent();
-        typedef v8::Handle<v8::Value>(*ifc_create_wrapper_fn)(T * orig, v8::Handle<v8::Context> context);
-
-        ifc_create_wrapper_fn wrap = reinterpret_cast<ifc_create_wrapper_fn>(v->intergen_wrapper(T::IFC_BACKEND_JS));
-        if (!wrap) {
-            return NULLv8(iso);
-        }
-
-        return wrap(v.get(), v8::Handle<v8::Context>());
-    }
-
-    static bool from_v8(v8::Handle<v8::Value> src, iref<T>& res) {
-        res = ::js::unwrap_object<T>(src);
-        return !res.is_empty();
-    }
-
 };
 
 
@@ -1149,7 +1116,7 @@ inline v8::Handle<v8::Value> v8_streamer<T>::to_v8(const T& v)
 {
     v8_enum_helper<std::is_enum<T>::value, T> en;
     if(std::is_enum<T>::value)
-        return NEWTYPE2(v8::Isolate::GetCurrent(),Int32, en << v);
+        return v8::Int32::New(en << v);
 
     auto& streamer = THREAD_SINGLETON(v8_streamer_context);
     streamer.meta.xstream_out(v);
@@ -1171,14 +1138,15 @@ inline bool v8_streamer<T>::from_v8( v8::Handle<v8::Value> src, T& res )
     return true;
 }
 
-template<class T>
-inline bool from_v8(v8::Handle<v8::Value> src, T& t) {
-    return v8_streamer<T>::from_v8(src, t);
-}
 
 template<class T>
 inline bool from_v8( v8::Handle<v8::Value> src, threadcached<T>& tc ) {
     return v8_streamer<typename threadcached<T>::storage_type>::from_v8(src, *tc);
+}
+
+template<class T>
+inline bool from_v8( v8::Handle<v8::Value> src, T& t ) {
+    return v8_streamer<T>::from_v8(src, t);
 }
 
 template<class T>

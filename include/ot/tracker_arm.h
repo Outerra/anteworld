@@ -53,7 +53,7 @@ public:
     virtual bool is_bound_data() { return true; }
     virtual bool is_bound_buttons() { return true; }
     virtual bool is_bound_set_reference() { return true; }
-
+    
 public:
     // --- creators ---
 
@@ -68,13 +68,13 @@ public:
     // --- internal helpers ---
 
     virtual ~tracker_arm() {
-        if (_cleaner) _cleaner(this,0);
+        if(_cleaner) _cleaner(this,0);
     }
 
     static const int HASHID = 2823086548;
 
     int intergen_hash_id() const override final { return HASHID; }
-
+    
     bool iface_is_derived( int hash ) const override final {
         return hash == HASHID;
     }
@@ -87,13 +87,11 @@ public:
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
         static const coid::token _djs("ot::js::tracker_arm@wrapper");
-        static const coid::token _dlua("ot::lua::tracker_arm@wrapper");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
     }
@@ -102,23 +100,22 @@ public:
     template<enum EBackend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
-        if (!_cached_wrapper) {
+        if(!_cached_wrapper) {
             const coid::token& tok = intergen_default_creator_static(B);
             _cached_wrapper = coid::interface_register::get_interface_creator(tok);
         }
         return _cached_wrapper;
     }
-
+    
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
     }
-
+    
     EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
-
+    
     const coid::token& intergen_default_creator( EBackend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
@@ -141,11 +138,11 @@ inline iref<T> tracker_arm::create( T* _subclass_, const char* name )
     static fn_creator create = 0;
     static const coid::token ifckey = "ot::tracker_arm.create@2823086548";
 
-    if (!create)
+    if(!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
+    if(!create)
         throw coid::exception("interface creator inaccessible: ") << ifckey;
 
     return create(_subclass_, name);

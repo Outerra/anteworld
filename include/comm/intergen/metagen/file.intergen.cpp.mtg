@@ -18,8 +18,8 @@ static_assert(intergen_interface::VERSION == $version$, "interface must be rebui
 using namespace coid;
 
 $-[class iface.empty!]$
-static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from policy_intrusive_base");
-static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from policy_intrusive_base");
+static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from coid::policy_intrusive_base");
+static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from coid::policy_intrusive_base");
 
 $-[iface]$
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +40,7 @@ private:
 
     static ifn_t* get_vtable()
     {
-        if (_vtable1) return _vtable1;
+        if(_vtable1) return _vtable1;
 
         _vtable1 = new ifn_t[$nifcmethods$];
 $-[method !static?]$
@@ -69,7 +69,7 @@ $-[method hasifc?]$
     $return.type$ $name$__ifc_wrapper($[args rest=", "]$$type$ $name$$[/args]$)$(if const?)$ const$(/if)$
     {
         iref<$return.ifc$> __ret__ = $name$($[args rest=","]$$name$$[/args]$);
-        if (!__ret__)
+        if(!__ret__)
             return 0;
 
         typedef iref<$return.ifc$> (*fn_wrap)(policy_intrusive_base*, intergen_interface*);
@@ -82,7 +82,7 @@ $[/method]-$
 
     static ifn_t* get_vtable_intercept()
     {
-        if (_vtable2) return _vtable2;
+        if(_vtable2) return _vtable2;
         ifn_t* vtable1 = get_vtable();
 
         _vtable2 = new ifn_t[$nifcmethods$];
@@ -105,10 +105,10 @@ protected:
 
     $name$_dispatcher()
     {}
-
+    
     bool intergen_bind_capture( coid::binstring* capture, uint instid ) override
     {
-        if (instid >= 0xffU)
+        if(instid >= 0xffU)
             return false;
 
         _instid = uint16(instid << 8U);
@@ -142,7 +142,7 @@ $-(if varname?)$
     ///Cleanup routine called from ~$name$()
     static void _cleaner_callback( $name$* m, intergen_interface* ifc ) {
         $..ns default=" "$::$..class$* host = m->host<$..ns$::$..class$>();
-        if (host) host->$varname$ = ifc;
+        if(host) host->$varname$ = ifc;
     }
 $-(/if)$
 $-(if virtual!)$
@@ -151,14 +151,14 @@ $-(if virtual!)$
     {
         //cast to dispatch to sidestep protected access restrictions
         $name$_dispatcher* __disp__ = static_cast<$name$_dispatcher*>(__here__);
-        if (!__disp__)
+        if(!__disp__)
             __disp__ = new $name$_dispatcher;
 
         __disp__->_host.create(host);
         __disp__->_vtable = _capture ? get_vtable_intercept() : get_vtable();
 
         $--(if varname?)$
-        if (!host->$varname$) {
+        if(!host->$varname$) {
             __disp__->_cleaner = &_cleaner_callback;
             host->$varname$ = __disp__;
         }
@@ -184,7 +184,7 @@ $-[method static?]$
     static iref<$..name$> $name$( $..name$* __here__$[args]$, $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$ )
     {
         iref<$....ns default=" "$::$....class$> __host__ = $....ns$::$....class$::$intname$($[args rest=", "]$$name$$[/args]$);
-        if (!__host__)
+        if(!__host__)
             return 0;
         return _generic_interface_creator(__host__.get(), __here__);
     }
@@ -234,7 +234,7 @@ $[/..nss]-$
 $-[event !implicit?]$
 $return.type$ $....class$::$intname$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
 {
-	if (!$..varname$) $(if default_event_body?)${ $default_event_body$ }$(elif)$
+	if(!$..varname$) $(if default_event_body?)${ $default_event_body$ }$(elif)$
         throw coid::exception() << "$name$" << " handler not implemented";$(/if)$
     else
         return $..varname$->iface<$..ns rest="::" after="::"$$..name$>()->$name$($[args rest=", "]$$name$$[/args]$);

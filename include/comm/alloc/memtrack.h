@@ -1,4 +1,3 @@
-#pragma once
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -16,7 +15,7 @@
  *
  * The Initial Developer of the Original Code is
  * Brano Kemen
- * Portions created by the Initial Developer are Copyright (C) 2009-2017
+ * Portions created by the Initial Developer are Copyright (C) 2009
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -114,22 +113,14 @@ struct memtrack {
 
 
 ///Track allocation request for name
-//@param name allocation name, unique pointer
-//@param size allocated size
 void memtrack_alloc( const char* name, size_t size );
 
 ///Track allocation request for name
-//@param name allocation name, unique pointer
-//@param size freed size
 void memtrack_free( const char* name, size_t size );
 
 ///List allocation request statistics since the last call
-//@param dst pointer to a buffer to receive the allocation lists
-//@param nmax maximum number of entries
-//@return number of entries returned
 unsigned int memtrack_list( memtrack* dst, unsigned int nmax );
 
-//@return the number of entries currently kept in memory tracker
 unsigned int memtrack_count();
 
 ///Dump info into file

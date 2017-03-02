@@ -74,15 +74,6 @@ class policy_msg;
 ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
 
 
-#define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::None, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Perf, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_info(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Info, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Highlight, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Warning, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Error, src ); if(q) {q->str() << msg; }} while(0)
-
-
 #ifdef COID_VARIADIC_TEMPLATES
 
 ///Formatted log message
@@ -102,7 +93,6 @@ inline void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs
 }
 
 #endif //COID_VARIADIC_TEMPLATES
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

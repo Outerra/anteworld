@@ -203,9 +203,6 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
             ifc.relpathjs = ifc.relpath;
             ifc.relpathjs.ins(-(int)end.len(), ".js");
 
-            ifc.relpathlua = ifc.relpath;
-            ifc.relpathlua.ins(-(int)end.len(), ".lua");
-
             ifc.basepath = ifc.relpath;
             ifc.hdrfile = ifc.basepath.cut_right_back('/', token::cut_trait_keep_sep_with_source());
 
@@ -225,26 +222,14 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
                 return;
 
             //interface.js.h
-            fdir.resize(flen);
-            fdir << ifc.relpathjs;
+            fdir.ins(int(fdir.contains_back('.') - fdir.ptr()), ".js");
 
-            tdir.resize(tlen);
-            tdir << "interface.js.h.mtg";
+            tdir.ins(-6, ".js");
 
             if( generate(ifc, tdir, fdir) < 0 )
                 return;
 
-            //iterface.lua.h
-            tdir.resize(tlen);
-            tdir << "interface.lua.h.mtg";
 
-            fdir.resize(flen);
-            fdir << ifc.relpathlua;
-
-            if (generate(ifc, tdir, fdir) < 0)
-                return;            
-
-            // class interface docs
             tdir.resize(tlen);
             tdir << "interface.doc.mtg";
 
@@ -280,18 +265,6 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
         generate(file, tdir, fdir);
     else
         bofstream bof(fdir);
-
-    //file.intergen.lua.cpp
-    fdir.resize(flen);
-    fdir << file.fname << ".intergen.lua.cpp";
-
-    tdir.resize(tlen);
-    tdir << "file.intergen.lua.cpp.mtg";
-
-    if (nifc>0)
-        generate(file, tdir, fdir);
-    else
-        bofstream bof(fdir);    //create zero file
 
     tdir.resize(tlen);
     fdir.resize(flen);

@@ -25,12 +25,12 @@ public:
         typedef iref<ifc1::ifc2::thingface> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ifc1::ifc2::js::thingface.get@creator";
-
-        if (!binder)
+        
+        if(!binder)
             binder = reinterpret_cast<fn_bind>(
                 coid::interface_register::get_interface_creator(ifckey));
 
-        if (!binder)
+        if(!binder)
             throw coid::exception("interface binder inaccessible: ") << ifckey;
 
         return binder(script, bindvar, ctx);

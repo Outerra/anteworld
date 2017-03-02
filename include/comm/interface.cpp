@@ -97,8 +97,7 @@ public:
         return true;
     }
 
-    //@param relpath [out] gets relative path from root. If null, relative incpath can only refer to a sub-path below curpath
-    bool include_path( const token& curpath, const token& incpath, charstr& dst, token* relpath )
+    bool include_path( const token& curpath, const token& incpath, charstr& dst, token& relpath )
     {
         bool slash = incpath.first_char() == '/' || incpath.first_char() == '\\';
         DASSERT( !_root_path.is_empty() );
@@ -107,38 +106,29 @@ public:
 
         if(relative)
         {
-            if (!current_dir(curpath, dst) || !directory::compact_path(dst, '/'))
+            if(!current_dir(curpath, dst) || !directory::compact_path(dst, '/'))
                 return false;
 
-            uint psize = dst.len();
-
-            if (!directory::append_path(dst, incpath, relpath==0))
+            if(!directory::append_path(dst, incpath, true))
                 return false;
-
-            //relative paths below curpath are always allowed, not checked
-            if (!relpath)
-                return true;
         }
         else {
             //absolute
             dst = _root_path;
 
             token append = incpath;
-            if (slash)
+            if(slash)
                 ++append;
 
-            if (!directory::append_path(dst, append, true) || !directory::compact_path(dst, '/'))
+            if(!directory::append_path(dst, append, true) || !directory::compact_path(dst, '/'))
                 return false;
         }
 
-        token rpath = dst;
-        if (!directory::subpath(_root_path, rpath))
+        relpath = dst;
+        if(!directory::subpath(_root_path, relpath))
             return false;
 
-        if (relpath)
-            *relpath = rpath;
-
-        return _fn_acc ? _fn_acc(rpath) : true;
+        return _fn_acc ? _fn_acc(relpath) : true;
     }
 
     bool check_version() const { return _intergen_version == intergen_interface::VERSION; }
@@ -164,7 +154,7 @@ void* interface_register::get_interface_creator( const token& ifcname )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool interface_register::include_path( const token& curpath, const token& incpath, charstr& dst, token* relpath )
+bool interface_register::include_path( const token& curpath, const token& incpath, charstr& dst, token& relpath )
 {
     interface_register_impl& reg = interface_register_impl::get();
     return reg.include_path(curpath, incpath, dst, relpath);

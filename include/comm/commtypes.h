@@ -119,10 +119,6 @@
 # define coid_constexpr const
 #endif
 
-#if defined(__cpp_user_defined_literals) || _MSC_VER >= 1900
-# define COID_USER_DEFINED_LITERALS
-#endif
-
 
 #ifdef SYSTYPE_WIN
 # if defined(_WIN64)

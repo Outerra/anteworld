@@ -398,17 +398,5 @@
     <ClInclude Include="..\..\..\log\logwriter.h">
       <Filter>log</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\intergen\ifc.lua.h">
-      <Filter>intergen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\intergen\lua_utils.h">
-      <Filter>intergen</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\metastream\fmtstream_lua_capi.h">
-      <Filter>metastream</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\metastream\fmtstream_v8.h">
-      <Filter>metastream</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

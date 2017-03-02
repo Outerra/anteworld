@@ -198,7 +198,7 @@ public:
     //@param WIDTH minimum width
     //@note used by text formatting streams, writes as a raw token
     template<int WIDTH, int BASE, int ALIGN, class NUM>
-    binstream& operator << (const num_fmt_object<WIDTH,BASE,ALIGN,NUM> v)
+    binstream& operator << (const num_fmt<WIDTH,BASE,ALIGN,NUM> v)
     {
         char buf[32];
         token tok = charstrconv::append_num( buf, 32, BASE, v.value, WIDTH, (EAlignNum)ALIGN );

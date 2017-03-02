@@ -45,7 +45,6 @@
 #include "../namespace.h"
 #include "../commexception.h"
 #include "../dynarray.h"
-#include "../bitrange.h"
 #include "../trait.h"
 
 #include "slotalloc_tracker.h"
@@ -213,17 +212,6 @@ public:
             !POOL || !isold);
     }
 
-    ///Add range of objects initialized with default constructors
-    T* add_range( uints n ) {
-        uints old;
-        T* p = alloc_range(n, &old);
-
-        for (uints i = 0; i < n; ++i)
-            slotalloc_detail::constructor<POOL, T>::construct_object(p + i, i >= old);
-
-        return p;
-    }
-
     ///Add new object, uninitialized (no constructor invoked on the object)
     //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
     //@note if newitem == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
@@ -238,24 +226,6 @@ public:
         }
         if(newitem) *newitem = true;
         return append();
-    }
-
-    ///Add new object, uninitialized (no constructor invoked on the object)
-    //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
-    //@note if nreused == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
-    T* add_range_uninit( uints n, uints* nreused = 0 ) {
-        uints old;
-        T* p = alloc_range(n, &old);
-
-        if (POOL && nreused == 0) {
-            for (uints i = 0; i < old; ++i)
-                destroy(p[i]);
-        }
-
-        if (nreused)
-            *nreused = old;
-
-        return p;
     }
 
 /*
@@ -709,8 +679,8 @@ public:
     //@{ functions for bit array
     static void set_bit( dynarray<uints>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        uints s = k / (8*sizeof(uints));
+        uints b = k % (8*sizeof(uints));
 
         if(ATOMIC)
             atomic::aor(const_cast<uint_type*>(&bitarray.get_or_addc(s)), uints(1) << b);
@@ -720,8 +690,8 @@ public:
 
     static void clear_bit( dynarray<uints>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        uints s = k / (8*sizeof(uints));
+        uints b = k % (8*sizeof(uints));
 
         if(ATOMIC)
             atomic::aand(const_cast<uint_type*>(&bitarray.get_or_addc(s)), ~(uints(1) << b));
@@ -731,8 +701,8 @@ public:
 
     static bool get_bit( const dynarray<uints>& bitarray, uints k )
     {
-        uints s = k / MASK_BITS;
-        uints b = k % MASK_BITS;
+        uints s = k / (8*sizeof(uints));
+        uints b = k % (8*sizeof(uints));
 
         if(ATOMIC)
             return s < bitarray.size()
@@ -788,11 +758,12 @@ private:
 
     typedef typename std::conditional<ATOMIC, volatile uints, uints>::type uint_type;
 
-    static const int MASK_BITS = 8 * sizeof(uint_type);
-
     dynarray<T> _array;                 //< main data array
     dynarray<uints> _allocated;         //< bit mask for allocated/free items
     uint_type _count;                   //< active element count
+
+    static const int MASK_BITS = 8 * sizeof(uints);
+
 
     ///Helper to expand all ext arrays
     template<size_t... Index>
@@ -887,7 +858,7 @@ private:
             *(p = _allocated.add()) = 0;
 
         uint8 bit = lsb_bit_set((uints)~*p);
-        uints slot = (p - _allocated.ptr()) * MASK_BITS;
+        uints slot = ((uints)p - (uints)_allocated.ptr()) * 8;
 
         uints id = slot + bit;
         if(TRACKING)
@@ -907,33 +878,6 @@ private:
             *p |= uints(1) << bit;
             ++_count;
         }
-        return _array.ptr() + id;
-    }
-
-    T* alloc_range( uints n, uints* old )
-    {
-        DASSERT( _count + n <= _array.size() );
-
-        uints id = find_zero_bitrange(n, _allocated.ptr(), _allocated.ptre());
-        uints nslots = align_to_chunks(id + n, MASK_BITS);
-        
-        if (nslots > _allocated.size())
-            _allocated.addc(nslots - _allocated.size());
-
-        set_bitrange(id, n, _allocated.ptr());
-
-        uints nadd = id + n > _array.size() ? id + n - _array.size() : 0;
-        if (nadd)
-            _array.add_uninit(nadd);
-        *old = n - nadd;
-
-        if(ATOMIC)
-            atomic::add(&_count, n);
-        else
-            _count += n;
-
-        DASSERT(!TRACKING);
-
         return _array.ptr() + id;
     }
 

@@ -68,7 +68,7 @@ class global_singleton_manager
 {
     struct killer
     {
-        COIDNEWDELETE_NOTRACK
+        COIDNEWDELETE("coid_singleton_killer");
 
         void* ptr;
         void (*fn_destroy)(void*);
@@ -163,7 +163,7 @@ public:
     }
 
     ~global_singleton_manager() {
-        //destroy();
+        destroy();
     }
 
     static global_singleton_manager& get_global();

@@ -50,7 +50,7 @@ struct SMReg {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-void metastream::structure_map::get_all_types( dynarray<const MetaDesc*>& dst ) const
+void metastream::StructureMap::get_all_types( dynarray<const MetaDesc*>& dst ) const
 {
     SMReg& smr = *(SMReg*)pimpl;
 
@@ -65,20 +65,20 @@ void metastream::structure_map::get_all_types( dynarray<const MetaDesc*>& dst ) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-metastream::structure_map::structure_map()
+metastream::StructureMap::StructureMap()
 {
     pimpl = new SMReg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-metastream::structure_map::~structure_map()
+metastream::StructureMap::~StructureMap()
 {
     delete (SMReg*)pimpl;
     pimpl = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MetaDesc* metastream::structure_map::insert( const MetaDesc& v )
+MetaDesc* metastream::StructureMap::insert( const MetaDesc& v )
 {
     //SMReg& smr = SINGLETON(SMReg);
     //GUARDTHIS(smr._mutex);
@@ -88,7 +88,7 @@ MetaDesc* metastream::structure_map::insert( const MetaDesc& v )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MetaDesc* metastream::structure_map::find( const token& k ) const
+MetaDesc* metastream::StructureMap::find( const token& k ) const
 {
     //SMReg& smr = SINGLETON(SMReg);
     //GUARDTHIS(smr._mutex);
@@ -98,7 +98,7 @@ MetaDesc* metastream::structure_map::find( const token& k ) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MetaDesc* metastream::structure_map::create_array_desc( uints size, MetaDesc::stream_func fn )
+MetaDesc* metastream::StructureMap::create_array_desc( uints size, MetaDesc::stream_func fn )
 {
     //SMReg& smr = SINGLETON(SMReg);
     //GUARDTHIS(smr._mutex);

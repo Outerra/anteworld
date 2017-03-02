@@ -95,7 +95,7 @@ struct comm_array_allocator
     ///Typed array alloc
     template<class T>
     static T* alloc( uints n, mspace m = 0 ) {
-        return (T*)alloc(n, sizeof(T), typeid(T[]).name(), m);
+        return (T*)alloc(n, sizeof(T), typeid(T).name(), m);
     }
 
     ///Typed array realloc
@@ -108,13 +108,13 @@ struct comm_array_allocator
         mspace m = mspace_from_ptr((uints*)p - 1);
 
         if(has_trivial_rebase<T>::value) {
-            return (T*)realloc(p, n, sizeof(T), typeid(T[]).name(), m);
+            return (T*)realloc(p, n, sizeof(T), typeid(T).name(), m);
         }
         else {
             //non-trivial rebase, needs to copy old array into new
-            T* pn = (T*)realloc_in_place(p, n, sizeof(T), typeid(T[]).name());
+            T* pn = (T*)realloc_in_place(p, n, sizeof(T), typeid(T).name());
             if(!pn) {
-                pn = (T*)alloc(n, sizeof(T), typeid(T[]).name(), m);
+                pn = (T*)alloc(n, sizeof(T), typeid(T).name(), m);
                 uints co = count(p);
 
                 rebase<has_trivial_rebase<T>::value, T>::perform((T*)p, (T*)p+co, pn);
@@ -128,13 +128,13 @@ struct comm_array_allocator
     ///Typed array add
     template<class T>
     static T* add( const T* p, uints n ) {
-        return (T*)add(p, n, sizeof(T), typeid(T[]).name());
+        return (T*)add(p, n, sizeof(T), typeid(T).name());
     }
 
     ///Typed array free
     template<class T>
     static void free( const T* p ) {
-        return free(p, typeid(T[]).name());
+        return free(p, typeid(T).name());
     }
 
 

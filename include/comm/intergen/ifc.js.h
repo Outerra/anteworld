@@ -150,7 +150,7 @@ struct script_handle
     //@param dst [out] resulting path, using / for directory separators
     //@param relpath [out] path relative 
     //@return 0 if succeeded, 1 invalid stack frame, 2 invalid path
-    static int get_target_path( coid::token path, uint frame, coid::charstr& dst, coid::token* relpath )
+    static int get_target_path( coid::token path, uint frame, coid::charstr& dst, coid::token& relpath )
     {
 #ifdef V8_MAJOR_VERSION
         v8::Local<v8::StackTrace> trace = v8::StackTrace::CurrentStackTrace(v8::Isolate::GetCurrent(),
@@ -291,7 +291,8 @@ public:
         path.trim_whitespace();
 
         coid::charstr dst;
-        if(0 != script_handle::get_target_path(path, 0, dst, 0)) {
+        coid::token relpath;
+        if(0 != script_handle::get_target_path(path, 0, dst, relpath)) {
             (dst = "invalid path ") << path;
             return (js::CBK_RET)js::THROW(iso, v8::Exception::Error, dst);
         }
@@ -322,7 +323,7 @@ public:
         ctx->Global()->Set(result, v8_Undefined(iso));
 
         coid::zstring filepath;
-        filepath.get_str() << "file:///" << dst;
+        filepath.get_str() << "file:///" << relpath;
 
         v8::Handle<v8::String> source = v8::string_utf8(js);
         v8::Handle<v8::String> spath  = v8::string_utf8(filepath);
@@ -364,17 +365,9 @@ namespace js {
 ////////////////////////////////////////////////////////////////////////////////
 struct interface_context
 {
-    //v8::Persistent<v8::Context> _context;
-    //v8::Persistent<v8::Script> _script;
+    v8::Persistent<v8::Context> _context;
+    v8::Persistent<v8::Script> _script;
     v8::Persistent<v8::Object> _object;
-
-    v8::Local<v8::Context> context( v8::Isolate* iso ) {
-#ifdef V8_MAJOR_VERSION
-        return _object .Get(iso)->CreationContext();
-#else
-        return _object->CreationContext();
-#endif
-    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

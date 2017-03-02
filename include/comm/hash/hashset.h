@@ -55,7 +55,7 @@ COID_NAMESPACE_BEGIN
 **/
 template <
     class VAL,
-    class HASHFUNC=hasher<VAL>,
+    class HASHFUNC=hash<VAL>,
     class EQFUNC=equal_to<VAL,typename HASHFUNC::key_type>,
     template<class> class ALLOC=AllocStd
     >
@@ -69,7 +69,7 @@ public:
 
     typedef typename _HT::LOOKUP                    key_type;
     typedef VAL                                     value_type;
-    typedef HASHFUNC                                hasherfn;
+    typedef HASHFUNC                                hasher;
     typedef EQFUNC                                  key_equal;
 
     typedef size_t                                  size_type;
@@ -119,30 +119,30 @@ public:
     }
 
     hash_set()
-        : _HT( 128, hasherfn(), key_equal(), _SEL() ) {}
+        : _HT( 128, hasher(), key_equal(), _SEL() ) {}
 
     explicit hash_set( size_type n )
-        : _HT( n, hasherfn(), key_equal(), _SEL() ) {}
-    hash_set( size_type n, const hasherfn& hf )
+        : _HT( n, hasher(), key_equal(), _SEL() ) {}
+    hash_set( size_type n, const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() ) {}
-    hash_set( size_type n, const hasherfn& hf, const key_equal& eql)
+    hash_set( size_type n, const hasher& hf, const key_equal& eql)
         : _HT( n, hf, eql, _SEL() ) {}
 
 
 
     hash_set( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+        : _HT( n, hasher(), key_equal(), _SEL() )
     {
         insert_unique( f, l );
     }
     hash_set( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf )
+        const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() )
     {
         insert_unique( f, l );
     }
     hash_set( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf,
+        const hasher& hf,
         const key_equal& eqf )
         : _HT( n, hf, eqf, _SEL() )
     {
@@ -151,18 +151,18 @@ public:
 
 
     hash_set( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+        : _HT( n, hasher(), key_equal(), _SEL() )
     {
         insert_unique( f, l );
     }
     hash_set( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf )
+        const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() )
     {
         insert_unique( f, l );
     }
     hash_set( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf,
+        const hasher& hf,
         const key_equal& eqf )
         : _HT( n, hf, eqf, _SEL() )
     {
@@ -188,7 +188,7 @@ public:
 **/
 template <
     class VAL,
-    class HASHFUNC=hasher<VAL>,
+    class HASHFUNC=hash<VAL>,
     class EQFUNC=equal_to<VAL,typename HASHFUNC::key_type>,
     template<class> class ALLOC=AllocStd
     >
@@ -202,7 +202,7 @@ public:
 
     typedef typename _HT::LOOKUP                    key_type;
     typedef VAL                                     value_type;
-    typedef HASHFUNC                                hasherfn;
+    typedef HASHFUNC                                hasher;
     typedef EQFUNC                                  key_equal;
 
     typedef size_t                                  size_type;
@@ -247,30 +247,30 @@ public:
 
 
     hash_multiset()
-        : _HT( 128, hasherfn(), key_equal(), _SEL() ) {}
+        : _HT( 128, hasher(), key_equal(), _SEL() ) {}
 
     explicit hash_multiset( size_type n )
-        : _HT( n, hasherfn(), key_equal(), _SEL() ) {}
-    hash_multiset( size_type n, const hasherfn& hf )
+        : _HT( n, hasher(), key_equal(), _SEL() ) {}
+    hash_multiset( size_type n, const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() ) {}
-    hash_multiset( size_type n, const hasherfn& hf, const key_equal& eql)
+    hash_multiset( size_type n, const hasher& hf, const key_equal& eql)
         : _HT( n, hf, eql, _SEL() ) {}
 
 
 
     hash_multiset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+        : _HT( n, hasher(), key_equal(), _SEL() )
     {
         insert_equal( f, l );
     }
     hash_multiset( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf )
+        const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() )
     {
         insert_equal( f, l );
     }
     hash_multiset( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf,
+        const hasher& hf,
         const key_equal& eqf )
         : _HT( n, hf, eqf, _SEL() )
     {
@@ -279,18 +279,18 @@ public:
 
 
     hash_multiset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+        : _HT( n, hasher(), key_equal(), _SEL() )
     {
         insert_equal( f, l );
     }
     hash_multiset( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf )
+        const hasher& hf )
         : _HT( n, hf, key_equal(), _SEL() )
     {
         insert_equal( f, l );
     }
     hash_multiset( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf,
+        const hasher& hf,
         const key_equal& eqf )
         : _HT( n, hf, eqf, _SEL() )
     {

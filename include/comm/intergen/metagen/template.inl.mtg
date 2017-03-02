@@ -110,7 +110,7 @@ $-(if !static?)$,
             : __file__(__file__), __line__(__line__), _obj(obj) $-[args !retarg? !sizearg? !size?]$
             , _$name$($name$) $-[/args]$ {
   $-[args size?]$
-            {for (uint n=($size$),i=0; i<n; ++i) _$name$[i] = $name$[i];}
+            {for( uint n=($size$),i=0; i<n; ++i )  _$name$[i] = $name$[i];}
   $-[/args]$
         }
 $-(elif)$
@@ -119,7 +119,7 @@ $-(elif)$
             : __file__(__file__), __line__(__line__)$[args !retarg? !sizearg? !size?]$, _$name$($name$)
             $[/args]${
   $-[args size?]$
-            {for (uint n=($size$),i=0; i<n; ++i)  _$name$[i] = $name$[i];}
+            {for( uint n=($size$),i=0; i<n; ++i )  _$name$[i] = $name$[i];}
   $-[/args]$
         }
 $-(/if)$

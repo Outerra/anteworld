@@ -57,11 +57,7 @@ public:
 
     static void* get_interface_creator( const token& ifcname );
 
-    //@param curpath current path
-    //@param incpath absolute path or path relative to curpath
-    //@param dst [out] result path
-    //@param relpath [out] gets relative path from root. If null, relative incpath can only refer to a sub-path below curpath
-    static bool include_path( const token& curpath, const token& incpath, charstr& dst, token* relpath );
+    static bool include_path( const token& curpath, const token& incpath, charstr& dst, token& relpath );
 
     static const charstr& root_path();
 

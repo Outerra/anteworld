@@ -281,7 +281,7 @@ public:
 
 namespace coid {
 
-template<typename T> struct hasher<iref<T>> {
+template<typename T> struct hash<iref<T>> {
     typedef iref<T> key_type;
     uint operator()(const key_type& x) const { return (uint)x.get(); }
 };

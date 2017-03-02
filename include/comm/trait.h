@@ -386,7 +386,6 @@ struct callable_base {
     virtual ~callable_base() {}
     virtual R operator()( Args&& ...args ) const = 0;
     virtual callable_base* clone() const = 0;
-    virtual size_t size() const = 0;
 };
 
 template <bool Const, bool Variadic, typename R, typename... Args>
@@ -411,17 +410,11 @@ struct closure_traits_base
 
         callable(const Fn& fn) : fn(fn) {}
 
-        R operator()( Args&& ...args ) const override final {
+        R operator()( Args&& ...args ) const override {
             return fn(std::forward<Args>(args)...);
         }
 
-        callbase* clone() const override final {
-            return new callable<Fn>(fn);
-        }
-
-        size_t size() const override final {
-            return sizeof(*this);
-        }
+        callbase* clone() const override { return new callable<Fn>(fn); }
 
     private:
         Fn fn;

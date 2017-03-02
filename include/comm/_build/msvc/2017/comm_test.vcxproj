@@ -369,7 +369,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\comm_test\atomic-test.cpp" />
-    <ClCompile Include="..\..\..\comm_test\job.cpp" />
     <ClCompile Include="..\..\..\comm_test\main.cpp" />
     <ClCompile Include="..\..\..\comm_test\malloc.cpp" />
     <ClCompile Include="..\..\..\comm_test\meta.cpp" />

@@ -290,7 +290,7 @@ inline bool operator!=(const ref<T>& a, const ref<T>& b) {
 
 namespace coid {
 
-template<typename T> struct hasher<ref<T>> {
+template<typename T> struct hash<ref<T>> {
     typedef ref<T> key_type;
     uint operator()(const key_type& x) const { return (uint)x.get(); }
 };

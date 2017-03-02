@@ -106,7 +106,7 @@ struct _Select_DeRef
 template <
     class VAL,
     class EXTRACTKEY,
-    class HASHFUNC=hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
+    class HASHFUNC=hash<typename type_base<typename EXTRACTKEY::ret_type>::type>,
     class EQFUNC=equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
     template<class> class ALLOC=AllocStd
     >
@@ -120,7 +120,7 @@ public:
     typedef typename _HT::LOOKUP                    key_type;
     typedef VAL                                     value_type;
     typedef EXTRACTKEY                              extractor;
-    typedef HASHFUNC                                hasherfn;
+    typedef HASHFUNC                                hasher;
     typedef EQFUNC                                  key_equal;
 
     typedef size_t                                  size_type;
@@ -239,39 +239,39 @@ public:
 
 
     hash_keyset()
-        : _HT( 128, hasherfn(), key_equal(), extractor() ) {}
+        : _HT( 128, hasher(), key_equal(), extractor() ) {}
 
     explicit hash_keyset(size_type n)
-        : _HT( n, hasherfn(), key_equal(), extractor() ) {}
+        : _HT( n, hasher(), key_equal(), extractor() ) {}
 
     explicit hash_keyset( const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex ) {}
-    hash_keyset( const extractor& ex, const hasherfn& hf, size_type n=128 )
+        : _HT( n, hasher(), key_equal(), ex ) {}
+    hash_keyset( const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex ) {}
-    hash_keyset( const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n=128 )
+    hash_keyset( const extractor& ex, const hasher& hf, const key_equal& eql, size_type n=128 )
         : _HT( n, hf, eql, ex ) {}
 
 
 
     hash_keyset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+        : _HT( n, hasher(), key_equal(), extractor() )
     {
         insert_unique( f, l );
     }
     hash_keyset( const value_type* f, const value_type* l,
         const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+        : _HT( n, hasher(), key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_keyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
+        const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_keyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
+        const extractor& ex, const hasher& hf, const key_equal& eqf, size_type n=128 )
         : _HT( n, hf, eqf, ex )
     {
         insert_unique( f, l );
@@ -279,24 +279,24 @@ public:
 
 
     hash_keyset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+        : _HT( n, hasher(), key_equal(), extractor() )
     {
         insert_unique( f, l );
     }
     hash_keyset( const_iterator* f, const_iterator* l,
         const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+        : _HT( n, hasher(), key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_keyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
+        const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_keyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
+        const extractor& ex, const hasher& hf, const key_equal& eqf, size_type n=128 )
         : _HT( n, hf, eqf, ex )
     {
         insert_unique( f, l );
@@ -315,7 +315,7 @@ public:
 template <
     class VAL,
     class EXTRACTKEY,
-    class HASHFUNC=hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
+    class HASHFUNC=hash<typename type_base<typename EXTRACTKEY::ret_type>::type>,
     class EQFUNC=equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
     template<class> class ALLOC=AllocStd
     >
@@ -329,7 +329,7 @@ public:
     typedef typename _HT::LOOKUP                    key_type;
     typedef VAL                                     value_type;
     typedef EXTRACTKEY                              extractor;
-    typedef HASHFUNC                                hasherfn;
+    typedef HASHFUNC                                hasher;
     typedef EQFUNC                                  key_equal;
 
     typedef size_t                                  size_type;
@@ -388,39 +388,39 @@ public:
 
 
     hash_multikeyset()
-        : _HT( 128, hasherfn(), key_equal(), extractor() ) {}
+        : _HT( 128, hasher(), key_equal(), extractor() ) {}
 
     explicit hash_multikeyset(size_type n)
-        : _HT( n, hasherfn(), key_equal(), extractor() ) {}
+        : _HT( n, hasher(), key_equal(), extractor() ) {}
 
     explicit hash_multikeyset( const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex ) {}
-    hash_multikeyset( const extractor& ex, const hasherfn& hf, size_type n=128 )
+        : _HT( n, hasher(), key_equal(), ex ) {}
+    hash_multikeyset( const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex ) {}
-    hash_multikeyset( const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n=128 )
+    hash_multikeyset( const extractor& ex, const hasher& hf, const key_equal& eql, size_type n=128 )
         : _HT( n, hf, eql, ex ) {}
 
 
 
     hash_multikeyset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+        : _HT( n, hasher(), key_equal(), extractor() )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const value_type* f, const value_type* l,
         const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+        : _HT( n, hasher(), key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
+        const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
+        const extractor& ex, const hasher& hf, const key_equal& eqf, size_type n=128 )
         : _HT( n, hf, eqf, ex )
     {
         insert_unique( f, l );
@@ -428,24 +428,24 @@ public:
 
 
     hash_multikeyset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+        : _HT( n, hasher(), key_equal(), extractor() )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const_iterator* f, const_iterator* l,
         const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+        : _HT( n, hasher(), key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
+        const extractor& ex, const hasher& hf, size_type n=128 )
         : _HT( n, hf, key_equal(), ex )
     {
         insert_unique( f, l );
     }
     hash_multikeyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
+        const extractor& ex, const hasher& hf, const key_equal& eqf, size_type n=128 )
         : _HT( n, hf, eqf, ex )
     {
         insert_unique( f, l );

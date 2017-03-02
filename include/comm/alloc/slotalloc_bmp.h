@@ -3,8 +3,8 @@
 #define __COMM_ALLOC_SLOTALLOC_BMP_H__
 
 #include "../dynarray.h"
+
 #include "../mathi.h"
-#include "../bitrange.h"
 
 COID_NAMESPACE_BEGIN
 

@@ -66,8 +66,8 @@ bool Class::parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& na
         templsub << char('>');
     }
 
-    hash_map<charstr,uint,hasher<token>> map_overloads;
-    typedef hash_map<charstr,uint,hasher<token>>::value_type t_val;
+    hash_map<charstr,uint,hash<token>> map_overloads;
+    typedef hash_map<charstr,uint,hash<token>>::value_type t_val;
 
     int ncontinuable_errors = 0;
 

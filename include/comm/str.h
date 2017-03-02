@@ -472,7 +472,7 @@ public:
 
     ///Formatted numbers - int/uint
     template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator = (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    charstr& operator = (const num_fmt<WIDTH, BASE, ALIGN, NUM> v) {
         append_num(BASE, v.value, WIDTH, ALIGN);
         return *this;
     }
@@ -563,7 +563,7 @@ public:
 
     ///Formatted numbers - int/uint
     template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator += (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    charstr& operator += (const num_fmt<WIDTH, BASE, ALIGN, NUM> v) {
         append_num(BASE, v.value, WIDTH, ALIGN);
         return *this;
     }
@@ -619,7 +619,7 @@ public:
 
     ///Formatted numbers - int/uint
     template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator << (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    charstr& operator << (const num_fmt<WIDTH, BASE, ALIGN, NUM> v) {
         append_num(BASE, v.value, WIDTH, (EAlignNum)ALIGN);
         return *this;
     }
@@ -2279,7 +2279,7 @@ inline opcd binstream::read_key(charstr& key, int kmember, const token& expected
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Hasher for charstr
-template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
+template<bool INSENSITIVE> struct hash<charstr, INSENSITIVE>
 {
     typedef charstr key_type;
 

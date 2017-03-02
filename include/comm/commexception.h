@@ -111,7 +111,7 @@ struct exception : public std::exception
 
     ///Formatted numbers
     template<int WIDTH, int BASE, int ALIGN, class NUM>
-    exception& operator << (const num_fmt_object<WIDTH,BASE,ALIGN,NUM> v) {
+    exception& operator << (const num_fmt<WIDTH,BASE,ALIGN,NUM> v) {
         S2D();
         append_num(BASE, v.value, WIDTH, (EAlignNum)ALIGN);
         return *this;

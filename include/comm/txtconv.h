@@ -56,70 +56,63 @@ enum EAlignNum {
 
 ///Helper formatter for integer numbers, use specialized from below
 template<int WIDTH, uint BASE, int ALIGN, class NUM>
-struct num_fmt_object
+struct num_fmt
 {
     NUM value;
-    num_fmt_object(NUM value) : value(value) {}
+    num_fmt(NUM value) : value(value) {}
 };
 
 
-template<int WIDTH, uint BASE, int ALIGN, class NUM>
-inline num_fmt_object<WIDTH, BASE, ALIGN, NUM>
-num_fmt(NUM n) {
-    return num_fmt_object<WIDTH, BASE, ALIGN, NUM>(n);
-}
-
-
 
 template<int WIDTH, class NUM>
-inline num_fmt_object<WIDTH,10,ALIGN_NUM_LEFT,NUM>
+inline num_fmt<WIDTH,10,ALIGN_NUM_LEFT,NUM>
 num_left(NUM n) {
-    return num_fmt_object<WIDTH,10,ALIGN_NUM_LEFT,NUM>(n);
+    return num_fmt<WIDTH,10,ALIGN_NUM_LEFT,NUM>(n);
 }
 
 template<int WIDTH, uint BASE, class NUM>
-inline num_fmt_object<WIDTH,BASE,ALIGN_NUM_LEFT,NUM>
+inline num_fmt<WIDTH,BASE,ALIGN_NUM_LEFT,NUM>
 num_left(NUM n) {
-    return num_fmt_object<WIDTH,BASE,ALIGN_NUM_LEFT,NUM>(n);
+    return num_fmt<WIDTH,BASE,ALIGN_NUM_LEFT,NUM>(n);
 }
 
 
 template<int WIDTH, class NUM>
-inline num_fmt_object<WIDTH,10,ALIGN_NUM_CENTER,NUM>
+inline num_fmt<WIDTH,10,ALIGN_NUM_CENTER,NUM>
 num_center(NUM n) {
-    return num_fmt_object<WIDTH,10,ALIGN_NUM_CENTER,NUM>(n);
+    return num_fmt<WIDTH,10,ALIGN_NUM_CENTER,NUM>(n);
 }
 
 template<int WIDTH, uint BASE, class NUM>
-inline num_fmt_object<WIDTH,BASE,ALIGN_NUM_CENTER,NUM>
+inline num_fmt<WIDTH,BASE,ALIGN_NUM_CENTER,NUM>
 num_center(NUM n) {
-    return num_fmt_object<WIDTH,BASE,ALIGN_NUM_CENTER,NUM>(n);
+    return num_fmt<WIDTH,BASE,ALIGN_NUM_CENTER,NUM>(n);
 }
 
 
 template<int WIDTH, class NUM>
-inline num_fmt_object<WIDTH,10,ALIGN_NUM_RIGHT,NUM>
+inline num_fmt<WIDTH,10,ALIGN_NUM_RIGHT,NUM>
 num_right(NUM n) {
-    return num_fmt_object<WIDTH,10,ALIGN_NUM_RIGHT,NUM>(n);
+    return num_fmt<WIDTH,10,ALIGN_NUM_RIGHT,NUM>(n);
 }
 
 template<int WIDTH, uint BASE, class NUM>
-inline num_fmt_object<WIDTH,BASE,ALIGN_NUM_RIGHT,NUM>
+inline num_fmt<WIDTH,BASE,ALIGN_NUM_RIGHT,NUM>
 num_right(NUM n) {
-    return num_fmt_object<WIDTH,BASE,ALIGN_NUM_RIGHT,NUM>(n);
+    return num_fmt<WIDTH,BASE,ALIGN_NUM_RIGHT,NUM>(n);
 }
 
 
 template<int WIDTH, class NUM>
-inline num_fmt_object<WIDTH,10,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>
+inline num_fmt<WIDTH,10,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>
 num_right0(NUM n) {
-    return num_fmt_object<WIDTH,10,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>(n);
+    return num_fmt<WIDTH,10,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>(n);
 }
 
 template<int WIDTH, uint BASE, class NUM>
-inline num_fmt_object<WIDTH,BASE,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>
+inline num_fmt<WIDTH,BASE,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>
 num_right0(NUM n) {
-    return num_fmt_object<WIDTH,BASE,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>(n);
+    return num_fmt<WIDTH,BASE,ALIGN_NUM_RIGHT_FILL_ZEROS,NUM>(n);
 }
 
 

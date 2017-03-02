@@ -155,7 +155,8 @@ struct token
         return tok;
     }
 
-    token( const token& src ) : _ptr(src._ptr), _pte(src._pte) {}
+    token( const token& src ) : _ptr(src._ptr), _pte(src._pte)
+    {}
 
     token( const token& src, uints offs, uints len )
     {
@@ -175,14 +176,6 @@ struct token
     void swap( token& other ) {
         std::swap(_ptr, other._ptr);
         std::swap(_pte, other._pte);
-    }
-
-    friend uint hash( const token& tok ) {
-        return tok.hash();
-    }
-
-    uint hash() const {
-        return __coid_hash_string(ptr(), len());
     }
 
     ///Rebase token pointing into one string to point into the same region in another string
@@ -2404,7 +2397,7 @@ private:
             //an assert here means token is likely being constructed from
             // a character array, but detected as a string literal
             // please add &* before such strings to avoid the need for this fix
-            //DASSERT(0);
+            DASSERT(0);
 
             const char* p = _ptr;
             for(; p<_pte && *p; ++p);
@@ -2429,12 +2422,13 @@ inline token substring::get() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-template<> struct hasher<token>
+template<> struct hash<token>
 {
     typedef token key_type;
 
-    size_t operator() (const token& tok) const {
-        return tok.hash();
+    size_t operator() (const token& tok) const
+    {
+        return __coid_hash_string( tok.ptr(), tok.len() );
     }
 };
 
@@ -2586,19 +2580,6 @@ private:
 
 
 COID_NAMESPACE_END
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef COID_USER_DEFINED_LITERALS
-
-///String literal returning token (_T suffix)
-inline coid::token operator "" _T( const char* s, size_t len )
-{
-    return coid::token(s, len);
-}
-
-#endif //COID_USER_DEFINED_LITERALS
 
 
 ////////////////////////////////////////////////////////////////////////////////

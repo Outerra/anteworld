@@ -35,11 +35,5 @@
     <None Include="..\..\..\intergen\metagen\interface.doc.mtg">
       <Filter>metagen</Filter>
     </None>
-    <None Include="..\..\..\intergen\metagen\interface.lua.h.mtg">
-      <Filter>metagen</Filter>
-    </None>
-    <None Include="..\..\..\intergen\metagen\file.intergen.lua.cpp.mtg">
-      <Filter>metagen</Filter>
-    </None>
   </ItemGroup>
 </Project>

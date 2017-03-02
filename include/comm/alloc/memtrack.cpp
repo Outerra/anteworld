@@ -42,43 +42,8 @@
 
 #include "../binstream/filestream.h"
 
-#ifdef _DEBUG
-static const bool default_enabled = true;
-#else
-static const bool default_enabled = false;
-#endif
-
-
 namespace coid {
 
-
-static void name_filter( charstr& dst, token name )
-{
-    //remove struct, class
-    static const token _struct = "struct";
-    static const token _class = "class";
-    static const token _array = "[0]";
-
-    do {
-        token x = name.cut_left(' ');
-
-        if (x.ends_with(_struct))
-            x.shift_end(-int(_struct.len()));
-        else if (x.ends_with(_class))
-            x.shift_end(-int(_class.len()));
-        else if (x == _array) {
-            dst.append("[]");
-            x.set_empty();
-        }
-        else if (name)
-            x.shift_end(1); //give space back
-
-        dst.append(x);
-    }
-    while(name);
-}
-
-///
 struct memtrack_imp : memtrack {
     bool operator == (size_t k) const {
         return (size_t)name == k;
@@ -93,47 +58,66 @@ struct memtrack_imp : memtrack {
     void operator delete(void* ptr)   { ::dlfree(ptr); } \
 };
 
-///
+
 struct hash_memtrack {
     typedef size_t key_type;
     uint operator()(size_t x) const { return (uint)x; }
 };
 
-typedef hash_keyset<memtrack_imp, _Select_Copy<memtrack_imp,size_t>, hash_memtrack>
-    memtrack_hash_t;
+typedef hash_keyset<memtrack_imp, _Select_Copy<memtrack_imp,size_t>, hash_memtrack> memtrack_hash_t;
 
-///
 struct memtrack_registrar
 {
     memtrack_hash_t* hash;
     comm_mutex* mux;
 
     bool enabled;
-    bool ready;
-    volatile bool running;
 
-    memtrack_registrar() : mux(0), hash(0), enabled(default_enabled),
-        ready(false), running(false)
+    static int reg;
+
+    memtrack_registrar() : mux(0), hash(0), enabled(true)
     {
         mux = new comm_mutex(500, false);
         hash = new memtrack_hash_t;
+    }
 
-        ready = true;
+    ~memtrack_registrar() {
+        reg = -2;
+        //not deleting the hash&mux, dedlocks
     }
 };
+
+int memtrack_registrar::reg = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 static memtrack_registrar* memtrack_register()
 {
-    static bool reentry = false;
-    if (reentry)
+    struct closer
+    {
+        memtrack_registrar* mtr;
+
+        closer() : mtr(0)
+        {}
+
+        ~closer() {
+            memtrack_registrar::reg = -2;
+        }
+    };
+
+    //avoid stack overflow
+    if(memtrack_registrar::reg < 0)
         return 0;
 
-    reentry = true;
-    LOCAL_PROCWIDE_SINGLETON_DEF(memtrack_registrar) reg;
-    reentry = false;
+    if(!memtrack_registrar::reg)
+        memtrack_registrar::reg = -1;
+ 
+    static closer _C;
+    if(!_C.mtr) {
+        _C.mtr = &PROCWIDE_SINGLETON(memtrack_registrar);//new memtrack_registrar;
+        memtrack_registrar::reg = 1;
+    }
 
-    return reg.get();
+    return _C.mtr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,31 +125,30 @@ void memtrack_enable( bool en )
 {
     memtrack_registrar* mtr = memtrack_register();
     mtr->enabled = en;
-    mtr->running = en & mtr->ready;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void memtrack_shutdown()
 {
-    memtrack_registrar* mtr = memtrack_register();
-    mtr->running = mtr->enabled = mtr->ready = false;
+    memtrack_registrar::reg = -2;
+
+    //delete mtr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void memtrack_alloc( const char* name, size_t size )
 {
     memtrack_registrar* mtr = memtrack_register();
-    if(!mtr || !mtr->running) return;
+    if(!mtr || !mtr->enabled || mtr->reg<0) return;
 
     //DASSERT( name != "$GLOBAL" );
-    static bool inside = false;
-    if (inside)
-        return;     //avoid stack overlow from hashmap
 
     GUARDTHIS(*mtr->mux);
-    inside = true;
+    if(mtr->reg > 1)
+        return;     //avoid stack overlow from hashmap
+    mtr->reg = 2;
     memtrack* val = mtr->hash->find_or_insert_value_slot((size_t)name);
-    inside = false;
+    mtr->reg = 1;
 
     val->name = name;
 
@@ -179,7 +162,7 @@ void memtrack_alloc( const char* name, size_t size )
 void memtrack_free( const char* name, size_t size )
 {
     memtrack_registrar* mtr = memtrack_register();
-    if (!mtr || !mtr->running) return;
+    if(!mtr || !mtr->enabled || mtr->reg<0) return;
 
     GUARDTHIS(*mtr->mux);
     memtrack_imp* val = const_cast<memtrack_imp*>(mtr->hash->find_value((size_t)name));
@@ -194,7 +177,7 @@ void memtrack_free( const char* name, size_t size )
 uint memtrack_list( memtrack* dst, uint nmax ) 
 {
     memtrack_registrar* mtr = memtrack_register();
-    if(!mtr || !mtr->ready)
+    if(!mtr || mtr->reg<0)
         return 0;
 
     GUARDTHIS(*mtr->mux);
@@ -219,7 +202,7 @@ uint memtrack_list( memtrack* dst, uint nmax )
 void memtrack_dump( const char* file, bool diff )
 {
     memtrack_registrar* mtr = memtrack_register();
-    if(!mtr || !mtr->ready)
+    if(!mtr || mtr->reg<0)
         return;
 
     GUARDTHIS(*mtr->mux);
@@ -252,9 +235,7 @@ void memtrack_dump( const char* file, bool diff )
 
         buf.append_num_thousands(size, ',', 12);
         buf.append_num(10, count, 9);
-        buf << '\t';
-        name_filter(buf, p.name);
-        buf << '\n';
+        buf << '\t' << p.name << '\n';
 
         if(buf.len() > 7900) {
             bof.xwrite_token_raw(buf);

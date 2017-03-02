@@ -240,39 +240,39 @@ public:
     //@return global thread singleton (always the same one from multiple places where used)
     static T& instance( bool module_local )
     {
-        thread_key& tk = get_key();
-        return *thread_instance(tk, module_local);
+        thread_key& ts = get_key();
+        T* p = reinterpret_cast<T*>(ts.get());
+        if(!p) {
+            p = (T*)singleton_register_instance(
+                &create, &destroy, &singleton<T>::init_module,
+                typeid(T).name(), 0, 0, module_local);
+            ts.set(p);
+        }
+        return *p;
     }
 
     ///Local thread singleton constructor, use through LOCAL_THREAD_SINGLETON macro
     thread_singleton() {
-        thread_instance(_tkey, true);
+        _tkey.set(singleton_register_instance(
+            &create, &destroy, &singleton<T>::init_module,
+            typeid(T).name(), 0, 0, true));
     }
 
     ///Local thread singleton constructor, use through LOCAL_THREAD_SINGLETON macro
     thread_singleton(T* obj) {
-        thread_instance(_tkey, true);
+        _tkey.set(singleton_register_instance(
+            singleton_local_creator(obj), &destroy, &singleton<T>::init_module,
+            typeid(T).name(), 0, 0, true));
     }
 
 
-    T* operator -> () { return thread_instance(_tkey, true); }
+    T* operator -> () { return static_cast<T*>(_tkey.get()); }
 
-    T& operator * () { return *thread_instance(_tkey, true); }
+    T& operator * () { return static_cast<T*>(_tkey.get()); }
 
-    T* get() { return thread_instance(_tkey, true); }
+    T* get() { return static_cast<T*>(_tkey.get()); }
 
 private:
-
-    static T* thread_instance( thread_key& tk, bool module_local ) {
-        T* p = reinterpret_cast<T*>(tk.get());
-        if (!p) {
-            p = (T*)singleton_register_instance(
-                &create, &destroy, &singleton<T>::init_module,
-                typeid(T).name(), 0, 0, module_local);
-            tk.set(p);
-        }
-        return p;
-    }
 
     //@return global thread key
     static thread_key& get_key() {
