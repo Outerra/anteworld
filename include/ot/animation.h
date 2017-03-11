@@ -24,6 +24,16 @@ public:
 
     // --- interface methods ---
 
+    bool is_ready() const;
+
+    int get_state() const;
+
+    uint get_frame_count() const;
+
+    uint get_fps() const;
+
+    int get_frame_offset() const;
+
     // --- creators ---
 
     static iref<animation> get( const coid::token& filename, const coid::token& root, unsigned int frame_offset ) {
@@ -39,7 +49,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 1462032193;
+    static const int HASHID = 2440891987;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -107,7 +117,7 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
     typedef iref<T> (*fn_creator)(animation*, const coid::token&, const coid::token&, unsigned int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation.get@1462032193";
+    static const coid::token ifckey = "ot::animation.get@2440891987";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -121,6 +131,21 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
 
 #pragma warning(push)
 #pragma warning(disable : 4191)
+
+inline bool animation::is_ready() const
+{ return VT_CALL(bool,() const,0)(); }
+
+inline int animation::get_state() const
+{ return VT_CALL(int,() const,1)(); }
+
+inline uint animation::get_frame_count() const
+{ return VT_CALL(uint,() const,2)(); }
+
+inline uint animation::get_fps() const
+{ return VT_CALL(uint,() const,3)(); }
+
+inline int animation::get_frame_offset() const
+{ return VT_CALL(int,() const,4)(); }
 
 #pragma warning(pop)
 

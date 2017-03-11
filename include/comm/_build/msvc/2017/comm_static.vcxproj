@@ -509,6 +509,7 @@
     <ClInclude Include="..\..\..\dir.h" />
     <ClInclude Include="..\..\..\dynarray.h" />
     <ClInclude Include="..\..\..\fastdelegate.h" />
+    <ClInclude Include="..\..\..\taskmaster.h" />
     <ClInclude Include="..\..\..\timer.h" />
     <ClInclude Include="..\..\..\lexer.h" />
     <ClInclude Include="..\..\..\local.h" />

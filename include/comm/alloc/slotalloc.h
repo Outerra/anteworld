@@ -217,13 +217,8 @@ public:
     T* add_range( uints n ) {
         if (n == 0)
             return 0;
-        if (n == 1) {
-            bool newitem;
-            T* p = add(&newitem);
-            if (nreused)
-                *nreused = newitem ? 0 : 1;
-            return p;
-        }
+        if (n == 1)
+            return add();
 
         uints old;
         T* p = alloc_range(n, &old);
@@ -738,33 +733,33 @@ public:
     const dynarray<uints>& get_bitarray() const { return _allocated; }
 
     //@{ functions for bit array
-    template <class T>
-    static void set_bit( dynarray<T>& bitarray, uints k )
+    template <class B>
+    static void set_bit( dynarray<B>& bitarray, uints k )
     {
-        static const int NBITS = 8 * sizeof(T);
-        using U = underlying_bitrange_type_t<T>;
+        static const int NBITS = 8 * sizeof(B);
+        using U = underlying_bitrange_type_t<B>;
         uints s = k / NBITS;
         uints b = k % NBITS;
 
         bitarray.get_or_addc(s) |= U(1) << b;
     }
 
-    template <class T>
-    static void clear_bit( dynarray<T>& bitarray, uints k )
+    template <class B>
+    static void clear_bit( dynarray<B>& bitarray, uints k )
     {
-        static const int NBITS = 8 * sizeof(T);
-        using U = underlying_bitrange_type_t<T>;
+        static const int NBITS = 8 * sizeof(B);
+        using U = underlying_bitrange_type_t<B>;
         uints s = k / NBITS;
         uints b = k % NBITS;
 
         bitarray.get_or_addc(s) &= ~(U(1) << b);
     }
 
-    template <class T>
-    static bool get_bit( const dynarray<T>& bitarray, uints k )
+    template <class B>
+    static bool get_bit( const dynarray<B>& bitarray, uints k )
     {
-        static const int NBITS = 8 * sizeof(T);
-        using U = underlying_bitrange_type_t<T>;
+        static const int NBITS = 8 * sizeof(B);
+        using U = underlying_bitrange_type_t<B>;
         uints s = k / NBITS;
         uints b = k % NBITS;
 

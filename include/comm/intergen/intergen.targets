@@ -87,10 +87,10 @@
     Name = "Clean"
     Condition="'@(hpp)' != ''">
       <ItemGroup>
-          <FilesToDelete Include="%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).inl;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.cpp;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.js.cpp;%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen.lua.cpp"/>
+          <FilesToDelete Include="%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen."/>
       </ItemGroup>
 
       <!--<Delete Files="@(FilesToDelete)" TreatErrorsAsWarnings="true" />-->
-      <Exec Command="del /F /Q &quot;@(FilesToDelete,'&quot; &quot;')&quot;"/>
+      <Exec Command="del /F /Q &quot;@(FilesToDelete,'*cpp&quot; &quot;')&quot;"/>
   </Target>   
 </Project>

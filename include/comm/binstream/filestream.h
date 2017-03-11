@@ -178,10 +178,17 @@ public:
             if(c == 'r')       rw |= 1;
             else if(c == 'w')  rw |= 2;
             else if(c == 'l')  sh |= 1;
+#ifdef SYSTYPE_WIN
             else if(c == 'e')  flg |= _O_EXCL;
             else if(c == 'c')  flg |= _O_CREAT;
             else if(c == 't' || c == '-')  flg |= _O_TRUNC;
             else if(c == 'a' || c == '+')  flg |= _O_APPEND;
+#else
+            else if(c == 'e')  flg |= O_EXCL;
+            else if(c == 'c')  flg |= O_CREAT;
+            else if(c == 't' || c == '-')  flg |= O_TRUNC;
+            else if(c == 'a' || c == '+')  flg |= O_APPEND;
+#endif
             else if(c == 'b');  //ignored - always binary mode
             else if(c != ' ')
                 return ersINVALID_PARAMS;

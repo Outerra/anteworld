@@ -103,7 +103,6 @@
       <Filter>sync</Filter>
     </ClCompile>
     <ClCompile Include="pthreadx.cpp" />
-    <ClCompile Include="assert.cpp" />
     <ClCompile Include="comm.cpp" />
     <ClCompile Include="dir.cpp" />
     <ClCompile Include="dirgcc.cpp" />
@@ -116,6 +115,7 @@
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="timeru.cpp" />
     <ClCompile Include="txtconv.cpp" />
+    <ClCompile Include="commassert.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="alloc\_malloc.h">
@@ -152,9 +152,6 @@
       <Filter>atomic</Filter>
     </ClInclude>
     <ClInclude Include="atomic\queue.h">
-      <Filter>atomic</Filter>
-    </ClInclude>
-    <ClInclude Include="atomic\queue_base.h">
       <Filter>atomic</Filter>
     </ClInclude>
     <ClInclude Include="atomic\stack.h">
@@ -441,5 +438,9 @@
     <ClInclude Include="txtconv.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="range.h" />
+    <ClInclude Include="bitrange.h" />
+    <ClInclude Include="sync\queue.h">
+      <Filter>sync</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

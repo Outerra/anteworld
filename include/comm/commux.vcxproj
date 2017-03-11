@@ -80,7 +80,6 @@
       <ThreadSafeStatics Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">No</ThreadSafeStatics>
       <RuntimeTypeInfo Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</RuntimeTypeInfo>
     </ClCompile>
-    <ClCompile Include="assert.cpp" />
     <ClCompile Include="atomic\atomic.cpp" />
     <ClCompile Include="binstream\stdstream.cpp" />
     <ClCompile Include="coder\lz4\lz4.c" />
@@ -88,6 +87,7 @@
     <ClCompile Include="coder\lz4\lz4hc.c" />
     <ClCompile Include="coder\lz4\xxhash.c" />
     <ClCompile Include="comm.cpp" />
+    <ClCompile Include="commassert.cpp" />
     <ClCompile Include="crypt\sha1.cpp" />
     <ClCompile Include="dir.cpp" />
     <ClCompile Include="dirgcc.cpp" />
@@ -125,7 +125,6 @@
     <ClInclude Include="atomic\pool.h" />
     <ClInclude Include="atomic\pool_base.h" />
     <ClInclude Include="atomic\queue.h" />
-    <ClInclude Include="atomic\queue_base.h" />
     <ClInclude Include="atomic\stack.h" />
     <ClInclude Include="atomic\stack_base.h" />
     <ClInclude Include="binstream\binstream.h" />
@@ -167,6 +166,7 @@
     <ClInclude Include="binstream\txtstream.h" />
     <ClInclude Include="binstream\txtstreamhtml.h" />
     <ClInclude Include="binstring.h" />
+    <ClInclude Include="bitrange.h" />
     <ClInclude Include="coder\bufpack_lz4.h" />
     <ClInclude Include="coder\bufpack_zstd.h" />
     <ClInclude Include="coder\lz4\lz4.h" />
@@ -241,6 +241,7 @@
     <ClInclude Include="sync\guard.h" />
     <ClInclude Include="sync\mutex.h" />
     <ClInclude Include="sync\mutex_reg.h" />
+    <ClInclude Include="sync\queue.h" />
     <ClInclude Include="sync\rw_mutex.h" />
     <ClInclude Include="sync\rw_mx_core.h" />
     <ClInclude Include="sync\thread_mgr.h" />

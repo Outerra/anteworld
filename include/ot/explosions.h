@@ -38,7 +38,12 @@ public:
     //@param trail length of the trail in seconds
     //@param timeout time [s] of tracer existence: <=0 means until hitting the ground
     //@param age age of the tracer. Affects trail length, fall speed.
-    uint launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout = 0.5f, float trail = 0.2f, float timeout = 0.0f, float age = 0, uint id = UMAX32, uint entid = UMAX32, uint uservalue = 0 );
+    //@param tracer_id tracer id to reuse
+    //@param entid object id to be dragged by tracer
+    //@param uservalue custom value
+    uint launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout = 0.5f, float trail = 0.2f, float timeout = 0.0f, float age = 0, uint tracer_id = UMAX32, uint entid = UMAX32, uint uservalue = 0 );
+
+    void flash( const double3& pos, float intensity, const float4& color, float range, float timeout );
 
     ///Get array of landed tracers
     const coid::dynarray<ot::impact_info>& landed_tracers() const;
@@ -108,7 +113,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 1837319137;
+    static const int HASHID = 1197825748;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -122,7 +127,7 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::explosions.get@1837319137");
+        static const coid::token _dc("ot::explosions.get@1197825748");
         static const coid::token _djs("ot::js::explosions@wrapper");
         static const coid::token _dlua("ot::lua::explosions@wrapper");
         static const coid::token _dnone;
@@ -173,7 +178,7 @@ inline iref<T> explosions::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(explosions*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::explosions.get@1837319137";
+    static const coid::token ifckey = "ot::explosions.get@1197825748";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -191,44 +196,47 @@ inline iref<T> explosions::get( T* _subclass_ )
 inline uint explosions::launch_combo( const double3& pos, const float3& speed, float size, const float3& color, const float3& smoke_color, float emitter_radius, float emitter_speed, float particle_size, float smoke_timeout, bool crater, bool solids, bool smoke )
 { return VT_CALL(uint,(const double3&,const float3&,float,const float3&,const float3&,float,float,float,float,bool,bool,bool),0)(pos,speed,size,color,smoke_color,emitter_radius,emitter_speed,particle_size,smoke_timeout,crater,solids,smoke); }
 
-inline uint explosions::launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout, float trail, float timeout, float age, uint id, uint entid, uint uservalue )
-{ return VT_CALL(uint,(const double3&,const float3&,float,const float3&,float,float,float,float,uint,uint,uint),1)(pos,speed,size,color,fadeout,trail,timeout,age,id,entid,uservalue); }
+inline uint explosions::launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout, float trail, float timeout, float age, uint tracer_id, uint entid, uint uservalue )
+{ return VT_CALL(uint,(const double3&,const float3&,float,const float3&,float,float,float,float,uint,uint,uint),1)(pos,speed,size,color,fadeout,trail,timeout,age,tracer_id,entid,uservalue); }
+
+inline void explosions::flash( const double3& pos, float intensity, const float4& color, float range, float timeout )
+{ return VT_CALL(void,(const double3&,float,const float4&,float,float),2)(pos,intensity,color,range,timeout); }
 
 inline const coid::dynarray<ot::impact_info>& explosions::landed_tracers() const
-{ return VT_CALL(const coid::dynarray<ot::impact_info>&,() const,2)(); }
+{ return VT_CALL(const coid::dynarray<ot::impact_info>&,() const,3)(); }
 
 inline void explosions::destroy_tracer( uint tracer )
-{ return VT_CALL(void,(uint),3)(tracer); }
+{ return VT_CALL(void,(uint),4)(tracer); }
 
 inline void explosions::make_crater( const double3& pos, float radius )
-{ return VT_CALL(void,(const double3&,float),4)(pos,radius); }
+{ return VT_CALL(void,(const double3&,float),5)(pos,radius); }
 
 inline uint explosions::create_smoke( const double3& pos, const float3& norm, float radius, float speed, float density, float fade_time, float timeout, const float3& color, float age, uint id )
-{ return VT_CALL(uint,(const double3&,const float3&,float,float,float,float,float,const float3&,float,uint),5)(pos,norm,radius,speed,density,fade_time,timeout,color,age,id); }
+{ return VT_CALL(uint,(const double3&,const float3&,float,float,float,float,float,const float3&,float,uint),6)(pos,norm,radius,speed,density,fade_time,timeout,color,age,id); }
 
 inline void explosions::destroy_smoke( uint id )
-{ return VT_CALL(void,(uint),6)(id); }
+{ return VT_CALL(void,(uint),7)(id); }
 
 inline uint explosions::create_solid_particles( const double3& pos, const float3& norm, float emitter_radius, float particle_radius, float speed, float spread, float highlight, float age, const float3& bcolor, const float4& hcolor, uint id )
-{ return VT_CALL(uint,(const double3&,const float3&,float,float,float,float,float,float,const float3&,const float4&,uint),7)(pos,norm,emitter_radius,particle_radius,speed,spread,highlight,age,bcolor,hcolor,id); }
+{ return VT_CALL(uint,(const double3&,const float3&,float,float,float,float,float,float,const float3&,const float4&,uint),8)(pos,norm,emitter_radius,particle_radius,speed,spread,highlight,age,bcolor,hcolor,id); }
 
 inline void explosions::destroy_solid_particles( uint id )
-{ return VT_CALL(void,(uint),8)(id); }
+{ return VT_CALL(void,(uint),9)(id); }
 
 inline void explosions::reset( bool smoke, bool craters )
-{ return VT_CALL(void,(bool,bool),9)(smoke,craters); }
+{ return VT_CALL(void,(bool,bool),10)(smoke,craters); }
 
 inline uint explosions::create_beam( float brightness, float half_distance )
-{ return VT_CALL(uint,(float,float),10)(brightness,half_distance); }
+{ return VT_CALL(uint,(float,float),11)(brightness,half_distance); }
 
 inline void explosions::destroy_beam( uint id )
-{ return VT_CALL(void,(uint),11)(id); }
+{ return VT_CALL(void,(uint),12)(id); }
 
 inline void explosions::beam_on( uint beam, const double3& from, const double3& to, float brightness )
-{ return VT_CALL(void,(uint,const double3&,const double3&,float),12)(beam,from,to,brightness); }
+{ return VT_CALL(void,(uint,const double3&,const double3&,float),13)(beam,from,to,brightness); }
 
 inline void explosions::beam_off( uint beam )
-{ return VT_CALL(void,(uint),13)(beam); }
+{ return VT_CALL(void,(uint),14)(beam); }
 
 #pragma warning(pop)
 

@@ -14,10 +14,11 @@ namespace ot {
 struct impact_info
 {
     double3 pos;                        //< world position on terrain or object hit
-    uint eid;                           //< id of the entity that has been hit
+    uint hitid;                         //< id of the object that has been hit
+    uint attid;                         //< id of the attached object
     uint mesh;                          //< collision mesh id
 
-    iref<ot::object> obj;
+    //iref<ot::object> obj;
 
     float3 norm;                        //< hit surface normal
     uint tid;                           //< tracer id
@@ -30,7 +31,8 @@ struct impact_info
         return m.compound("impact_info", [&]()
         {
             m.member("pos", d.pos);
-            m.member("eid", d.eid);
+            m.member("hitid", d.hitid);
+            m.member("attid", d.attid);
             m.member("tid", d.tid);
             m.member("norm", d.norm);
             m.member("mesh", d.mesh);

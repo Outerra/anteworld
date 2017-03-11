@@ -39,7 +39,9 @@
 #define __COID_MEMTRACK__HEADER_FILE__
 
 #include "../namespace.h"
+#include "_malloc.h"
 #include <algorithm>
+#include <cstddef>
 
 
 #if defined(_DEBUG) || COID_USE_MEMTRACK

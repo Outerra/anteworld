@@ -347,6 +347,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\range.h" />
     <ClInclude Include="..\..\..\bitrange.h" />
+    <ClInclude Include="..\..\..\taskmaster.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">

@@ -250,9 +250,9 @@ public:
 
 protected:
 
-    template<class T>
+    template<class S>
     struct creator_helper {
-        static T* create() { return new T; }
+        static S* create() { return new S; }
     };
 
     T* (*_create)();

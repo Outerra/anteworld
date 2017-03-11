@@ -70,10 +70,6 @@ class policy_msg;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-//@return logmsg object if given log type and source is currently allowed to log
-ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
-
-
 #define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::None, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Perf, src ); if(q) {q->str() << msg; }} while(0)
@@ -87,28 +83,6 @@ ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const vo
 #else
 #define coidlog_devdbg(src, msg)
 #endif
-
-
-#ifdef COID_VARIADIC_TEMPLATES
-
-///Formatted log message
-//@param type log level
-//@param hash source identifier (used for filtering)
-//@param fmt @see charstr.print
-template<class ...Vs>
-inline void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs)
-{
-
-    ref<logmsg> msgr = canlog(type, hash);
-    if (!msgr)
-        return;
-
-    charstr& str = msgr->str();
-    str.print(fmt, std::forward<Vs>(vs)...);
-}
-
-#endif //COID_VARIADIC_TEMPLATES
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,6 +190,34 @@ protected:
 
 typedef ref<logmsg> logmsg_ptr;
 
+////////////////////////////////////////////////////////////////////////////////
+
+//@return logmsg object if given log type and source is currently allowed to log
+ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
+
+
+#ifdef COID_VARIADIC_TEMPLATES
+
+///Formatted log message
+//@param type log level
+//@param hash source identifier (used for filtering)
+//@param fmt @see charstr.print
+template<class ...Vs>
+inline void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs)
+{
+    ref<logmsg> msgr = canlog(type, hash);
+    if (!msgr)
+        return;
+
+    charstr& str = msgr->str();
+    str.print(fmt, std::forward<Vs>(vs)...);
+}
+
+#endif //COID_VARIADIC_TEMPLATES
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /* 
  * USAGE :
  *

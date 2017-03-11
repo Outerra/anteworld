@@ -62,15 +62,15 @@ void test_job_queue()
 
 
 
-    coid::taskmaster task(7);
+    coid::taskmaster task(7, 2);
     jobtest jt;
 
     auto job1 = [](int a, void* b) {
         coidlog_info("jobtest", "a: " << a << ", b: " << (uints)b);
     };
 
-    task.push(job1, 1, nullptr);
-    task.push_memberfn(&jobtest::func, &jt, 2, nullptr);
+    task.push(-1, job1, 1, nullptr);
+    task.push_memberfn(-1, &jobtest::func, &jt, 2, nullptr);
 
     task.terminate(true);
 

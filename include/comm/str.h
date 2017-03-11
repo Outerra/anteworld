@@ -979,6 +979,30 @@ public:
         return *this;
     }
 
+    ///Append string converted to lower case
+    charstr& append_tolower(const token& tok)
+    {
+        char* p = alloc_append_buf(tok.len());
+        char* pe = (char*)ptre();
+        const char* s = tok.ptr();
+
+        for (; p < pe; ++p, ++s)
+            *p = (char) ::tolower(*s);
+        return *this;
+    }
+
+    ///Append string converted to upper case
+    charstr& append_toupper(const token& tok)
+    {
+        char* p = alloc_append_buf(tok.len());
+        char* pe = (char*)ptre();
+        const char* s = tok.ptr();
+
+        for (; p < pe; ++p)
+            *p = (char) ::toupper(*s);
+        return *this;
+    }
+
 #ifdef COID_VARIADIC_TEMPLATES
 
     ///Append a variadic block of arguments with format string
@@ -2163,10 +2187,10 @@ struct threadcached_charstr
 
     static zstring::zpool* pool() {
         bool init = false;
-        static zstring::zpool* _pool = init = true, zstring::local_pool();
+        static zstring::zpool* _pool = (init = true, zstring::local_pool());
 
         if(init)
-            zstring::set_max_size(_pool, 64);
+            zstring::max_size_in_pool(_pool, 64);
         return _pool;
     }
 

@@ -52,6 +52,8 @@ using namespace coid;
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+static bool enable_debug_out = false;
+
 static void write_console_text( const logmsg& msg )
 {
     const charstr& text = msg.str();
@@ -81,9 +83,8 @@ static void write_console_text( const logmsg& msg )
     if(type != ELogType::Info)
         SetConsoleTextAttribute(hstdout, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 
-#ifdef _DEBUG
-    stdoutstream::debug_out(text.c_str());
-#endif
+    if (enable_debug_out)
+        stdoutstream::debug_out(text.c_str());
 }
 
 #else

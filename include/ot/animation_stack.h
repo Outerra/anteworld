@@ -39,7 +39,20 @@ public:
 
     iref<ot::blend_tree> create_blend_tree( const coid::token& name );
 
-    void blend_animation( const iref<ot::animation>& anim, float weight );
+    void blend_animation( const iref<ot::animation>& anim, float weight, bool explicit_time = false, float time = 0.f );
+
+    ///Add animation on top of existing animations
+    //@param time normalized animation time 0..1
+    //@return animation id in stack
+    uint add_animation( const iref<ot::animation>& anim, float time );
+
+    //@param id animation id in stack
+    //@param time normalized animation time 0..1
+    void set_animation_time( uint id, float time );
+
+    float get_animation_time( uint id );
+
+    bool is_ready() const;
 
     // --- creators ---
 
@@ -56,7 +69,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 3498497764;
+    static const int HASHID = 2273010191;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -124,7 +137,7 @@ inline iref<T> animation_stack::get( T* _subclass_, const iref<pkg::animation_st
     typedef iref<T> (*fn_creator)(animation_stack*, const iref<pkg::animation_stack>&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation_stack.get@3498497764";
+    static const coid::token ifckey = "ot::animation_stack.get@2273010191";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -142,8 +155,20 @@ inline iref<T> animation_stack::get( T* _subclass_, const iref<pkg::animation_st
 inline iref<ot::blend_tree> animation_stack::create_blend_tree( const coid::token& name )
 { return VT_CALL(iref<ot::blend_tree>,(const coid::token&),0)(name); }
 
-inline void animation_stack::blend_animation( const iref<ot::animation>& anim, float weight )
-{ return VT_CALL(void,(const iref<ot::animation>&,float),1)(anim,weight); }
+inline void animation_stack::blend_animation( const iref<ot::animation>& anim, float weight, bool explicit_time, float time )
+{ return VT_CALL(void,(const iref<ot::animation>&,float,bool,float),1)(anim,weight,explicit_time,time); }
+
+inline uint animation_stack::add_animation( const iref<ot::animation>& anim, float time )
+{ return VT_CALL(uint,(const iref<ot::animation>&,float),2)(anim,time); }
+
+inline void animation_stack::set_animation_time( uint id, float time )
+{ return VT_CALL(void,(uint,float),3)(id,time); }
+
+inline float animation_stack::get_animation_time( uint id )
+{ return VT_CALL(float,(uint),4)(id); }
+
+inline bool animation_stack::is_ready() const
+{ return VT_CALL(bool,() const,5)(); }
 
 #pragma warning(pop)
 
