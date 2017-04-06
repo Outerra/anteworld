@@ -43,6 +43,7 @@
 #include "../namespace.h"
 #include "../dynarray.h"
 #include "../metastream/metastream.h"
+#include "../bitrange.h"
 #include <algorithm>
 
 #include "hashfunc.h"
@@ -688,7 +689,7 @@ public:
         uints ts = _table.size();
         if( bucketn > ts )
         {
-            uints n = nextpow2(bucketn);
+            uints n = nearest_high_pow2(bucketn);
 
             dynarray<Node*> temp;
             temp.need_newc(n);

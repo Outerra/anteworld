@@ -45,40 +45,6 @@ COID_NAMESPACE_BEGIN
 
 
 ////////////////////////////////////////////////////////////////////////////////
-inline bool valid_int_range( int64 v, uint bytes )
-{
-    int64 vmax = ((uint64)1<<(8*bytes-1)) - 1;
-    int64 vmin = ~vmax;
-    return v >= vmin  &&  v <= vmax;
-}
-
-inline bool valid_uint_range( uint64 v, uint bytes )
-{
-    uint64 vmax = ((uint64)1<<(8*bytes)) - 1;
-    return v <= vmax;
-}
-
-//@return 2's exponent of nearest higher power of two number (number of bits needed for representation)
-//@note 0 1 1 2 2 3 3 3 3 4 ...
-inline coid_constexpr uints int_high_pow2(uints x) {
-    return x < 2
-        ? x
-        : 1 + int_high_pow2(x >> 1);
-}
-
-//@return 2's exponent of nearest lower power of two number
-//@note 0 0 1 1 2 2 2 2 3 ...
-inline coid_constexpr uints int_low_pow2(uints x) {
-    return x < 2
-        ? 0
-        : 1 + int_low_pow2(x >> 1);
-}
-
-//@returns the least power of two greater than or equal to X
-inline coid_constexpr uints nextpow2(uints x) {
-    return uints(1) << int_high_pow2(x);
-}
-
 
 /// Align value to the nearest greater multiplier of specified chunk size
 template<class T, class Tsize>

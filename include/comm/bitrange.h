@@ -38,7 +38,10 @@
 * ***** END LICENSE BLOCK ***** */
 
 #include "commtypes.h"
+
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
 #include <atomic>
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +98,67 @@ inline uint8 msb_bit_set( uint64 v ) { return 63-__builtin_clzll(v); }
 
 COID_NAMESPACE_BEGIN
 
+inline bool valid_int_range( int64 v, uint bytes )
+{
+    int64 vmax = ((uint64)1<<(8*bytes-1)) - 1;
+    int64 vmin = ~vmax;
+    return v >= vmin  &&  v <= vmax;
+}
+
+inline bool valid_uint_range( uint64 v, uint bytes )
+{
+    uint64 vmax = ((uint64)1<<(8*bytes)) - 1;
+    return v <= vmax;
+}
+
+//@return 2's exponent of nearest higher power of two number
+//@note least number of bits needed for representation of given max value
+inline coid_constexpr uints constexpr_int_higher_pow2(uints maxval) {
+    return maxval < 2
+        ? maxval
+        : 1 + constexpr_int_higher_pow2(maxval >> 1);
+}
+
+//@return 2's exponent of nearest equal or higher power of two number
+//@note number of bits needed for representation of x values
+inline coid_constexpr uints constexpr_int_high_pow2(uints x) {
+    return x == 0
+        ? 0
+        : constexpr_int_higher_pow2(x - 1);
+}
+
+//@return 2's exponent of nearest equal or lower power of two number
+inline coid_constexpr uints constexpr_int_low_pow2(uints x) {
+    return x < 2
+        ? 0
+        : 1 + constexpr_int_low_pow2(x >> 1);
+}
+
+
+//@return exponent of nearest lower power of two number
+inline uchar int_lower_pow2( uints x ) {
+    return x
+        ? msb_bit_set(x)
+        : 0;
+}
+
+//@return exponent of nearest equal or higher power of two number
+//@note for x == 0 returns 0
+inline uchar int_high_pow2(uints x) {
+    return x
+        ? 1 + msb_bit_set(x - 1)
+        : 0;
+}
+
+//@return nearest equal or higher power of 2 value
+inline uints nearest_high_pow2( uints x ) {
+    return uints(1) << int_high_pow2(x);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
+
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
 
 template <class T>
 struct underlying_bitrange_type {
@@ -109,7 +172,6 @@ struct underlying_bitrange_type<std::atomic<T>> {
 
 template <class T>
 using underlying_bitrange_type_t = typename underlying_bitrange_type<T>::type;
-
 
 
 //@return starting bit number of a contiguous range of n bits that are set to 0
@@ -210,5 +272,7 @@ void clear_bitrange( uints from, uints n, T* ptr )
         bit = 0;
     }
 }
+
+#endif
 
 COID_NAMESPACE_END

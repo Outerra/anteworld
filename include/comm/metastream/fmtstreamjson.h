@@ -39,6 +39,7 @@
 #define __COID_COMM_FMTSTREAMJSON__HEADER_FILE__
 
 #include "../namespace.h"
+#include "../bitrange.h"
 #include "fmtstream_lexer.h"
 
 

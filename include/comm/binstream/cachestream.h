@@ -41,6 +41,7 @@
 #include "../namespace.h"
 
 #include "binstream.h"
+#include "../bitrange.h"
 #include "../dynarray.h"
 #include "../str.h"
 
@@ -102,8 +103,8 @@ public:
 
     void reserve_buffer_size( uints sizer, uints sizew=0 )
     {
-        _cin.reserve( nextpow2(sizer), false );
-        _cot.reserve( nextpow2(sizew?sizew:sizer), false );
+        _cin.reserve( nearest_high_pow2(sizer), false );
+        _cot.reserve( nearest_high_pow2(sizew?sizew:sizer), false );
     }
 
     uints len() const           { return _cotwritten + _cot.size(); }
@@ -175,7 +176,7 @@ public:
                 //enlarge the cache instead
                 uints newsize = _cot.reserved_total();
                 if( newsize < _cot.size() + len )
-                    newsize = nextpow2(_cot.size() + len);
+                    newsize = nearest_high_pow2(_cot.size() + len);
 
                 _cot.reserve( newsize, true );
                 return write_raw( p, len );
