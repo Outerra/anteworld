@@ -3,14 +3,13 @@
 #include <luaJIT/lua.hpp>
 #include "../hash/hashset.h"
 
+static coid::hash_set<size_t> _object_seen;
 
 class lua_utils
 {
 private:
     lua_utils();
     ~lua_utils();
-    static coid::hash_set<const void*> _object_seen;
-
 public:
     static void print_lua_stack(lua_State * L, coid::charstr & out)
     {
@@ -23,7 +22,7 @@ public:
 
     static void print_lua_value(lua_State * L, int index, coid::charstr & out, bool table_member = false)
     {
-        if (_object_seen.find(lua_topointer(L, index)) != _object_seen.end()) {
+        if (_object_seen.find(reinterpret_cast<size_t>(lua_topointer(L, index))) != _object_seen.end()) {
             return;
         }
 
@@ -47,9 +46,9 @@ public:
             out << "function";
         }
         else if (lua_istable(L, index)) {
-            _object_seen.insert(lua_topointer(L, index));
+            _object_seen.insert(reinterpret_cast<size_t>(lua_topointer(L, index)));
             print_lua_table(L, index, out);
-            _object_seen.erase(lua_topointer(L, index));
+            _object_seen.erase(reinterpret_cast<size_t>(lua_topointer(L, index)));
         }
         else if (lua_isuserdata(L, index)) {
             out << "void *(";

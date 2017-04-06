@@ -799,15 +799,16 @@ public:
     }
 
     ///Append number with metric suffix
+    //@param space space character, 0 for no spacing
     //@return offset past the last non-padding character
-    uint append_num_metric(uint64 size, uints minsize = 0, EAlignNum align = ALIGN_NUM_RIGHT)
+    uint append_num_metric(uint64 size, uints minsize = 0, EAlignNum align = ALIGN_NUM_RIGHT, char space=' ')
     {
         double v = double(size);
         int ndigits = size > 0
             ? 0 + (int)log10(v)
             : 0;
 
-        if(minsize != 0 && minsize < 7)
+        if (minsize != 0 && minsize < 7)
             minsize = 7;
 
         const char* prefixes = "\0kMGTPEZY";
@@ -815,16 +816,19 @@ public:
         char prefix = prefixes[ngroup];
 
         //reduce to 3 digits
-        if(ndigits > 3) {
+        if (ndigits > 3) {
             v /= pow(10.0, 3 * ngroup);
             uint offs = append_fixed(v, minsize ? minsize - 2 : 4, (ndigits - 3 * ngroup) - 3, align);
-            appendn(2, ' ');
+            append(' ');
+            if (space)
+                append(space);
             _tstr[offs + 1] = prefix;
             return offs + 2;
         }
         else {
             uint offs = append_num(10, size, minsize ? minsize - 1 : 0, align);
-            append(' ');
+            if (space)
+                append(space);
             return offs + 1;
         }
     }

@@ -55,14 +55,6 @@ using namespace coid;
 
 #endif
 
-$-(if irefargs?)$
-
-// forward declarations for used iref arguments
-$-[irefargs]$
-v8::Handle<v8::Value> js_$fulltype$_create_wrapper( const $type$&, v8::Handle<v8::Context> );
-$-[/irefargs]$
-$-(/if)$
-
 $-[class]$$[iface rest="\n\n"]$
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -314,7 +306,7 @@ $-(if return.type!="void")$
     r__->Set(v8::symbol("$$ret"), to_v8(_rval_));
  $-(elif noutargs?)$
     v8::Handle<v8::Object> r__ = NEWTYPE(iso, Object);
-    r__->Set(v8::symbol("$$ret"), js_$return.fulltype$_create_wrapper(_rval_, ifc->context(iso)));
+    r__->Set(v8::symbol("$$ret"), ::js::wrap_object(_rval_.get(), ifc->context(iso)));
  $-(elif return.iref.false?)$
     v8::Handle<v8::Value> r__;
   $-(if return.ptr.true?)$
@@ -326,7 +318,7 @@ $-(if return.type!="void")$
     r__ = to_v8(_rval_);
   $-(/if)$
  $-(elif)$
-    v8::Handle<v8::Value> r__ = js_$return.fulltype$_create_wrapper(_rval_, ifc->context(iso));
+    v8::Handle<v8::Value> r__ = ::js::wrap_object(_rval_.get(), ifc->context(iso));
  $-(/if)$
 
  $-[args outarg?]$
@@ -334,7 +326,7 @@ $-(if return.type!="void")$
     static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
     r__->Set(v8::symbol("$name$"), to_v8($name$));
   $-(elif)$
-    r__->Set(v8::symbol("$name$"), js_$fulltype$_create_wrapper($name$, ifc->context(iso)));
+    r__->Set(v8::symbol("$name$"), ::js::wrap_object($name$.get(), ifc->context(iso)));
   $-(/if)$
  $[/args]-$
 $-(elif noutargs?="1")$
@@ -343,7 +335,7 @@ $-(elif noutargs?="1")$
     static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
     v8::Handle<v8::Value> r__ = to_v8($name$);
   $-(elif)$
-    v8::Handle<v8::Value> r__ = js_$fulltype$_create_wrapper(_rval_, ifc->context(iso));
+    v8::Handle<v8::Value> r__ = ::js::wrap_object(_rval_.get(), ifc->context(iso));
   $-(/if)$
  $[/args]-$
 $-(elif noutargs?)$
@@ -353,7 +345,7 @@ $-(elif noutargs?)$
     static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
     r__->Set(v8::symbol("$name$"), to_v8($name$));
   $-(elif)$
-    r__->Set(v8::symbol("$name$"), js_$fulltype$_create_wrapper($name$, ifc->context(iso)));
+    r__->Set(v8::symbol("$name$"), ::js::wrap_object($name$.get(), ifc->context(iso)));
   $-(/if)$
  $[/args]-$
 $-(elif)$
@@ -583,7 +575,7 @@ v8::Handle<v8::Value> $name$_js_dispatcher::_getter(v8::Local<v8::String> proper
     static_assert( CHECK::meta_operator_exists<$getter.basetype$>::value, "missing metastream operator for '$getter.basetype$'" );
     v8::Handle<v8::Value> r__ = to_v8(value);
  $-(elif)$
-    v8::Handle<v8::Value> r__ = js_$getter.fulltype$_create_wrapper(value, ifc->context(iso));
+    v8::Handle<v8::Value> r__ = ::js::wrap_object(value.get(), ifc->context(iso));
  $-(/if)$
 
     return ESCAPE(handle_scope__, r__);
@@ -1139,7 +1131,7 @@ static void register_binders_for_$name$( bool on )
 {
 $-[method static?]$
     interface_register::register_interface_creator(
-        "$..ns rest="::" after="::"$js::$..name$.$name$@creator",
+        "$..ns rest="::" after="::"$$..name$.$name$@creator.js",
         on ? (void*)&$..name$_js_dispatcher::$name$ : nullptr);
 $-(if !internal?)$
     interface_register::register_interface_creator(
@@ -1149,7 +1141,7 @@ $-(/if)$
 $-[/method]$
 $-(if virtual!)$
     interface_register::register_interface_creator(
-        "$ns rest="::" after="::"$js::$name$@wrapper",
+        "$ns rest="::" after="::"$$name$@wrapper.js",
         on ? (void*)&create_wrapper_$name$ : nullptr);
 
 $-(/if)$
@@ -1159,7 +1151,7 @@ $-(/if)$
 LOCAL_SINGLETON_DEF(ifc_autoregger) $name$_autoregger = new ifc_autoregger(&register_binders_for_$name$);
 
 
-void* force_register_js_$name$() {
+void* force_register_$name$() {
     LOCAL_SINGLETON_DEF(ifc_autoregger) autoregger = new ifc_autoregger(&register_binders_for_$name$);
     return autoregger.get();
 }
@@ -1169,14 +1161,4 @@ $-[ns]$
 } //namespace $@value$
 $-[/ns]$
 
-////////////////////////////////////////////////////////////////////////////////
-///Create JS wrapper from an existing interface object
-v8::Handle<v8::Value> js_$ns rest="_" after="_"-$ $name$_create_wrapper( const iref<$ns rest="::" after="::"$$name$>& orig, v8::Handle<v8::Context> context )
-{
-$-(if !virtual?)$
-    return $ns rest="::" after="::"$js::create_wrapper_$name$(orig.get(), context);
-$-(elif)$
-    return ::js::wrap_object(orig.get(), context);
-$-(/if)$
-}
 $-[/iface]$$[/class]$

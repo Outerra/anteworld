@@ -3,7 +3,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Parse function declaration after ifc_fn
-bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, dynarray<Arg>& irefargs )
+bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, dynarray<Arg>& irefargs, bool isevent )
 {
     bstatic = lex.match_optional("static");
 
@@ -80,7 +80,7 @@ bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, dyna
             arg->tokenpar = arg->binarg && 
                 (arg->basetype=="token" || arg->basetype=="coid::token" || arg->basetype=="charstr" || arg->basetype=="coid::charstr");
 
-            if(!bstatic && arg->biref && arg->boutarg)
+            if(!bstatic && arg->biref && (isevent ? arg->binarg : arg->boutarg))
                 arg->add_unique(irefargs);
 
             if(arg->ifctarget)

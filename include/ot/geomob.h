@@ -71,6 +71,8 @@ public:
 
     void add_rot( const glm::quat& rot );
 
+    void set_pos_rot( const double3& pos, const quat& rot );
+
     ///Remove object from the scene
     void remove_from_scene();
 
@@ -356,7 +358,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 541987614;
+    static const int HASHID = 1654959773;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -371,8 +373,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::geomob@wrapper");
-        static const coid::token _dlua("ot::lua::geomob@wrapper");
+        static const coid::token _djs("ot::geomob@wrapper.js");
+        static const coid::token _dlua("ot::geomob@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -421,7 +423,7 @@ inline iref<T> geomob::create( T* _subclass_, const coid::token& url, coid::uint
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, coid::uint);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create@541987614";
+    static const coid::token ifckey = "ot::geomob.create@1654959773";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -439,7 +441,7 @@ inline iref<T> geomob::create2( T* _subclass_, const coid::token& url, coid::uin
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, coid::uint, double3, quat);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create2@541987614";
+    static const coid::token ifckey = "ot::geomob.create2@1654959773";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -457,7 +459,7 @@ inline iref<T> geomob::create3( T* _subclass_, const coid::token& url, coid::uin
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, const coid::token&, double3, quat);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create3@541987614";
+    static const coid::token ifckey = "ot::geomob.create3@1654959773";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -475,7 +477,7 @@ inline iref<T> geomob::from_entity_id( T* _subclass_, coid::uint entity_id )
     typedef iref<T> (*fn_creator)(geomob*, coid::uint);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.from_entity_id@541987614";
+    static const coid::token ifckey = "ot::geomob.from_entity_id@1654959773";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -493,7 +495,7 @@ inline iref<T> geomob::_get_instance_interface( T* _subclass_, void* so )
     typedef iref<T> (*fn_creator)(geomob*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob._get_instance_interface@541987614";
+    static const coid::token ifckey = "ot::geomob._get_instance_interface@1654959773";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -538,227 +540,230 @@ inline void geomob::set_rot( const glm::quat& rot )
 inline void geomob::add_rot( const glm::quat& rot )
 { return VT_CALL(void,(const glm::quat&),9)(rot); }
 
+inline void geomob::set_pos_rot( const double3& pos, const quat& rot )
+{ return VT_CALL(void,(const double3&,const quat&),10)(pos,rot); }
+
 inline void geomob::remove_from_scene()
-{ return VT_CALL(void,(),10)(); }
+{ return VT_CALL(void,(),11)(); }
 
 inline uint geomob::get_children_count() const
-{ return VT_CALL(uint,() const,11)(); }
+{ return VT_CALL(uint,() const,12)(); }
 
 inline uint geomob::get_child( uint idx ) const
-{ return VT_CALL(uint,(uint) const,12)(idx); }
+{ return VT_CALL(uint,(uint) const,13)(idx); }
 
 inline const coid::charstr& geomob::get_objurl() const
-{ return VT_CALL(const coid::charstr&,() const,13)(); }
+{ return VT_CALL(const coid::charstr&,() const,14)(); }
 
 inline bool geomob::get_objdef_info( ot::pkginfo::objdef& info ) const
-{ return VT_CALL(bool,(ot::pkginfo::objdef&) const,14)(info); }
+{ return VT_CALL(bool,(ot::pkginfo::objdef&) const,15)(info); }
 
 inline ushort geomob::get_lod_count() const
-{ return VT_CALL(ushort,() const,15)(); }
+{ return VT_CALL(ushort,() const,16)(); }
 
 inline float3 geomob::get_obb_offset() const
-{ return VT_CALL(float3,() const,16)(); }
-
-inline float3 geomob::get_obb_hvec() const
 { return VT_CALL(float3,() const,17)(); }
 
+inline float3 geomob::get_obb_hvec() const
+{ return VT_CALL(float3,() const,18)(); }
+
 inline uint geomob::get_eid() const
-{ return VT_CALL(uint,() const,18)(); }
+{ return VT_CALL(uint,() const,19)(); }
 
 inline void geomob::set_custom_data( uint custom_data ) const
-{ return VT_CALL(void,(uint) const,19)(custom_data); }
+{ return VT_CALL(void,(uint) const,20)(custom_data); }
 
 inline uint geomob::get_custom_data() const
-{ return VT_CALL(uint,() const,20)(); }
+{ return VT_CALL(uint,() const,21)(); }
 
 inline uint geomob::get_joint( const coid::token& name ) const
-{ return VT_CALL(uint,(const coid::token&) const,21)(name); }
-
-inline uint geomob::get_mesh_id( const coid::token& name ) const
 { return VT_CALL(uint,(const coid::token&) const,22)(name); }
 
+inline uint geomob::get_mesh_id( const coid::token& name ) const
+{ return VT_CALL(uint,(const coid::token&) const,23)(name); }
+
 inline void geomob::set_joint_visible( uint joint, bool visible, bool recursive )
-{ return VT_CALL(void,(uint,bool,bool),23)(joint,visible,recursive); }
+{ return VT_CALL(void,(uint,bool,bool),24)(joint,visible,recursive); }
 
 inline void geomob::reset_joint( uint joint )
-{ return VT_CALL(void,(uint),24)(joint); }
+{ return VT_CALL(void,(uint),25)(joint); }
 
 inline void geomob::rotate_joint( uint joint, float angle, const float3& vec, bool orig )
-{ return VT_CALL(void,(uint,float,const float3&,bool),25)(joint,angle,vec,orig); }
+{ return VT_CALL(void,(uint,float,const float3&,bool),26)(joint,angle,vec,orig); }
 
 inline void geomob::rotate_joint_orig( uint joint, float angle, const float3& vec )
-{ return VT_CALL(void,(uint,float,const float3&),26)(joint,angle,vec); }
+{ return VT_CALL(void,(uint,float,const float3&),27)(joint,angle,vec); }
 
 inline void geomob::move_joint( uint joint, const float3& vec, bool orig )
-{ return VT_CALL(void,(uint,const float3&,bool),27)(joint,vec,orig); }
+{ return VT_CALL(void,(uint,const float3&,bool),28)(joint,vec,orig); }
 
 inline void geomob::move_joint_orig( uint joint, const float3& vec )
-{ return VT_CALL(void,(uint,const float3&),28)(joint,vec); }
+{ return VT_CALL(void,(uint,const float3&),29)(joint,vec); }
 
 inline void geomob::set_mesh_visible( coid::token name, bool show )
-{ return VT_CALL(void,(coid::token,bool),29)(name,show); }
+{ return VT_CALL(void,(coid::token,bool),30)(name,show); }
 
 inline void geomob::set_mesh_visible_id( uint id, bool show )
-{ return VT_CALL(void,(uint,bool),30)(id,show); }
+{ return VT_CALL(void,(uint,bool),31)(id,show); }
 
 inline float3 geomob::get_joint_model_pos( uint joint ) const
-{ return VT_CALL(float3,(uint) const,31)(joint); }
+{ return VT_CALL(float3,(uint) const,32)(joint); }
 
 inline double3 geomob::get_joint_ecef_pos( uint joint ) const
-{ return VT_CALL(double3,(uint) const,32)(joint); }
+{ return VT_CALL(double3,(uint) const,33)(joint); }
 
 inline float3 geomob::get_joint_ecef_rot_z( uint joint ) const
-{ return VT_CALL(float3,(uint) const,33)(joint); }
-
-inline float3 geomob::get_joint_local_pos( uint joint ) const
 { return VT_CALL(float3,(uint) const,34)(joint); }
 
+inline float3 geomob::get_joint_local_pos( uint joint ) const
+{ return VT_CALL(float3,(uint) const,35)(joint); }
+
 inline void geomob::deselect()
-{ return VT_CALL(void,(),35)(); }
+{ return VT_CALL(void,(),36)(); }
 
 inline uint geomob::get_num_bones() const
-{ return VT_CALL(uint,() const,36)(); }
+{ return VT_CALL(uint,() const,37)(); }
 
 inline const pkg::bone_meta* geomob::get_bone_meta_ptr() const
-{ return VT_CALL(const pkg::bone_meta*,() const,37)(); }
+{ return VT_CALL(const pkg::bone_meta*,() const,38)(); }
 
 inline const pkg::bone_desc* geomob::get_bone_desc_ptr() const
-{ return VT_CALL(const pkg::bone_desc*,() const,38)(); }
+{ return VT_CALL(const pkg::bone_desc*,() const,39)(); }
 
 inline const pkg::bone_data* geomob::get_bone_ibp_ptr() const
-{ return VT_CALL(const pkg::bone_data*,() const,39)(); }
-
-inline const pkg::bone_data* geomob::get_bone_bp_local_ptr() const
 { return VT_CALL(const pkg::bone_data*,() const,40)(); }
 
+inline const pkg::bone_data* geomob::get_bone_bp_local_ptr() const
+{ return VT_CALL(const pkg::bone_data*,() const,41)(); }
+
 inline pkg::bone_data* geomob::get_bone_local_ptr() const
-{ return VT_CALL(pkg::bone_data*,() const,41)(); }
+{ return VT_CALL(pkg::bone_data*,() const,42)(); }
 
 inline iref<ot::animation> geomob::load_animation( const coid::token& filename, const coid::token& root_bone, uint frame_offset )
-{ return VT_CALL(iref<ot::animation>,(const coid::token&,const coid::token&,uint),42)(filename,root_bone,frame_offset); }
+{ return VT_CALL(iref<ot::animation>,(const coid::token&,const coid::token&,uint),43)(filename,root_bone,frame_offset); }
 
 inline void geomob::set_animate_mode( pkg::EGeomAnimateMode mode )
-{ return VT_CALL(void,(pkg::EGeomAnimateMode),43)(mode); }
+{ return VT_CALL(void,(pkg::EGeomAnimateMode),44)(mode); }
 
 inline float3 geomob::animate()
-{ return VT_CALL(float3,(),44)(); }
+{ return VT_CALL(float3,(),45)(); }
 
 inline void geomob::set_skeleton_weight( float weight )
-{ return VT_CALL(void,(float),45)(weight); }
+{ return VT_CALL(void,(float),46)(weight); }
 
 inline iref<ot::animation_stack> geomob::get_animation_stack()
-{ return VT_CALL(iref<ot::animation_stack>,(),46)(); }
+{ return VT_CALL(iref<ot::animation_stack>,(),47)(); }
 
 inline void geomob::set_visible( bool visible )
-{ return VT_CALL(void,(bool),47)(visible); }
+{ return VT_CALL(void,(bool),48)(visible); }
 
 inline bool geomob::is_visible() const
-{ return VT_CALL(bool,() const,48)(); }
-
-inline bool geomob::is_ready() const
 { return VT_CALL(bool,() const,49)(); }
 
+inline bool geomob::is_ready() const
+{ return VT_CALL(bool,() const,50)(); }
+
 inline bool geomob::get_bone_model_dq( uint joint, quat& rot, quat& dual ) const
-{ return VT_CALL(bool,(uint,quat&,quat&) const,50)(joint,rot,dual); }
+{ return VT_CALL(bool,(uint,quat&,quat&) const,51)(joint,rot,dual); }
 
 inline bool geomob::get_bone_model_tm( uint joint, float3& pos, quat& rot ) const
-{ return VT_CALL(bool,(uint,float3&,quat&) const,51)(joint,pos,rot); }
+{ return VT_CALL(bool,(uint,float3&,quat&) const,52)(joint,pos,rot); }
 
 inline bool geomob::get_bone_model_tm_offset( uint joint, const float3& offset, float3& pos, quat& rot ) const
-{ return VT_CALL(bool,(uint,const float3&,float3&,quat&) const,52)(joint,offset,pos,rot); }
+{ return VT_CALL(bool,(uint,const float3&,float3&,quat&) const,53)(joint,offset,pos,rot); }
 
 inline bool geomob::get_bone_model_bp_dq( uint joint, quat& rot, quat& dual ) const
-{ return VT_CALL(bool,(uint,quat&,quat&) const,53)(joint,rot,dual); }
+{ return VT_CALL(bool,(uint,quat&,quat&) const,54)(joint,rot,dual); }
 
 inline bool geomob::get_bone_model_bp_tm( uint joint, float3& pos, quat& rot ) const
-{ return VT_CALL(bool,(uint,float3&,quat&) const,54)(joint,pos,rot); }
+{ return VT_CALL(bool,(uint,float3&,quat&) const,55)(joint,pos,rot); }
 
 inline const pkg::bone_gpu_data* geomob::get_bone_skin_dq( uint bone_id ) const
-{ return VT_CALL(const pkg::bone_gpu_data*,(uint) const,55)(bone_id); }
+{ return VT_CALL(const pkg::bone_gpu_data*,(uint) const,56)(bone_id); }
 
 inline bool geomob::get_bone_local_dq( uint joint, quat& rot, quat& dual ) const
-{ return VT_CALL(bool,(uint,quat&,quat&) const,56)(joint,rot,dual); }
+{ return VT_CALL(bool,(uint,quat&,quat&) const,57)(joint,rot,dual); }
 
 inline bool geomob::get_bone_local_tm( uint joint, float3& pos, quat& rot ) const
-{ return VT_CALL(bool,(uint,float3&,quat&) const,57)(joint,pos,rot); }
+{ return VT_CALL(bool,(uint,float3&,quat&) const,58)(joint,pos,rot); }
 
 inline const pkg::mesh_desc* geomob::get_meshes_ptr() const
-{ return VT_CALL(const pkg::mesh_desc*,() const,58)(); }
+{ return VT_CALL(const pkg::mesh_desc*,() const,59)(); }
 
 inline const pkg::mesh_data* geomob::get_meshes_data_ptr() const
-{ return VT_CALL(const pkg::mesh_data*,() const,59)(); }
+{ return VT_CALL(const pkg::mesh_data*,() const,60)(); }
 
 inline const pkg::lod_meshes* geomob::get_lods_ptr() const
-{ return VT_CALL(const pkg::lod_meshes*,() const,60)(); }
-
-inline const pkg::lod_meshes* geomob::get_collision_meshes_ptr() const
 { return VT_CALL(const pkg::lod_meshes*,() const,61)(); }
 
+inline const pkg::lod_meshes* geomob::get_collision_meshes_ptr() const
+{ return VT_CALL(const pkg::lod_meshes*,() const,62)(); }
+
 inline uchar* geomob::get_mesh_flags_ptr() const
-{ return VT_CALL(uchar*,() const,62)(); }
+{ return VT_CALL(uchar*,() const,63)(); }
 
 inline const pkg::mesh_obb_data* geomob::get_meshes_obbs() const
-{ return VT_CALL(const pkg::mesh_obb_data*,() const,63)(); }
+{ return VT_CALL(const pkg::mesh_obb_data*,() const,64)(); }
 
 inline coid::dynarray<pkg::mesh_desc> geomob::get_meshes() const
-{ return VT_CALL(coid::dynarray<pkg::mesh_desc>,() const,64)(); }
+{ return VT_CALL(coid::dynarray<pkg::mesh_desc>,() const,65)(); }
 
 inline coid::dynarray<pkg::lod_meshes> geomob::get_lods() const
-{ return VT_CALL(coid::dynarray<pkg::lod_meshes>,() const,65)(); }
+{ return VT_CALL(coid::dynarray<pkg::lod_meshes>,() const,66)(); }
 
 inline pkg::lod_meshes geomob::get_collision_meshes() const
-{ return VT_CALL(pkg::lod_meshes,() const,66)(); }
+{ return VT_CALL(pkg::lod_meshes,() const,67)(); }
 
 inline coid::dynarray<uchar> geomob::get_mesh_flags() const
-{ return VT_CALL(coid::dynarray<uchar>,() const,67)(); }
+{ return VT_CALL(coid::dynarray<uchar>,() const,68)(); }
 
 inline void geomob::attach_to( const iref<ot::geomob>& geom, uint joint_id, bool update_tm )
-{ return VT_CALL(void,(const iref<ot::geomob>&,uint,bool),68)(geom,joint_id,update_tm); }
+{ return VT_CALL(void,(const iref<ot::geomob>&,uint,bool),69)(geom,joint_id,update_tm); }
 
 inline uint geomob::attach_geom( const coid::token& url, const coid::token& joint, const double3& pos, const quat& rot )
-{ return VT_CALL(uint,(const coid::token&,const coid::token&,const double3&,const quat&),69)(url,joint,pos,rot); }
+{ return VT_CALL(uint,(const coid::token&,const coid::token&,const double3&,const quat&),70)(url,joint,pos,rot); }
 
 inline void geomob::get_world_transform( double3& pos, quat& rot ) const
-{ return VT_CALL(void,(double3&,quat&) const,70)(pos,rot); }
+{ return VT_CALL(void,(double3&,quat&) const,71)(pos,rot); }
 
 inline void geomob::dump_geom_info()
-{ return VT_CALL(void,(),71)(); }
+{ return VT_CALL(void,(),72)(); }
 
 inline uint geomob::get_mtl_count() const
-{ return VT_CALL(uint,() const,72)(); }
+{ return VT_CALL(uint,() const,73)(); }
 
 inline uint geomob::get_mtl_id( uint id ) const
-{ return VT_CALL(uint,(uint) const,73)(id); }
+{ return VT_CALL(uint,(uint) const,74)(id); }
 
 inline const pkg::lod_meshes* geomob::get_lod_meshes( uint lod ) const
-{ return VT_CALL(const pkg::lod_meshes*,(uint) const,74)(lod); }
+{ return VT_CALL(const pkg::lod_meshes*,(uint) const,75)(lod); }
 
 inline const pkg::mesh_draw_data2* geomob::get_mesh_draw_data( uint mesh ) const
-{ return VT_CALL(const pkg::mesh_draw_data2*,(uint) const,75)(mesh); }
+{ return VT_CALL(const pkg::mesh_draw_data2*,(uint) const,76)(mesh); }
 
 inline const int2* geomob::get_positions( const pkg::mesh_draw_data2* mdd ) const
-{ return VT_CALL(const int2*,(const pkg::mesh_draw_data2*) const,76)(mdd); }
+{ return VT_CALL(const int2*,(const pkg::mesh_draw_data2*) const,77)(mdd); }
 
 inline const ushort* geomob::get_indices( const pkg::mesh_draw_data2* mdd ) const
-{ return VT_CALL(const ushort*,(const pkg::mesh_draw_data2*) const,77)(mdd); }
+{ return VT_CALL(const ushort*,(const pkg::mesh_draw_data2*) const,78)(mdd); }
 
 inline const uchar4* geomob::get_skin_indices( const pkg::mesh_draw_data2* mdd ) const
-{ return VT_CALL(const uchar4*,(const pkg::mesh_draw_data2*) const,78)(mdd); }
-
-inline const uchar4* geomob::get_skin_weights( const pkg::mesh_draw_data2* mdd ) const
 { return VT_CALL(const uchar4*,(const pkg::mesh_draw_data2*) const,79)(mdd); }
 
+inline const uchar4* geomob::get_skin_weights( const pkg::mesh_draw_data2* mdd ) const
+{ return VT_CALL(const uchar4*,(const pkg::mesh_draw_data2*) const,80)(mdd); }
+
 inline void geomob::get_mesh_tm( uint mesh_id, quat& rot, quat& dual )
-{ return VT_CALL(void,(uint,quat&,quat&),80)(mesh_id,rot,dual); }
+{ return VT_CALL(void,(uint,quat&,quat&),81)(mesh_id,rot,dual); }
 
 inline bool geomob::has_hit_mask_component() const
-{ return VT_CALL(bool,() const,81)(); }
+{ return VT_CALL(bool,() const,82)(); }
 
 inline uint geomob::create_hit_mask_component()
-{ return VT_CALL(uint,(),82)(); }
+{ return VT_CALL(uint,(),83)(); }
 
 inline void geomob::ray_vs_hit_mask( const double3& ecef_pos, const float3& ecef_dir, uint hit_mesh_id )
-{ return VT_CALL(void,(const double3&,const float3&,uint),83)(ecef_pos,ecef_dir,hit_mesh_id); }
+{ return VT_CALL(void,(const double3&,const float3&,uint),84)(ecef_pos,ecef_dir,hit_mesh_id); }
 
 #pragma warning(pop)
 

@@ -352,7 +352,7 @@ protected:
     virtual void destroy_vehicle( bool reload ) {}
 
     ///Interface event for handling aircraft state before rendering (inputs, animating joints etc)
-    virtual void update_actions( float dt, const coid::dynarray<int32>& actbuf ) {}
+    virtual void update_actions( float dt, const coid::range<int32>& actbuf ) {}
 
     ///Update model instance for rendering
     virtual void update_frame( float dt, float engine, float brake, float steering, float parking ) {}
@@ -400,7 +400,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 911451187;
+    static const int HASHID = 1419456203;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -415,8 +415,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::vehicle_physics@wrapper");
-        static const coid::token _dlua("ot::lua::vehicle_physics@wrapper");
+        static const coid::token _djs("ot::vehicle_physics@wrapper.js");
+        static const coid::token _dlua("ot::vehicle_physics@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -468,7 +468,7 @@ inline iref<T> vehicle_physics::get( T* _subclass_, void* p )
     typedef iref<T> (*fn_creator)(vehicle_physics*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::vehicle_physics.get@911451187";
+    static const coid::token ifckey = "ot::vehicle_physics.get@1419456203";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

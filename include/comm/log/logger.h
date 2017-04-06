@@ -69,7 +69,7 @@ class logmsg;
 class policy_msg;
 
 ////////////////////////////////////////////////////////////////////////////////
-
+//@{ Log message with specified severity
 #define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::None, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Perf, src ); if(q) {q->str() << msg; }} while(0)
@@ -77,7 +77,12 @@ class policy_msg;
 #define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Highlight, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Warning, src ); if(q) {q->str() << msg; }} while(0)
 #define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Error, src ); if(q) {q->str() << msg; }} while(0)
+//@}
 
+///Log fatal error and throw exception
+#define coidlog_exception(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
+
+///Debug message existing only in debug builds
 #ifdef _DEBUG
 #define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
 #else

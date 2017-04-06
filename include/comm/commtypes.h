@@ -48,7 +48,7 @@
 # ifndef __MSVCRT_VERSION__
 #  define __MSVCRT_VERSION__ 0x0800
 # elif __MSVCRT_VERSION__<0x0800
-#  error comm needs 0x0800 version of msvcrt
+#  error comm needs at least 0x0800 version of msvcrt
 # endif
 
 # if !defined(NDEBUG) && !defined(_DEBUG)
@@ -208,6 +208,30 @@ typedef int64               ints_sized;
 #elif defined(SYSTYPE_32)
 typedef uint32              uints_sized;
 typedef int32               ints_sized;
+#endif
+
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
+
+///Selection of int type by minimum bit count
+template <class INT> struct int_bits_base {
+    typedef INT type;
+};
+
+template<int NBITS> struct int_bits {
+    static_assert(NBITS <= 64, "number of bits must be less or equal to 64");
+    typedef
+        std::conditional_t<(NBITS <= 8), int8,
+        std::conditional_t<(NBITS > 8 && NBITS <= 16), int16,
+        std::conditional_t<(NBITS > 16 && NBITS <= 32), int32,
+        std::conditional_t<(NBITS > 32 && NBITS <= 64), int64, int>>>> type;
+};
+
+template<int NBITS>
+using int_bits_t = typename int_bits<NBITS>::type;
+
+template<int NBITS>
+using uint_bits_t = typename std::make_unsigned<typename int_bits<NBITS>::type>::type;
+
 #endif
 
 } //namespace coid

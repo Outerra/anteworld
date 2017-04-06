@@ -286,6 +286,33 @@ template<typename T> struct hasher<iref<T>> {
     uint operator()(const key_type& x) const { return (uint)x.get(); }
 };
 
+template <class T>
+struct threadcached<iref<T>>
+{
+    typedef iref<T> storage_type;
+
+    operator iref<T>& () { return _val; }
+
+    iref<T>& operator* () { return _val; }
+    iref<T>* operator& () { return &_val; }
+
+    threadcached& operator = (iref<T>&& val) {
+        _val = std::move(val);
+        return *this;
+    }
+
+    threadcached& operator = (const iref<T>& val) {
+        _val = val;
+        return *this;
+    }
+
+    T * get() { return _val.get(); }
+
+private:
+
+    iref<T> _val;
+};
+
 } //namespace coid
 
 #endif // __COMM_REF_I_H__

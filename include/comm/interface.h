@@ -78,7 +78,8 @@ public:
 
     ///Get interface creators matching the given name
     //@param name interface creator name in the format [ns1::[ns2:: ...]]::class[.creator]
-    static dynarray<creator>& get_interface_creators( const token& name, dynarray<creator>& dst );
+    //@param script script type (js, lua ...), if empty anything matches
+    static dynarray<creator>& get_interface_creators( const token& name, const token& script, dynarray<creator>& dst );
 
     ///Find interfaces containing given string
     static dynarray<creator>& find_interface_creators( const regex& str, dynarray<creator>& dst );

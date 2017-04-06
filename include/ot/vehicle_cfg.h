@@ -220,6 +220,7 @@ struct ramp_params
     uint8 channels;                 //< optional number of extra channels (multiple engines etc)
     uint8 event : 1;                //< 1 if this is bound as an event (button)
     uint8 release_event : 1;        //< 1 if release event should be produced for button
+    uint8 server_event : 1;         //< event should run on server even if the instance is client-simulated
 
     ramp_params()
         : vel(DEFAULT_AXIS_VEL())
@@ -231,6 +232,7 @@ struct ramp_params
         , channels(0)
         , event(0)
         , release_event(0)
+        , server_event(0)
     {
         //coid::metastream::initialize_from_defaults(this);
     }
@@ -249,6 +251,7 @@ struct ramp_params
         , channels(0)
         , event(0)
         , release_event(0)
+        , server_event(0)
     {}
 
     friend inline coid::metastream& operator || (coid::metastream& m, ramp_params& rp)

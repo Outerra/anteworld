@@ -92,7 +92,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 3229703215;
+    static const int HASHID = 3246480834;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -106,9 +106,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::sndgrp.create@3229703215");
-        static const coid::token _djs("ot::js::sndgrp@wrapper");
-        static const coid::token _dlua("ot::lua::sndgrp@wrapper");
+        static const coid::token _dc("ot::sndgrp.create@3246480834");
+        static const coid::token _djs("ot::sndgrp@wrapper.js");
+        static const coid::token _dlua("ot::sndgrp@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -157,7 +157,7 @@ inline iref<T> sndgrp::_get_sndgrp( T* _subclass_, snd::group* p )
     typedef iref<T> (*fn_creator)(sndgrp*, snd::group*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@3229703215";
+    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@3246480834";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -175,7 +175,7 @@ inline iref<T> sndgrp::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(sndgrp*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp.create@3229703215";
+    static const coid::token ifckey = "ot::sndgrp.create@3246480834";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

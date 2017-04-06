@@ -150,6 +150,8 @@ struct kind
         fARRAY_END              = 0x20, //< array end mark
 
         fNAMELESS               = 0x40, //< nameless compound, for T_STRUCTBGN and T_STRUCTEND
+
+        fPLAIN                  = 0x80, //< plain layout of the attributes in the compound
     };
 
 
@@ -159,11 +161,15 @@ struct kind
     explicit kind( uchar btype )
         : size(0), type(btype), ctrl(0) {}
 
+    static kind plain_compound()            { return kind(T_COMPOUND, 0, fPLAIN); }
+
 
     bool operator == ( kind t ) const       { return *(uint32*)this == *(uint32*)&t; }
 
     bool is_no_size() const                 { return size == 0; }
     bool is_primitive() const               { return type < T_COMPOUND; }
+
+    bool is_plain() const                   { return is_primitive() || (ctrl & fPLAIN) != 0; }
 
     bool is_nameless() const                { return (ctrl & fNAMELESS) != 0; }
 

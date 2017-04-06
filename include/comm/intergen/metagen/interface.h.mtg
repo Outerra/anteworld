@@ -39,7 +39,7 @@ $-[method !static? !destroy?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
-    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $(if outarg?)$$(if inarg?)$ifc_inout$(elif)$ifc_out$(/if)$ $(/if)-$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ $-(if ..virtual?)$ = 0$(/if)$;
+    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ $-(if ..virtual?)$ = 0$(/if)$;
 $[/method]-$
 $-(if !event.empty?)$
 
@@ -110,8 +110,8 @@ $-(if default_creator.name.empty?)$
 $-(elif)$
         static const coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$");
 $-(/if)$
-        static const coid::token _djs("$ns rest="::" after="::"$js::$name$@wrapper");
-        static const coid::token _dlua("$ns rest="::" after="::"$lua::$name$@wrapper");
+        static const coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js");
+        static const coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {

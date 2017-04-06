@@ -113,7 +113,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 1197825748;
+    static const int HASHID = 1248158605;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -127,9 +127,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::explosions.get@1197825748");
-        static const coid::token _djs("ot::js::explosions@wrapper");
-        static const coid::token _dlua("ot::lua::explosions@wrapper");
+        static const coid::token _dc("ot::explosions.get@1248158605");
+        static const coid::token _djs("ot::explosions@wrapper.js");
+        static const coid::token _dlua("ot::explosions@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -178,7 +178,7 @@ inline iref<T> explosions::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(explosions*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::explosions.get@1197825748";
+    static const coid::token ifckey = "ot::explosions.get@1248158605";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

@@ -359,26 +359,6 @@ private:
     uints _size;
 };*/
 
-template <class T>
-metastream& operator || ( metastream& m, range<T>& a )
-{
-    if(m.stream_reading()) {
-        a.reset();
-        typename range<T>::range_binstream_container c(a);
-        m.read_container(c);
-    }
-    else if(m.stream_writing()) {
-        typename range<T>::range_binstream_container c(a);
-        m.write_container(c);
-    }
-    else {
-        m.meta_decl_array();
-        m || *(T*)0;
-    }
-    return m;
-}
-
-
 
 #ifdef V8_MAJOR_VERSION
 

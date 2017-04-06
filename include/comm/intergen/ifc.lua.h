@@ -69,6 +69,7 @@ namespace lua {
     static const coid::token _lua_log_key = "log";
     static const coid::token _lua_context_info_key = "__ctx_inf";
     static const coid::token _lua_query_interface_key = "query_interface";
+    static const coid::token _lua_require_key = "require";
 
     const uint32 LUA_WEAK_REGISTRY_INDEX = 1;
     const uint32 LUA_WEAK_IFC_MT_INDEX = 2;
@@ -407,6 +408,10 @@ namespace lua {
             :registry_handle(L)
         {
             lua_newtable(_L);
+            lua_pushvalue(_L, -1);
+            lua_setmetatable(_L, -1);
+            lua_pushvalue(_L, LUA_GLOBALSINDEX);
+            lua_setfield(_L,-2, _lua_parent_index_key);
             lua_pushcfunction(_L, &script_implements);
             lua_pushvalue(L, -2);
             lua_setfenv(L,-2);
@@ -422,6 +427,8 @@ namespace lua {
             lua_setfenv(L, -2);
             lua_setfield(_L, -2, _lua_query_interface_key);
 
+//            lua_getglobal(_L, _lua_require_key);
+//            lua_setfield(_L, -2, _lua_require_key);
 
             set_ref();
         };
@@ -698,13 +705,13 @@ namespace lua {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-inline iref<registry_handle> wrap_object(intergen_interface* orig, iref<lua_context> ctx)
+inline iref<registry_handle> wrap_object(intergen_interface* orig, iref<registry_handle> ctx)
 {
     if (!orig) {
         return nullptr;
     }
 
-    typedef iref<registry_handle>(*fn_wrapper)(intergen_interface*, iref<lua_context>);
+    typedef iref<registry_handle>(*fn_wrapper)(intergen_interface*, iref<registry_handle>);
     fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::IFC_BACKEND_LUA));
 
     if (fn){

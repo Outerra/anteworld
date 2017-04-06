@@ -91,6 +91,9 @@
       </ItemGroup>
 
       <!--<Delete Files="@(FilesToDelete)" TreatErrorsAsWarnings="true" />-->
-      <Exec Command="del /F /Q &quot;@(FilesToDelete,'*cpp&quot; &quot;')&quot;"/>
+      <Exec Command="del /F /Q &quot;@(FilesToDelete,'cpp&quot; &quot;')cpp&quot;"/>
+      <Exec Command="del /F /Q &quot;@(FilesToDelete,'js.cpp&quot; &quot;')js.cpp&quot;"/>
+      <Exec Command="del /F /Q &quot;@(FilesToDelete,'lua.cpp&quot; &quot;')lua.cpp&quot;"/>
+      <!--<Exec Command="echo &quot;@(FilesToDelete,'*cpp&quot; &quot;')&quot;"/>-->
   </Target>   
 </Project>

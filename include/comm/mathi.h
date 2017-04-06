@@ -58,43 +58,26 @@ inline bool valid_uint_range( uint64 v, uint bytes )
     return v <= vmax;
 }
 
-///Return next power-of-2 number higher or equal to x (macro form for enums)
-#define NEXTPOW2_32(x) NEXTPOW2_32_((x-1))
-#define NEXTPOW2_32_(x) ((x|(x>>1)|(x>>2)|(x>>4)|(x>>8)|(x>>16))+1)
-
-///Return next power-of-2 number higher or equal to x (macro form for enums)
-#define NEXTPOW2_64(x) NEXTPOW2_64_((x-1))
-#define NEXTPOW2_64_(x) ((x|(x>>1)|(x>>2)|(x>>4)|(x>>8)|(x>>16)|(x>>32))+1)
-
-/// Efficiently returns the least power of two greater than or equal to X
-template< class UINT >
-inline UINT nextpow2( UINT x )
-{
-    if(!x)  return 1;
-    --x;
-    for( uint n=1; n<sizeof(x)*8; n<<=1 )
-        x |= x>>n;
-    return ++x;
-}
-
-template<>
-inline uints nextpow2<uints>( uints x )
-{
-    if(!x)  return 1;
-    --x;
-    for( uint n=1; n<sizeof(x)*8; n<<=1 )
-        x |= x>>n;
-    return ++x;
+//@return 2's exponent of nearest higher power of two number (number of bits needed for representation)
+//@note 0 1 1 2 2 3 3 3 3 4 ...
+inline coid_constexpr uints int_high_pow2(uints x) {
+    return x < 2
+        ? x
+        : 1 + int_high_pow2(x >> 1);
 }
 
 //@return 2's exponent of nearest lower power of two number
-inline uchar int_low_pow2( uints x )        { uchar i;  for(i=0; x; ++i) x>>=1;  return i-1; }
+//@note 0 0 1 1 2 2 2 2 3 ...
+inline coid_constexpr uints int_low_pow2(uints x) {
+    return x < 2
+        ? 0
+        : 1 + int_low_pow2(x >> 1);
+}
 
-//@return 2's exponent of nearest higher power of two number
-inline uchar int_high_pow2( uints x )       { uchar i; --x; for(i=0; x; ++i) x>>=1;  return i; }
-
-/// Checks if a value is power of two
-#define IS_2_POW_N(_X)   (((_X)&(_X-1)) == 0)
+//@returns the least power of two greater than or equal to X
+inline coid_constexpr uints nextpow2(uints x) {
+    return uints(1) << int_high_pow2(x);
+}
 
 
 /// Align value to the nearest greater multiplier of specified chunk size

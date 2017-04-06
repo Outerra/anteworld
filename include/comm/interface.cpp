@@ -12,25 +12,27 @@ COID_NAMESPACE_BEGIN
 
 struct entry
 {
-    token ifcname;
+    charstr ifcname;
+
     token classname;
     token creatorname;
     token ns;
+    token script;
+    token hash;
 
     void* creator_ptr;
-    bool script_creator;
 
-    operator const token&() const { return ifcname; }
+    operator token() const { return ifcname; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-class interface_register_impl : public interface_register
+class interface_register_impl
 {
 public:
 
     COIDNEWDELETE("interface_register_impl");
 
-    hash_keyset<entry, _Select_GetRef<entry,token> > _hash;
+    hash_keyset<entry, _Select_Copy<entry,token> > _hash;
     comm_mutex _mx;
 
     charstr _root_path;
@@ -39,6 +41,8 @@ public:
 
     const int _intergen_version;
 
+    typedef interface_register::creator
+        creator;
 
     static interface_register_impl& get();
 
@@ -53,14 +57,24 @@ public:
     {}
 
     //virtual in order to invoke code from the main exe module when calling from dlls
+    /**
+        @param ifcname in one of the following forms:
+            [ns1[::ns2[...]]]::classname@wrapper[.scriptname]                   wrap existing object
+            [ns1[::ns2[...]]]::classname.creatorname@hashvalue                  c++ versioned creator
+            [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname         script creator
+    **/
     virtual bool register_interface_creator(
         const coid::token& ifcname,
         void* creator_ptr)
     {
-        token ns = ifcname;
-        token classname = ns.cut_right_group_back("::");
-        token creatorname = classname.cut_right('.');
-        token script = creatorname.cut_right('@', token::cut_trait_remove_sep_default_empty());
+        //create string in current module
+        charstr tmp = ifcname;
+
+        token ns = tmp;
+        token wrapper = ns.cut_right_group_back("::");
+        token classname = wrapper.cut_left('@');
+        token creatorname = classname.cut_right_back('.');
+        token script = wrapper.cut_right('.', token::cut_trait_remove_sep_default_empty());
 
         GUARDTHIS(_mx);
 
@@ -71,17 +85,76 @@ public:
             entry* en = _hash.insert_value_slot(ifcname);
             if(en) {
                 en->creator_ptr = creator_ptr;
-                en->ifcname = ifcname;
+                en->ifcname.takeover(tmp);
                 en->ns = ns;
                 en->classname = classname;
                 en->creatorname = creatorname;
-                en->script_creator = !script.is_empty();
+                en->hash = wrapper;
+                en->script = script;
                 return true;
             }
         }
 
         return false;
     }
+
+    virtual dynarray<creator>& find_interface_creators( const regex& name, dynarray<creator>& dst )
+    {
+        //interface creator names:
+        // [ns1::[ns2:: ...]]::class.creator
+
+        GUARDTHIS(_mx);
+
+        auto i = _hash.begin();
+        auto ie = _hash.end();
+        for(; i!=ie; ++i) {
+            if(i->script)
+                continue;
+
+            if(name.match(i->ifcname)) {
+                creator* p = dst.add();
+                p->creator_ptr = i->creator_ptr;
+                p->name = token(i->ifcname);
+            }
+        }
+
+        return dst;
+    }
+
+    virtual dynarray<creator>& get_interface_creators( const token& name, const token& script, dynarray<creator>& dst )
+    {
+        //interface creator names:
+        // [ns1::[ns2:: ...]]::class.creator
+        static token SEP = "::";
+        token ns = name;
+        token classname = ns.cut_right_group_back(SEP);
+        token creatorname = classname.cut_right('.', token::cut_trait_remove_sep_default_empty());
+
+        GUARDTHIS(_mx);
+
+        auto i = _hash.begin();
+        auto ie = _hash.end();
+        for(; i!=ie; ++i) {
+            if(script && script != i->script)
+                continue;
+
+            if(i->classname != classname)
+                continue;
+
+            if(creatorname && i->creatorname != creatorname)
+                continue;
+
+            if(ns && i->ns != ns)
+                continue;
+
+            creator* p = dst.add();
+            p->creator_ptr = i->creator_ptr;
+            p->name = token(i->ifcname);
+        }
+
+        return dst;
+    }
+
 
     bool current_dir( token curpath, charstr& dst )
     {
@@ -207,39 +280,12 @@ void interface_register::setup( const token& path, fn_log_t log, fn_acc_t access
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-dynarray<interface_register::creator>& interface_register::get_interface_creators( const token& name, dynarray<interface_register::creator>& dst )
+dynarray<interface_register::creator>& interface_register::get_interface_creators( const token& name, const token& script, dynarray<interface_register::creator>& dst )
 {
     //interface creator names:
     // [ns1::[ns2:: ...]]::class.creator
-    static token SEP = "::";
-    token ns = name;
-    token classname = ns.cut_right_group_back(SEP);
-    token creatorname = classname.cut_right('.', token::cut_trait_remove_sep_default_empty());
-
     interface_register_impl& reg = interface_register_impl::get();
-    GUARDTHIS(reg._mx);
-
-    auto i = reg._hash.begin();
-    auto ie = reg._hash.end();
-    for(; i!=ie; ++i) {
-        if(i->script_creator)
-            continue;
-
-        if(i->classname != classname)
-            continue;
-
-        if(creatorname && i->creatorname != creatorname)
-            continue;
-
-        if(ns && i->ns != ns)
-            continue;
-
-        creator* p = dst.add();
-        p->creator_ptr = i->creator_ptr;
-        p->name = token(i->ifcname);
-    }
-
-    return dst;
+    return reg.get_interface_creators(name, script, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,22 +295,7 @@ dynarray<interface_register::creator>& interface_register::find_interface_creato
     // [ns1::[ns2:: ...]]::class.creator
 
     interface_register_impl& reg = interface_register_impl::get();
-    GUARDTHIS(reg._mx);
-
-    auto i = reg._hash.begin();
-    auto ie = reg._hash.end();
-    for(; i!=ie; ++i) {
-        if(i->script_creator)
-            continue;
-
-        if(name.match(i->ifcname)) {
-            creator* p = dst.add();
-            p->creator_ptr = i->creator_ptr;
-            p->name = token(i->ifcname);
-        }
-    }
-
-    return dst;
+    return reg.find_interface_creators(name, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -126,6 +126,15 @@ struct dynamic_pos : static_pos
     float3 vel;                         //< linear velocity
     float3 ang;                         //< angular velocity
 
+
+    ///Predict position for dt
+    void predict_position( float dt, static_pos& dst ) const {
+        dst.pos = pos + double3(vel * dt);
+
+        quat drot = (quat(0.0f, ang) * rot) * (0.5f * dt);
+        dst.rot = glm::normalize(rot + drot);
+    }
+
     friend coid::metastream& operator || (coid::metastream& m, dynamic_pos& p) {
         return m.compound("ot::dynamic_pos", [&]() {
             m.member("pos", p.pos);

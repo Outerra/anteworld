@@ -50,7 +50,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 231552727;
+    static const int HASHID = 248330346;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -65,8 +65,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::jsb@wrapper");
-        static const coid::token _dlua("ot::lua::jsb@wrapper");
+        static const coid::token _djs("ot::jsb@wrapper.js");
+        static const coid::token _dlua("ot::jsb@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -115,7 +115,7 @@ inline iref<T> jsb::_get_jsb( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(jsb*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::jsb._get_jsb@231552727";
+    static const coid::token ifckey = "ot::jsb._get_jsb@248330346";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

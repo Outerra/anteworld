@@ -13,7 +13,7 @@ namespace ot {
 ///Impact info for tracers
 struct impact_info
 {
-    double3 pos;                        //< world position on terrain or object hit
+    double3 wpos;                       //< world position on terrain or relative position on object hit (world-space)
     uint hitid;                         //< id of the object that has been hit
     uint attid;                         //< id of the attached object
     uint mesh;                          //< collision mesh id
@@ -30,7 +30,7 @@ struct impact_info
     {
         return m.compound("impact_info", [&]()
         {
-            m.member("pos", d.pos);
+            m.member("pos", d.wpos);
             m.member("hitid", d.hitid);
             m.member("attid", d.attid);
             m.member("tid", d.tid);

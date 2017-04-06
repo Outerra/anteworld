@@ -256,7 +256,7 @@ protected:
     virtual ot::aircraft_config initialize__( const coid::charstr& params ){ throw coid::exception("handler not implemented"); }
 
     ///Interface event for handling aircraft state before rendering (inputs, animating joints etc)
-    virtual void update_actions( float dt, const coid::dynarray<int32>& actbuf ) {}
+    virtual void update_actions( float dt, const coid::range<int32>& actbuf ) {}
 
     ///Interface event for handling aircraft state before rendering (inputs, animating joints etc)
     virtual void update_frame( float dt ) {}
@@ -296,7 +296,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 795250869;
+    static const int HASHID = 1783448745;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -311,8 +311,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::aircraft_physics@wrapper");
-        static const coid::token _dlua("ot::lua::aircraft_physics@wrapper");
+        static const coid::token _djs("ot::aircraft_physics@wrapper.js");
+        static const coid::token _dlua("ot::aircraft_physics@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -364,7 +364,7 @@ inline iref<T> aircraft_physics::get( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(aircraft_physics*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::aircraft_physics.get@795250869";
+    static const coid::token ifckey = "ot::aircraft_physics.get@1783448745";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

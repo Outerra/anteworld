@@ -104,7 +104,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 2980328286;
+    static const int HASHID = 2963550667;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -118,9 +118,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::video_recorder.create@2980328286");
-        static const coid::token _djs("ot::js::video_recorder@wrapper");
-        static const coid::token _dlua("ot::lua::video_recorder@wrapper");
+        static const coid::token _dc("ot::video_recorder.create@2963550667");
+        static const coid::token _djs("ot::video_recorder@wrapper.js");
+        static const coid::token _dlua("ot::video_recorder@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -172,7 +172,7 @@ inline iref<T> video_recorder::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(video_recorder*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::video_recorder.create@2980328286";
+    static const coid::token ifckey = "ot::video_recorder.create@2963550667";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

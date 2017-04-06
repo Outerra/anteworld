@@ -69,7 +69,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 2273010191;
+    static const int HASHID = 2289787810;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -84,8 +84,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::animation_stack@wrapper");
-        static const coid::token _dlua("ot::lua::animation_stack@wrapper");
+        static const coid::token _djs("ot::animation_stack@wrapper.js");
+        static const coid::token _dlua("ot::animation_stack@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -137,7 +137,7 @@ inline iref<T> animation_stack::get( T* _subclass_, const iref<pkg::animation_st
     typedef iref<T> (*fn_creator)(animation_stack*, const iref<pkg::animation_stack>&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation_stack.get@2273010191";
+    static const coid::token ifckey = "ot::animation_stack.get@2289787810";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

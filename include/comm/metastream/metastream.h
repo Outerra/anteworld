@@ -152,7 +152,7 @@ public:
             fn();
             moveout_struct(_binr != 0);
         }
-        else if(!meta_insert(typeid(T).name()))
+        else if(!meta_insert(typeid(T).name(), false))
         {
             fn();
 
@@ -178,7 +178,32 @@ public:
             fn();
             moveout_struct(_binr != 0);
         }
-        else if(!meta_insert(name))
+        else if(!meta_insert(name, false))
+        {
+            fn();
+
+            _last_var = smap().pop();
+            _current_var = smap().last();
+
+            meta_exit();
+        }
+        return *this;
+    }
+
+    ///Define struct streaming scheme, where the members correspond to the physical layout
+    //@param fn functor with member functions defining the struct layout
+    template<typename T, typename Fn>
+    metastream& plain_type( T&, Fn fn )
+    {
+        if(streaming()) {
+            _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
+            _rvarname.reset();
+
+            movein_struct(_binr != 0);
+            fn();
+            moveout_struct(_binr != 0);
+        }
+        else if(!meta_insert(typeid(T).name(), true))
         {
             fn();
 
@@ -1272,23 +1297,29 @@ protected:
         return var;
     }
 
-    bool meta_find( const token& name )
+    bool meta_find( const token& name, bool* is_plain = 0 )
     {
         MetaDesc* d = smap().find(name);
         if(!d)
             return false;
 
         _last_var = meta_fill_parent_variable(d);
+        if (is_plain)
+            *is_plain = _last_var->get_type().is_plain();
+
         meta_exit();
         return true;
     }
 
-    bool meta_insert( const token& name )
+    bool meta_insert( const token& name, bool plain )
     {
         if( meta_find(name) )
             return true;
 
-        MetaDesc* d = smap().create(name, type(), _cur_stream_fn);
+        MetaDesc* d = smap().create(
+            name,
+            plain ? type::plain_compound() : type(),
+            _cur_stream_fn);
 
         _current_var = meta_fill_parent_variable(d);
         smap().push( _current_var );
@@ -1319,7 +1350,7 @@ protected:
                 _struct_name = name;
                 _struct_name += targ;
 
-                return meta_insert(_struct_name);
+                return meta_insert(_struct_name, false);
             }
 
             charstr& k1 = *_templ_name_stack.last();
@@ -1343,6 +1374,11 @@ protected:
     }
 
 public:
+
+    template<class T>
+    static const MetaDesc* meta_find_type() {
+        return smap().find(typeid(T).name());
+    }
 
     template<class T>
     void meta_variable( const token& varname, const T* )
@@ -2984,6 +3020,26 @@ metastream& operator || ( metastream& m, dynarray<T,COUNT,A>& a )
     }
     return m;
 }
+
+template <class T>
+metastream& operator || ( metastream& m, range<T>& a )
+{
+    if(m.stream_reading()) {
+        a.reset();
+        typename range<T>::range_binstream_container c(a);
+        m.read_container(c);
+    }
+    else if(m.stream_writing()) {
+        typename range<T>::range_binstream_container c(a);
+        m.write_container(c);
+    }
+    else {
+        m.meta_decl_array();
+        m || *(T*)0;
+    }
+    return m;
+}
+
 
 COID_NAMESPACE_END
 

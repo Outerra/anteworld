@@ -52,7 +52,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 495516500;
+    static const int HASHID = 545849357;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -67,8 +67,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::blend_tree@wrapper");
-        static const coid::token _dlua("ot::lua::blend_tree@wrapper");
+        static const coid::token _djs("ot::blend_tree@wrapper.js");
+        static const coid::token _dlua("ot::blend_tree@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -120,7 +120,7 @@ inline iref<T> blend_tree::get( T* _subclass_, const iref<pkg::blend_tree>& bt )
     typedef iref<T> (*fn_creator)(blend_tree*, const iref<pkg::blend_tree>&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::blend_tree.get@495516500";
+    static const coid::token ifckey = "ot::blend_tree.get@545849357";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

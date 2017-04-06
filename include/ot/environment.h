@@ -88,7 +88,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 3651838978;
+    static const int HASHID = 3635061359;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -102,9 +102,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::environment.get@3651838978");
-        static const coid::token _djs("ot::js::environment@wrapper");
-        static const coid::token _dlua("ot::lua::environment@wrapper");
+        static const coid::token _dc("ot::environment.get@3635061359");
+        static const coid::token _djs("ot::environment@wrapper.js");
+        static const coid::token _dlua("ot::environment@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -153,7 +153,7 @@ inline iref<T> environment::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(environment*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::environment.get@3651838978";
+    static const coid::token ifckey = "ot::environment.get@3635061359";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

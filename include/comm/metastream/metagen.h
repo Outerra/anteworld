@@ -686,6 +686,14 @@ class metagen //: public binstream
     };
 
     ///Simple substitution tag
+    /**
+        Pastes value of variable or a special variable.
+        Supported attributes:
+            default     - value to print if variable not found
+            after       - suffix to add if variable produced a non-empty string or if it's a non-zero array
+            first       - prefix to add      -||-
+            rest        - infix to add before each next array element except the first (ignored on non-arrays)
+    **/
     struct TagSimple : Tag
     {
         dynarray<Attribute> attr;       //< conditions and attributes
@@ -745,7 +753,7 @@ class metagen //: public binstream
     };
 
     ///Linear sequence of chunks to process
-    struct TagRange
+    struct TagSequence
     {
         typedef local<Tag>              LTag;
         dynarray<LTag> sequence;        //< either a tag sequence to apply
@@ -851,7 +859,7 @@ class metagen //: public binstream
             return succ;
         }
 
-        void swap(TagRange& other) { sequence.swap(other.sequence); }
+        void swap(TagSequence& other) { sequence.swap(other.sequence); }
     };
 
     ///Conditional tag
@@ -860,7 +868,7 @@ class metagen //: public binstream
         ///Conditional clause
         struct Clause {
             dynarray<Attribute> attr;
-            TagRange rng;
+            TagSequence rng;
 
             bool eval(metagen& mg, const Varx& var) const
             {
@@ -915,9 +923,9 @@ class metagen //: public binstream
     ///Tag operating with array-type variables
     struct TagArray : Tag
     {
-        TagRange atr_first, atr_rest;
-        TagRange atr_body;
-        TagRange atr_after, atr_final;
+        TagSequence atr_first, atr_rest;
+        TagSequence atr_body;
+        TagSequence atr_after, atr_final;
 
         dynarray<Attribute> cond;
 
@@ -982,7 +990,7 @@ class metagen //: public binstream
             tmp.eat_right = hdr.eat_right;
 
             do {
-                TagRange& rng = bind_attributes(lex, tmp.attr);
+                TagSequence& rng = bind_attributes(lex, tmp.attr);
 
                 rng.parse(lex, tmp, &hdr);
                 if (tmp.trailing)
@@ -993,7 +1001,7 @@ class metagen //: public binstream
         }
 
     private:
-        TagRange* section(const token& name)
+        TagSequence* section(const token& name)
         {
             if (name == "first")  return &atr_first;
             if (name == "rest")   return &atr_rest;
@@ -1003,9 +1011,9 @@ class metagen //: public binstream
             return 0;
         }
 
-        TagRange& bind_attributes(mtglexer& lex, dynarray<Attribute>& attr)
+        TagSequence& bind_attributes(mtglexer& lex, dynarray<Attribute>& attr)
         {
-            TagRange* sec = 0;
+            TagSequence* sec = 0;
 
             Attribute* p = attr.ptr();
             Attribute* pe = attr.ptre();
@@ -1016,7 +1024,7 @@ class metagen //: public binstream
                     continue;
                 }
 
-                TagRange* tr = section(p->name);
+                TagSequence* tr = section(p->name);
 
                 if (!tr) {
                     lex.set_err() << "Unknown attribute of an array tag: " << p->name;
@@ -1055,7 +1063,7 @@ class metagen //: public binstream
     ///Structure tag changes the current variable scope to some descendant
     struct TagStruct : Tag
     {
-        TagRange seq;
+        TagSequence seq;
 
         void process_content(metagen& mg, const Varx& var) const
         {
@@ -1079,7 +1087,7 @@ class metagen //: public binstream
                     throw lex.exc();
                 }
 
-                TagRange rng;
+                TagSequence rng;
                 rng.parse(lex, tmp, &hdr);
                 if (tmp.trailing)
                     break;
@@ -1194,7 +1202,7 @@ private:
     //const char* err_lex;
 
     mtglexer lex;                   //< lexer used to parse the template file
-    TagRange tags;                  //< top level tag array
+    TagSequence tags;                  //< top level tag array
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1207,6 +1215,11 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
     charstr& buf = mg.buf;
     if (root)
         buf.reset();
+    uint oldbufsize = buf.len();
+
+    static const token first = "first";
+    static const token rest = "rest";
+    static const token after = "after";
 
     if (var->is_array()) {
         if (var->desc->children[0].desc->btype.type == type::T_CHAR) {
@@ -1215,24 +1228,30 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
 
             if (escape)
                 buf.append_escaped(t);
-            else if (root)
-                return t;
             else
                 buf << t;
+
+            //support for 'first' and 'after' attributes
+            bool nonempty = buf.len() > oldbufsize;
+
+            int i;
+            token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
+            if (prefix && nonempty)
+                buf.ins(0, prefix);
+
+            token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+            if (suffix && nonempty)
+                buf << suffix;
         }
         else {
             VarxElement element;
             uints n = element.first(*this);
             if (!n) return token();
 
-            static const token first = "first";
-            static const token rest = "rest";
-            static const token after = "after";
-
             ints i;
-            const token& prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
-            const token& infix = attr && (i = attr->contains(rest)) >= 0 ? (*attr)[i].value.value : token();
-            const token& suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+            token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
+            token infix = attr && (i = attr->contains(rest)) >= 0 ? (*attr)[i].value.value : token();
+            token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
 
             if (escape) buf.append_escaped(prefix, escape); else buf << prefix;
 
@@ -1312,6 +1331,18 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
     }
     break;
     }
+
+    //support for 'first' and 'after' attributes
+    bool nonempty = buf.len() > oldbufsize;
+
+    int i;
+    token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
+    if (prefix && nonempty)
+        buf.ins(0, prefix);
+
+    token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+    if (suffix && nonempty)
+        buf << suffix;
 
     return buf;
 }

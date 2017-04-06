@@ -168,7 +168,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 736707743;
+    static const int HASHID = 753485362;
 
     int intergen_hash_id() const override { return HASHID; }
 
@@ -183,8 +183,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ot::js::object@wrapper");
-        static const coid::token _dlua("ot::lua::object@wrapper");
+        static const coid::token _djs("ot::object@wrapper.js");
+        static const coid::token _dlua("ot::object@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {

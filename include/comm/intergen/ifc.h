@@ -122,7 +122,7 @@ protected:
 
 public:
 
-    static const int VERSION = 5;
+    static const int VERSION = 6;
 
     //@return host class pointer
     //@note T derived from policy_intrusive_base
@@ -296,7 +296,7 @@ private:
     
 ///Force registration of a script binder in a statically-linked library
 #define FORCE_REGISTER_BINDER_INTERFACE(ns,ifc,script) \
-    namespace ns { namespace script { void* force_register_js_##ifc(); static void* autoregger_##ifc = force_register_js_##ifc(); }}
+    namespace ns { namespace script { void* force_register_##ifc(); static void* autoregger_##ifc = force_register_##ifc(); }}
     
 
 #endif //__INTERGEN_IFC_H__

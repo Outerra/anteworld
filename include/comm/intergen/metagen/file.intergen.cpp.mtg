@@ -232,7 +232,7 @@ $[..nss]$namespace $@value$ {
 $[/..nss]-$
 
 $-[event !implicit?]$
-$return.type$ $....class$::$intname$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
+$return.type$ $....class$::$intname$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
 {
 	if (!$..varname$) $(if default_event_body?)${ $default_event_body$ }$(elif)$
         throw coid::exception() << "$name$" << " handler not implemented";$(/if)$
