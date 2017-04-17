@@ -23,7 +23,7 @@ public:
     {
         typedef iref<ns::other> (*fn_bind)(const script_handle&, const coid::charstr&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::js::other.create@creator";
+        static const coid::token ifckey = "ns::other.create@creator.js";
 
         if (!binder)
             binder = reinterpret_cast<fn_bind>(

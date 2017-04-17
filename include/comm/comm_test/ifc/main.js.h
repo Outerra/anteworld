@@ -23,7 +23,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::js::main.create@creator";
+        static const coid::token ifckey = "ns::main.create@creator.js";
 
         if (!binder)
             binder = reinterpret_cast<fn_bind>(
@@ -40,7 +40,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(const script_handle&, int, iref<ns::other>, int&, iref<ns::other>&, int, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::js::main.create_special@creator";
+        static const coid::token ifckey = "ns::main.create_special@creator.js";
 
         if (!binder)
             binder = reinterpret_cast<fn_bind>(
@@ -57,7 +57,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(const script_handle&, int, int&, int&, int, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::js::main.create_wp@creator";
+        static const coid::token ifckey = "ns::main.create_wp@creator.js";
 
         if (!binder)
             binder = reinterpret_cast<fn_bind>(

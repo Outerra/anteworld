@@ -799,37 +799,52 @@ public:
     }
 
     ///Append number with metric suffix
-    //@param space space character, 0 for no spacing
+    //@param num value to append
+    //@param minsize min char size to append, includes padding
+    //@param align alignment
+    //@param space space character between number and unit prefix, 0 for none
     //@return offset past the last non-padding character
-    uint append_num_metric(uint64 size, uints minsize = 0, EAlignNum align = ALIGN_NUM_RIGHT, char space=' ')
+    uint append_num_metric(uint64 num, uint minsize = 0, EAlignNum align = ALIGN_NUM_RIGHT, char space=' ')
     {
-        double v = double(size);
-        int ndigits = size > 0
-            ? 0 + (int)log10(v)
+        double v = double(num);
+        int ndigits = num > 0
+            ? 1 + (int)log10(v)
             : 0;
 
-        if (minsize != 0 && minsize < 7)
-            minsize = 7;
+        const uint unit_space = minsize && align >= ALIGN_NUM_RIGHT ? 1 : 0;
+        const uint pad_space = space ? 1 : 0;
+        const uint lowsize = 5 + 1 + pad_space;
+        if (minsize != 0 && minsize < lowsize)
+            minsize = lowsize;
 
-        const char* prefixes = "\0kMGTPEZY";
+        const char* prefixes = " kMGTPEZY";
         int ngroup = ndigits / 3;
         char prefix = prefixes[ngroup];
 
         //reduce to 3 digits
         if (ndigits > 3) {
             v /= pow(10.0, 3 * ngroup);
-            uint offs = append_fixed(v, minsize ? minsize - 2 : 4, (ndigits - 3 * ngroup) - 3, align);
-            append(' ');
+            uint res = align >= ALIGN_NUM_RIGHT ? 1 + pad_space : 0;
+            uint offs = append_fixed(v, minsize ? minsize - res : 5, (ndigits - 3 * ngroup) - 3, align);
+            if (res)
+                appendn(res, ' ');
+            char* p = _tstr.ptr() + offs;
             if (space)
-                append(space);
-            _tstr[offs + 1] = prefix;
-            return offs + 2;
+                *p++ = space;
+            *p = prefix;
+            return offs + 1 + pad_space;
         }
         else {
-            uint offs = append_num(10, size, minsize ? minsize - 1 : 0, align);
+            uint res = align >= ALIGN_NUM_RIGHT ? unit_space + pad_space : 0;
+            uint offs = append_num(10, num, minsize ? minsize - res : 0, align);
+            if (res)
+                appendn(res, ' ');
+            char* p = _tstr.ptr() + offs;
             if (space)
-                append(space);
-            return offs + 1;
+                *p++ = space;
+            if (unit_space)
+                *p = prefix;
+            return offs + unit_space + pad_space;
         }
     }
 
@@ -880,6 +895,7 @@ public:
     }
 
     ///Append floating point number with fixed number of characters
+    //@param maxsize maximum buffer size to use
     //@param nfrac number of decimal places: >0 maximum, <0 precisely -nfrac places
     //@return offset past the last non-padding char
     uint append_fixed(double v, uints maxsize, int nfrac = -1, EAlignNum align = ALIGN_NUM_RIGHT)

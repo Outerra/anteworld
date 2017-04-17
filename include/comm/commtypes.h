@@ -39,6 +39,7 @@
 #define __COID_COMM_COMMTYPES__HEADER_FILE__
 
 #include "namespace.h"
+#include <type_traits>
 
 #if defined(__MINGW32__)
 

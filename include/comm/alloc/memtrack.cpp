@@ -191,7 +191,7 @@ void memtrack_free( const char* name, size_t size )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-uint memtrack_list( memtrack* dst, uint nmax ) 
+uint memtrack_list( memtrack* dst, uint nmax, bool modified_only ) 
 {
     memtrack_registrar* mtr = memtrack_register();
     if(!mtr || !mtr->ready)
@@ -204,7 +204,7 @@ uint memtrack_list( memtrack* dst, uint nmax )
     uint i=0;
     for( ; ib!=ie && i<nmax; ++ib ) {
         memtrack& p = *ib;
-        if(p.nallocs == 0)
+        if((p.ntotalallocs == 0) || (p.nallocs == 0) && (modified_only))
             continue;
 
         dst[i++] = p;

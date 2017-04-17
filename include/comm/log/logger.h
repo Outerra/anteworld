@@ -68,6 +68,21 @@ class logger;
 class logmsg;
 class policy_msg;
 
+//@return logmsg object if given log type and source is currently allowed to log
+ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
+
+
+#ifdef COID_VARIADIC_TEMPLATES
+
+///Formatted log message
+//@param type log level
+//@param hash source identifier (used for filtering)
+//@param fmt @see charstr.print
+template<class ...Vs>
+void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs);
+
+#endif //COID_VARIADIC_TEMPLATES
+
 ////////////////////////////////////////////////////////////////////////////////
 //@{ Log message with specified severity
 #define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::None, src ); if(q) {q->str() << msg; }} while(0)
@@ -79,8 +94,14 @@ class policy_msg;
 #define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Error, src ); if(q) {q->str() << msg; }} while(0)
 //@}
 
-///Log fatal error and throw exception
-#define coidlog_exception(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
+///Log fatal error and throw exception with the same message
+#define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
+
+//@{ Log error if condition fails
+#define coidlog_assert(test, src, msg)          do { if(!(test)) coidlog_error(src, msg); } while(0)
+#define coidlog_assert_ret(test, ret, src, msg) do { if(!(test)) { coidlog_error(src, msg); return ret; } } while(0)
+#define coidlog_assert_retvoid(test, src, msg)  do { if(!(test)) { coidlog_error(src, msg); return; } } while(0)
+//@}
 
 ///Debug message existing only in debug builds
 #ifdef _DEBUG
@@ -196,10 +217,6 @@ protected:
 typedef ref<logmsg> logmsg_ptr;
 
 ////////////////////////////////////////////////////////////////////////////////
-
-//@return logmsg object if given log type and source is currently allowed to log
-ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
-
 
 #ifdef COID_VARIADIC_TEMPLATES
 

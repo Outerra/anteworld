@@ -25,7 +25,7 @@ public:
     {
         typedef iref<ns::other> (*fn_bind)(lua_State * L, const ::lua::script_handle&, const coid::charstr&, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::lua::other.create@creator";
+        static const coid::token ifckey = "ns::other.create@creator.lua";
         
         if(!binder)
             binder = reinterpret_cast<fn_bind>(

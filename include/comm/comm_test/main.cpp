@@ -82,6 +82,37 @@ int main( int argc, char* argv[] )
 
         slotalloc_tracking<value> ring;
     }
+
+    {
+        charstr txt;
+        txt.append_num_metric(33, 8, ALIGN_NUM_RIGHT);
+        txt << "m\n";
+        txt.append_num_metric(4567, 8, ALIGN_NUM_RIGHT);
+        txt << "m\n";
+        txt.append_num_metric(8901234, 8, ALIGN_NUM_RIGHT);
+        txt << "m\n";
+
+        txt.append_num_metric(33, 8, ALIGN_NUM_RIGHT, 0);
+        txt << "m\n";
+        txt.append_num_metric(4567, 8, ALIGN_NUM_RIGHT, 0);
+        txt << "m\n";
+        txt.append_num_metric(8901234, 8, ALIGN_NUM_RIGHT, 0);
+        txt << "m\n";
+
+        txt.nth_char(txt.append_num_metric(33, 9, ALIGN_NUM_LEFT), 'm');
+        txt << "\n";
+        txt.nth_char(txt.append_num_metric(4567, 9, ALIGN_NUM_LEFT), 'm');
+        txt << "\n";
+        txt.nth_char(txt.append_num_metric(8901234, 9, ALIGN_NUM_LEFT), 'm');
+        txt << "\n";
+
+        txt.nth_char(txt.append_num_metric(33, 9, ALIGN_NUM_CENTER), 'm');
+        txt << "\n";
+        txt.nth_char(txt.append_num_metric(4567, 9, ALIGN_NUM_CENTER), 'm');
+        txt << "\n";
+        txt.nth_char(txt.append_num_metric(8901234, 9, ALIGN_NUM_CENTER), 'm');
+        txt << "\n";
+    }
  
     uint64 stuff[] = {7000, 45, 2324, 11, 0, 222};
     radixi<uint64, uint, uint64> rx;

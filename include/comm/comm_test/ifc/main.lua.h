@@ -25,7 +25,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::lua::main.create@creator";
+        static const coid::token ifckey = "ns::main.create@creator.lua";
         
         if(!binder)
             binder = reinterpret_cast<fn_bind>(
@@ -44,7 +44,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, int, iref<ns::other>, int&, iref<ns::other>&, int, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::lua::main.create_special@creator";
+        static const coid::token ifckey = "ns::main.create_special@creator.lua";
         
         if(!binder)
             binder = reinterpret_cast<fn_bind>(
@@ -63,7 +63,7 @@ public:
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, int, int&, int&, int, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ns::lua::main.create_wp@creator";
+        static const coid::token ifckey = "ns::main.create_wp@creator.lua";
         
         if(!binder)
             binder = reinterpret_cast<fn_bind>(

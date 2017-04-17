@@ -47,7 +47,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 4122940601;
+    static const int HASHID = 4072607744;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -62,8 +62,8 @@ public:
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
-        static const coid::token _djs("ns::js::other@wrapper");
-        static const coid::token _dlua("ns::lua::other@wrapper");
+        static const coid::token _djs("ns::other@wrapper.js");
+        static const coid::token _dlua("ns::other@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -112,7 +112,7 @@ inline iref<T> other::create( T* _subclass_, const coid::charstr& str )
     typedef iref<T> (*fn_creator)(other*, const coid::charstr&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::other.create@4122940601";
+    static const coid::token ifckey = "ns::other.create@4072607744";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

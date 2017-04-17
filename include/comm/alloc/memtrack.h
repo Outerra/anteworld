@@ -129,7 +129,7 @@ void memtrack_free( const char* name, size_t size );
 //@param dst pointer to a buffer to receive the allocation lists
 //@param nmax maximum number of entries
 //@return number of entries returned
-unsigned int memtrack_list( memtrack* dst, unsigned int nmax );
+unsigned int memtrack_list( memtrack* dst, unsigned int nmax, bool modified_only = true );
 
 //@return the number of entries currently kept in memory tracker
 unsigned int memtrack_count();

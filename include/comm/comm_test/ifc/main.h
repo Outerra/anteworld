@@ -93,7 +93,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 3221005457;
+    static const int HASHID = 3170672600;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -107,9 +107,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ns::main.create@3221005457");
-        static const coid::token _djs("ns::js::main@wrapper");
-        static const coid::token _dlua("ns::lua::main@wrapper");
+        static const coid::token _dc("ns::main.create@3170672600");
+        static const coid::token _djs("ns::main@wrapper.js");
+        static const coid::token _dlua("ns::main@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -161,7 +161,7 @@ inline iref<T> main::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(main*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create@3221005457";
+    static const coid::token ifckey = "ns::main.create@3170672600";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -179,7 +179,7 @@ inline iref<T> main::create_special( T* _subclass_, int a, iref<ns::other> b, in
     typedef iref<T> (*fn_creator)(main*, int, iref<ns::other>, int&, iref<ns::other>&, int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create_special@3221005457";
+    static const coid::token ifckey = "ns::main.create_special@3170672600";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -197,7 +197,7 @@ inline iref<T> main::create_wp( T* _subclass_, int a, int& b, int& c, int d )
     typedef iref<T> (*fn_creator)(main*, int, int&, int&, int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create_wp@3221005457";
+    static const coid::token ifckey = "ns::main.create_wp@3170672600";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
