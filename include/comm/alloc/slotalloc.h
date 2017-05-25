@@ -286,7 +286,7 @@ public:
     {
         uints id = p - _array.ptr();
         if(id >= _array.size())
-            throw exception("object outside of bounds");
+            throw exception("attempting to delete an invalid object ") << id;
 
         DASSERT_RETVOID( get_bit(id) );
 

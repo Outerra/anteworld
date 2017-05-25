@@ -21,45 +21,6 @@
 
 #define simd_align __declspec(align(16))
 
-template<class T>
-inline T stdmin( const T& a, const T& b ) {
-    return a<b ? a : b;
-}
-
-template<class T>
-inline T stdmax( const T& a, const T& b ) {
-    return a>b ? a : b;
-}
-
-
-template<class T>
-inline T stdmin3( const T& a, const T& b, const T& c ) {
-    T x = a<b ? a : b;
-    return x<c ? x : c;
-}
-
-template<class T>
-inline T stdmax3( const T& a, const T& b, const T& c ) {
-    T x = a>b ? a : b;
-    return x>c ? x : c;
-}
-
-
-template<class T>
-inline T stdmin4( const T& a, const T& b, const T& c, const T& d ) {
-    T x = a<b ? a : b;
-    T y = c<d ? c : d;
-    return x<y ? x : y;
-}
-
-template<class T>
-inline T stdmax4( const T& a, const T& b, const T& c, const T& d ) {
-    T x = a>b ? a : b;
-    T y = c>d ? c : d;
-    return x>y ? x : y;
-}
-
-
 namespace glm {
 
 /// clamped sqrt returning 0 on negative values

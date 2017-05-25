@@ -1069,20 +1069,24 @@ static void register_binders_for_$name$( bool on )
         : nullptr);
 
 $-[method static?]$
+    //c++ creator of Lua interface object
     interface_register::register_interface_creator(
         "$..ns rest="::" after="::"$$..name$.$name$@creator.lua",
         on ? (void*)&$..name$_lua_dispatcher::$name$ : nullptr);
 $-(if !internal?)$
+
+    //creator from script
     interface_register::register_interface_creator(
         "$..ns rest="::" after="::"$lua::$..name$.$name$",
         on ? (void*)&$..name$_lua_dispatcher::luacreator_$name$$@order$ : nullptr);
 $-(/if)$
 $-[/method]$
 $-(if virtual!)$
+
+    //wrapper interface creator from existing c++ interface
     interface_register::register_interface_creator(
         "$ns rest="::" after="::"$$name$@wrapper.lua",
         on ? (void*)&create_wrapper_$name$ : nullptr);
-
 $-(/if)$
 }
 

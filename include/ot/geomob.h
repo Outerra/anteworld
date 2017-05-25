@@ -305,6 +305,31 @@ public:
     /// render blood into hit mask
     void ray_vs_hit_mask( const double3& ecef_pos, const float3& ecef_dir, uint hit_mesh_id );
 
+    
+    ///
+    uint create_dynamic_lightmap( uint width, uint height );
+
+    ///
+    void destroy_dynamic_lightmap( uint lightmap_id );
+
+    ///
+    uint get_dynamic_lightmap_id() const;
+
+    ///
+    uint add_light_block( uint x, uint y, uint width, uint height );
+
+    ///
+    void remove_light_block( uint light_block_id );
+
+    ///
+    void turn_on_block( uint light_block_id, uint rgbi );
+
+    ///
+    void turn_off_block( uint light_block_id );
+
+    ///
+    void turn_off_lightmap();
+
     // --- creators ---
 
     /// create geom instance
@@ -358,7 +383,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 1654959773;
+    static const int HASHID = 2643048548;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -423,7 +448,7 @@ inline iref<T> geomob::create( T* _subclass_, const coid::token& url, coid::uint
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, coid::uint);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create@1654959773";
+    static const coid::token ifckey = "ot::geomob.create@2643048548";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -441,7 +466,7 @@ inline iref<T> geomob::create2( T* _subclass_, const coid::token& url, coid::uin
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, coid::uint, double3, quat);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create2@1654959773";
+    static const coid::token ifckey = "ot::geomob.create2@2643048548";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -459,7 +484,7 @@ inline iref<T> geomob::create3( T* _subclass_, const coid::token& url, coid::uin
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, coid::uint, const coid::token&, double3, quat);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create3@1654959773";
+    static const coid::token ifckey = "ot::geomob.create3@2643048548";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -477,7 +502,7 @@ inline iref<T> geomob::from_entity_id( T* _subclass_, coid::uint entity_id )
     typedef iref<T> (*fn_creator)(geomob*, coid::uint);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.from_entity_id@1654959773";
+    static const coid::token ifckey = "ot::geomob.from_entity_id@2643048548";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -495,7 +520,7 @@ inline iref<T> geomob::_get_instance_interface( T* _subclass_, void* so )
     typedef iref<T> (*fn_creator)(geomob*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob._get_instance_interface@1654959773";
+    static const coid::token ifckey = "ot::geomob._get_instance_interface@2643048548";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -764,6 +789,30 @@ inline uint geomob::create_hit_mask_component()
 
 inline void geomob::ray_vs_hit_mask( const double3& ecef_pos, const float3& ecef_dir, uint hit_mesh_id )
 { return VT_CALL(void,(const double3&,const float3&,uint),84)(ecef_pos,ecef_dir,hit_mesh_id); }
+
+inline uint geomob::create_dynamic_lightmap( uint width, uint height )
+{ return VT_CALL(uint,(uint,uint),85)(width,height); }
+
+inline void geomob::destroy_dynamic_lightmap( uint lightmap_id )
+{ return VT_CALL(void,(uint),86)(lightmap_id); }
+
+inline uint geomob::get_dynamic_lightmap_id() const
+{ return VT_CALL(uint,() const,87)(); }
+
+inline uint geomob::add_light_block( uint x, uint y, uint width, uint height )
+{ return VT_CALL(uint,(uint,uint,uint,uint),88)(x,y,width,height); }
+
+inline void geomob::remove_light_block( uint light_block_id )
+{ return VT_CALL(void,(uint),89)(light_block_id); }
+
+inline void geomob::turn_on_block( uint light_block_id, uint rgbi )
+{ return VT_CALL(void,(uint,uint),90)(light_block_id,rgbi); }
+
+inline void geomob::turn_off_block( uint light_block_id )
+{ return VT_CALL(void,(uint),91)(light_block_id); }
+
+inline void geomob::turn_off_lightmap()
+{ return VT_CALL(void,(),92)(); }
 
 #pragma warning(pop)
 

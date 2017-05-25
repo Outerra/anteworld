@@ -79,7 +79,14 @@ public:
     ///Get interface creators matching the given name
     //@param name interface creator name in the format [ns1::[ns2:: ...]]::class[.creator]
     //@param script script type (js, lua ...), if empty anything matches
+    //@return array of interface creators for given script type (with script_handle argument)
     static dynarray<creator>& get_interface_creators( const token& name, const token& script, dynarray<creator>& dst );
+
+    ///Get script interface creators matching the given name
+    //@param name interface creator name in the format [ns1::[ns2:: ...]]::class[.creator]
+    //@param script script type (js, lua ...), if empty anything matches
+    //@return array of interface creators for given script type (with native script lib argument)
+    static dynarray<creator>& get_script_interface_creators( const token& name, const token& script, dynarray<creator>& dst );
 
     ///Find interfaces containing given string
     static dynarray<creator>& find_interface_creators( const regex& str, dynarray<creator>& dst );

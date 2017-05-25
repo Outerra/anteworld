@@ -583,7 +583,7 @@ public:
     bool def_escape_pair(int escrule, const token& code, const token& replacewith)
     {
         --escrule;
-        DASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false);
+        ASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
 
         //add escape pairs, longest codes first
         escpair* ep = _escary[escrule]->pairs.add_sort(code);
@@ -596,7 +596,7 @@ public:
     bool is_escaped_char(int escrule, char c)
     {
         --escrule;
-        DASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false);
+        ASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
 
         return _escary[escrule]->is_escaped_char(c);
     }

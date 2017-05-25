@@ -226,7 +226,7 @@ public:
     {
         DASSERT( line>=4 );
 
-        _line = line & ~1;
+        _line = line & ~uints(1);
 #ifdef SYSTYPE_WIN
         token nl = "\r\n";
 #else

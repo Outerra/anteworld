@@ -51,14 +51,30 @@
 
 namespace v8 {
 
+#define V8_DECL_ISO(iso)            v8::Isolate* iso = v8::Isolate::GetCurrent()
+#define V8_DECL_ISO_ARGS(iso,args)  v8::Isolate* iso = args.GetIsolate()
+
 #ifdef V8_MAJOR_VERSION
-    
-    #define NEWTYPE2(iso,t,a)   v8::t::New(iso, a)
-    
-    #define NULLv8(iso)         v8::Null(iso)
 
+    #define V8_UNDEFINED            v8::Local<v8::Value>()
+    #define V8_NULL(iso)            v8::Null(iso)
 
+    #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs(iso)
+    #define V8_ESCAPABLE_SCOPE(iso,hs)  v8::EscapableHandleScope hs(iso)
+    #define V8_ESCAPE(hs,h)         hs.Escape(h)
 
+    typedef void                    CBK_RET;
+    typedef FunctionCallbackInfo<Value> ARGUMENTS;
+    typedef PropertyCallbackInfo<Value> ACCESSOR;
+    #define V8_RETURN(args,val)     (void)args.GetReturnValue().Set(val);
+
+    #define V8_NEWTYPE(iso,t)       v8::t::New(iso)
+    #define V8_NEWTYPE2(iso,t,a)    v8::t::New(iso, a)
+    #define V8_PERSISTENT(iso,o,n)  (o).Reset(iso, n)
+    #define V8_RESET(o)             (o).Reset()
+    #define V8_LOCAL(iso,o)         (o).Get(iso)
+    #define V8_CUR_CONTEXT(iso)     iso->GetCurrentContext()
+   
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
         return String::NewFromOneByte(Isolate::GetCurrent(), (const uint8*)tok.ptr(), String::kInternalizedString, tok.len());
     }
@@ -77,11 +93,30 @@ namespace v8 {
         return T::New(v8::Isolate::GetCurrent(), p1);
     }
 
-#else
-    
-    #define NULLv8(iso)         v8::Null()
+    inline void throw_js( v8::Isolate* iso, v8::Local<v8::Value> (*err)(v8::Local<v8::String>), const coid::token& s ) {
+        iso->ThrowException((*err)(v8::String::NewFromUtf8(iso, s.ptr(), v8::String::kNormalString, s.len())));
+    }
 
-    #define NEWTYPE2(iso,t,a)   v8::t::New(a)
+#else
+
+    #define V8_UNDEFINED            v8::Undefined()
+    #define V8_NULL(iso)            v8::Null()
+
+    #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs
+    #define V8_ESCAPABLE_SCOPE(iso,hs)  v8::HandleScope hs
+    #define V8_ESCAPE(hs,h)         hs.Close(h)
+
+    typedef Handle<Value>           CBK_RET;
+    typedef Arguments               ARGUMENTS;
+    typedef AccessorInfo            ACCESSOR;
+    #define V8_RETURN(args,val)     val
+
+    #define V8_NEWTYPE(iso,t)       v8::t::New()
+    #define V8_NEWTYPE2(iso,t,a)    v8::t::New(a)
+    #define V8_PERSISTENT(iso,o,n)  o = o.New(iso,n)
+    #define V8_RESET(o)             do { if (!(o).IsWeak()) (o).Dispose(); (o).Clear(); } while(0)
+    #define V8_LOCAL(iso,o)         o
+    #define V8_CUR_CONTEXT(iso)     v8::Context::GetCurrent()
 
     
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
@@ -97,6 +132,10 @@ namespace v8 {
 
     template<class T, class P1>
     inline auto new_object( const P1& p1 ) -> decltype(T::New(p1)) { return T::New(p1); }
+
+    inline v8::Handle<v8::Value> throw_js( v8::Isolate* iso, v8::Local<v8::Value> (*err)(v8::Handle<v8::String>), const coid::token& s ) {
+        return v8::ThrowException(err(v8::String::New(s.ptr(), s.len())));
+    }
 
 #endif
 
@@ -1129,7 +1168,7 @@ inline v8::Handle<v8::Value> v8_streamer<T>::to_v8(const T& v)
 {
     v8_enum_helper<std::is_enum<T>::value, T> en;
     if(std::is_enum<T>::value)
-        return NEWTYPE2(v8::Isolate::GetCurrent(),Int32, en << v);
+        return V8_NEWTYPE2(v8::Isolate::GetCurrent(),Int32, en << v);
 
     auto& streamer = THREAD_SINGLETON(v8_streamer_context);
     streamer.meta.xstream_out(v);

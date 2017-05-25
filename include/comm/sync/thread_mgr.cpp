@@ -98,12 +98,11 @@ void* thread_manager::def_thread( void* pinfo )
     //pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, 0 );
     //pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, 0 );
 
-    void* res;
+    void* res = 0;
     try {
         res = ti->entry();
     }
 	catch(thread::CancelException &) {
-		res = 0;
 	}
     catch(const std::exception& e) {
         auto log = canlog(ELogType::Exception, "threadmgr");

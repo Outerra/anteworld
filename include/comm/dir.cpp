@@ -89,7 +89,8 @@ bool directory::is_valid_directory(zstring arg)
 {
     token tok = arg.get_token();
 
-    bool dosdrive = tok.len() == 2 && tok[1] == ':';
+    const uint tlen = tok.len();
+    bool dosdrive = tlen > 1 && tlen <= 3 && tok[1] == ':';
     bool lastsep = tok.last_char() == '\\' || tok.last_char() == '/';
 
     if(!dosdrive && lastsep) {

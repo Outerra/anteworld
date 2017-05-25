@@ -155,6 +155,44 @@ public:
         return dst;
     }
 
+    virtual dynarray<creator>& get_script_interface_creators( const token& name, const token& script, dynarray<creator>& dst )
+    {
+        //interface creator names:
+        // [ns1::[ns2:: ...]]::class.creator
+        static token SEP = "::";
+        token ns = name;
+        token classname = ns.cut_right_group_back(SEP);
+        token creatorname = classname.cut_right('.', token::cut_trait_remove_sep_default_empty());
+
+        GUARDTHIS(_mx);
+
+        auto i = _hash.begin();
+        auto ie = _hash.end();
+        for(; i!=ie; ++i) {
+            if(i->script)
+                continue;
+
+            if(i->classname != classname)
+                continue;
+
+            if(creatorname && i->creatorname != creatorname)
+                continue;
+
+            token ins = i->ns;
+            if(script && (!ins.consume_end(script) || !ins.consume_end("::")))
+                continue;
+
+            if(ns && ins != ns)
+                continue;
+
+            creator* p = dst.add();
+            p->creator_ptr = i->creator_ptr;
+            p->name = token(i->ifcname);
+        }
+
+        return dst;
+    }
+
 
     bool current_dir( token curpath, charstr& dst )
     {
@@ -286,6 +324,15 @@ dynarray<interface_register::creator>& interface_register::get_interface_creator
     // [ns1::[ns2:: ...]]::class.creator
     interface_register_impl& reg = interface_register_impl::get();
     return reg.get_interface_creators(name, script, dst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+dynarray<interface_register::creator>& interface_register::get_script_interface_creators( const token& name, const token& script, dynarray<interface_register::creator>& dst )
+{
+    //interface creator names:
+    // [ns1::[ns2:: ...]]::class.creator
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.get_script_interface_creators(name, script, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

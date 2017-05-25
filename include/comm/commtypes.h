@@ -148,6 +148,12 @@
 # define xstrcasecmp      strcasecmp
 #endif
 
+///Static constant, adjustable in debug, const & optimized in release builds
+#ifdef _DEBUG
+#define STATIC_DBG static
+#else
+#define STATIC_DBG static const
+#endif
 
 //#define _USE_32BIT_TIME_T
 #include <sys/types.h>

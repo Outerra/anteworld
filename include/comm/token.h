@@ -1698,6 +1698,17 @@ struct token
         return false;
     }
 
+    ///Consume trailing substring if matches
+    bool consume_end( const token& tok )
+    {
+        if( ends_with(tok) ) {
+            _pte -= tok.lens();
+            return true;
+        }
+
+        return false;
+    }
+
     ///Consume leading word if matches and is followed by whitespace, which is also consumed
     //@param tok leading string to consume if matches, which must be followed by end or by whitespace characters
     bool consume_word( const token& tok )
@@ -1731,6 +1742,17 @@ struct token
         return false;
     }
     
+    ///Consume trailing substring if matches, case insensitive
+    bool consume_end_icase( const token& tok )
+    {
+        if( ends_with_icase(tok) ) {
+            _pte -= tok.lens();
+            return true;
+        }
+
+        return false;
+    }
+
     //@return part of the token after a substring
     token get_after_substring( const substring& sub ) const
     {
@@ -2536,6 +2558,11 @@ public:
     zstring& operator = (const token& tok);
     zstring& operator = (const charstr& str);
     zstring& operator = (const zstring& s);
+
+    zstring& operator << (const char* sz);
+    zstring& operator << (const token& tok);
+    zstring& operator << (const charstr& str);
+    zstring& operator << (const zstring& s);
 
     void swap( zstring& x ) {
         std::swap(_zptr, x._zptr);
