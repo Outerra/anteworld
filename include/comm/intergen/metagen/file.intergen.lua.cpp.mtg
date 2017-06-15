@@ -33,14 +33,14 @@ class $name$_lua_dispatcher
     : public ::lua::interface_wrapper_base<$ns rest="::"$::$name$>
 {
 $-(if event?)$
-    iref<::lua::weak_registry_handle> _events[$event.@size$];
+    mutable iref<::lua::weak_registry_handle> _events[$event.@size$];
+    mutable bool _bound_events;
     
     void init_event_registry() {
         for (int i = 0; i < $event.@size$; i++) {
             _events[i] = new ::lua::weak_registry_handle;
         }
     }
-    bool _bound_events;
 
 $-(/if)$
 $-(if hasprops?)$
@@ -55,7 +55,7 @@ public:
 
     iref<::lua::registry_handle> create_interface_object(bool make_weak);
 $-(if event?)$
-    void bind_events( bool force, iref<::lua::registry_handle> ref );
+    void bind_events( bool force, iref<::lua::registry_handle> ref ) const;
 $-(/if)$
 
     COIDNEWDELETE("$[ns]$$@value$::$[/ns]$$name$_lua_dispatcher");
@@ -136,7 +136,7 @@ $-(if event.empty!)$
     // --- interface events ---
 
 $-[event]$
-    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) override;
+    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ override;
 $-[/event]$
 
 $-[event]$
@@ -411,7 +411,7 @@ $return.type$ $..name$_lua_dispatcher::lua_$name$$@index$_ffi(void * ifc_this $-
 $-[/method]$
 $-[event]$
 ////////////////////////////////////////////////////////////////////////////////
-$return.type$ $..name$_lua_dispatcher::$name$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$)
+$return.type$ $..name$_lua_dispatcher::$name$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
 {
 $-(if internal?)$
     throw coid::exception("method not marked for scripting");
@@ -573,7 +573,7 @@ __declspec(noinline) int $name$_lua_dispatcher::lualog_exc( lua_State * L )
             lua_pop(L, 1);
         }
 
-        intergen_interface::ifclog_ext(coid::ELogType::None, coid::tokenhash("$ns rest="::" after="::"$$name$"),
+        intergen_interface::ifclog_ext(coid::log::none, coid::tokenhash("$ns rest="::" after="::"$$name$"),
             inst, lua_totoken(L, -1));
 
         lua_pop(L, 1);
@@ -755,7 +755,7 @@ iref<::lua::registry_handle> $name$_lua_dispatcher::create_interface_object( boo
 
 $-(if event.empty!)$
 ////////////////////////////////////////////////////////////////////////////////
-void $name$_lua_dispatcher::bind_events(bool force, iref<::lua::registry_handle> ref )
+void $name$_lua_dispatcher::bind_events(bool force, iref<::lua::registry_handle> ref ) const
 {
     if (!force && _bound_events)
         return;

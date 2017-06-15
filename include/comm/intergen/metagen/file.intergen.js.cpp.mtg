@@ -33,9 +33,8 @@ class $name$_js_dispatcher
     : public ::js::interface_wrapper_base<$ns rest="::"$::$name$>
 {
 $-(if event?)$
-    v8::Persistent<v8::Function> _events[$event.@size$];
-    //v8::Persistent<v8::Object> _eventobj;
-    bool _bound_events;
+    mutable v8::Persistent<v8::Function> _events[$event.@size$];
+    mutable bool _bound_events;
 
 $-(/if)$
 $-(if hasprops?)$
@@ -75,7 +74,7 @@ public:
 
     static v8::Handle<v8::Script> load_script( const coid::token& scriptfile, const coid::token& file_name );
 $-(if event?)$
-    void bind_events( v8::Handle<v8::Context> context, bool force, v8::Handle<v8::Value> ref );
+    void bind_events( v8::Handle<v8::Context> context, bool force, v8::Handle<v8::Value> ref ) const;
 $-(/if)$
 
     COIDNEWDELETE("$[ns]$$@value$::$[/ns]$$name$_js_dispatcher");
@@ -147,7 +146,7 @@ $-(if event.empty!)$
     // --- interface events ---
 
 $-[event]$
-    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) override;
+    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ override;
 $-[/event]$
 
 $-[event]$
@@ -324,7 +323,7 @@ $(/if)-$
 $-[/method]$
 $-[event]$
 ////////////////////////////////////////////////////////////////////////////////
-$return.type$ $..name$_js_dispatcher::$name$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$)
+$return.type$ $..name$_js_dispatcher::$name$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
 {
     v8::Isolate* iso = v8::Isolate::GetCurrent();
 
@@ -618,7 +617,7 @@ v8::CBK_RET $name$_js_dispatcher::v8log( const v8::ARGUMENTS& args )
 
     coid::token tokey(*key, key.length());
 
-    intergen_interface::ifclog_ext(coid::ELogType::None, coid::tokenhash("$ns rest="::" after="::"$$name$"),
+    intergen_interface::ifclog_ext(coid::log::none, coid::tokenhash("$ns rest="::" after="::"$$name$"),
         inst, tokey);
 
     return V8_RETURN(args, V8_UNDEFINED);
@@ -828,7 +827,7 @@ v8::Handle<v8::Script> $name$_js_dispatcher::load_script( const coid::token& scr
 
 $-(if event.empty!)$
 ////////////////////////////////////////////////////////////////////////////////
-void $name$_js_dispatcher::bind_events( v8::Handle<v8::Context> context, bool force, v8::Handle<v8::Value> ref )
+void $name$_js_dispatcher::bind_events( v8::Handle<v8::Context> context, bool force, v8::Handle<v8::Value> ref ) const
 {
     if (!force && _bound_events)
         return;

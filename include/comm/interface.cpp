@@ -260,10 +260,10 @@ void* interface_register::get_interface_creator( const token& ifcname )
 {
     interface_register_impl& reg = interface_register_impl::get();
     if(!reg.check_version()) {
-        ref<logmsg> msg = canlog(coid::ELogType::Error, "ifcreg", 0);
+        ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
         msg->str() << "mismatched intergen version for " << ifcname;
         //print requires VS2015
-        //print(coid::ELogType::Error, "ifcreg", "mismatched intergen version for {}", ifcname);
+        //print(coid::log::error, "ifcreg", "mismatched intergen version for {}", ifcname);
         return 0;
     }
 
@@ -288,7 +288,7 @@ const charstr& interface_register::root_path()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> interface_register::canlog( ELogType type, const tokenhash& hash, const void* inst )
+ref<logmsg> interface_register::canlog( log::type type, const tokenhash& hash, const void* inst )
 {
     fn_log_t canlogfn = interface_register_impl::get()._fn_log;
     ref<logmsg> msg;
@@ -352,8 +352,8 @@ bool interface_register::register_interface_creator( const token& ifcname, void*
 
     if(!reg.check_version()) {
         if(creator_ptr) {
-            //print(coid::ELogType::Error, "ifcreg", "declining interface registration for {}, mismatched intergen version", ifcname);
-            ref<logmsg> msg = canlog(coid::ELogType::Error, "ifcreg", 0);
+            //print(coid::log::error, "ifcreg", "declining interface registration for {}, mismatched intergen version", ifcname);
+            ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
             msg->str() << "declining interface registration for " << ifcname << ", mismatched intergen version";
         }
         return false;

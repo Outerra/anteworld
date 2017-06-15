@@ -322,7 +322,7 @@ struct interface_context
     //v8::Persistent<v8::Script> _script;
     v8::Persistent<v8::Object> _object;
 
-    v8::Local<v8::Context> context( v8::Isolate* iso ) {
+    v8::Local<v8::Context> context( v8::Isolate* iso ) const {
 #ifdef V8_MAJOR_VERSION
         return _object.Get(iso)->CreationContext();
 #else

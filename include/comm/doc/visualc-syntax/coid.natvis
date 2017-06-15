@@ -18,25 +18,13 @@
     <DisplayString>size={((unsigned int*)_ptr)[-1]} {_ptr,s}</DisplayString>
 </Type>
 
-<Type Name="coid::dynarray&lt;*,unsigned int,*&gt;">
-    <DisplayString>size={((unsigned int*)_ptr)[-1]}</DisplayString>
+<Type Name="coid::dynarray&lt;*,*,*&gt;">
+    <DisplayString>size={((size_t*)_ptr)[-1]}</DisplayString>
     <Expand>
-        <Item Name="[size]" ExcludeView="simple" >((unsigned int*)_ptr)[-1]</Item>
-        <Item Name="[capacity]" ExcludeView="simple">((unsigned int*)_ptr)[-2]/sizeof(*_ptr)</Item>
+        <Item Name="[size]" ExcludeView="simple" >((size_t*)_ptr)[-1]</Item>
+        <Item Name="[capacity]" ExcludeView="simple">((size_t*)_ptr)[-2]/sizeof(*_ptr)</Item>
         <ArrayItems> 
-            <Size>((unsigned int*)_ptr)[-1]</Size> 
-            <ValuePointer>_ptr</ValuePointer> 
-        </ArrayItems> 
-    </Expand>
-</Type>
-
-<Type Name="coid::dynarray&lt;*,unsigned __int64,*&gt;">
-    <DisplayString>size={((unsigned __int64*)_ptr)[-1]}</DisplayString>
-    <Expand>
-        <Item Name="[size]" ExcludeView="simple" >((unsigned __int64*)_ptr)[-1]</Item>
-        <Item Name="[capacity]" ExcludeView="simple">((unsigned __int64*)_ptr)[-2]/sizeof(*_ptr)</Item>
-        <ArrayItems> 
-            <Size>((unsigned __int64*)_ptr)[-1]</Size> 
+            <Size>((size_t*)_ptr)[-1]</Size> 
             <ValuePointer>_ptr</ValuePointer> 
         </ArrayItems> 
     </Expand>

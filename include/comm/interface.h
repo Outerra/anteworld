@@ -66,7 +66,7 @@ public:
     static const charstr& root_path();
 
 
-    typedef ref<logmsg> (*fn_log_t)(ELogType, const tokenhash&, const void*);
+    typedef ref<logmsg> (*fn_log_t)(log::type, const tokenhash&, const void*);
     typedef bool (*fn_acc_t)(const token&);
 
     static void setup( const token& path, fn_log_t log, fn_acc_t access );
@@ -91,7 +91,7 @@ public:
     ///Find interfaces containing given string
     static dynarray<creator>& find_interface_creators( const regex& str, dynarray<creator>& dst );
 
-    static ref<logmsg> canlog( ELogType type, const tokenhash& hash, const void* inst = 0 );
+    static ref<logmsg> canlog( log::type type, const tokenhash& hash, const void* inst = 0 );
 
 #ifdef COID_VARIADIC_TEMPLATES
 
@@ -100,7 +100,7 @@ public:
     //@param hash source identifier (used for filtering)
     //@param fmt @see charstr.print
     template<class ...Vs>
-    static void print( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs )
+    static void print( log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs )
     {
         ref<logmsg> msgr = canlog(type, hash);
         if(!msgr)

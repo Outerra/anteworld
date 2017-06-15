@@ -208,6 +208,29 @@ inline bool is_equal(const T& a, const T& b, const T& tolerance)
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
+inline bool finite(const detail::tvec2<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y);
+}
+
+template<typename T>
+inline bool finite(const detail::tvec3<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y) && ::_finite(v.z);
+}
+
+template<typename T>
+inline bool finite(const detail::tvec4<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y) && ::_finite(v.z) && ::_finite(v.w);
+}
+
+
+template<typename T>
+inline bool finite(const detail::tquat<T>& q) {
+    return ::_finite(q.x) && ::_finite(q.y) && ::_finite(q.z) && ::_finite(q.w);
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+template<typename T>
 inline detail::tvec2<T> normalize0(const detail::tvec2<T>& v)
 {
     T len = length(v);

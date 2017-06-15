@@ -46,6 +46,14 @@ COID_NAMESPACE_BEGIN
 namespace slotalloc_detail {
 
 ////////////////////////////////////////////////////////////////////////////////
+enum class mode
+{
+    nopool,                             //< no pool mode (destructors called on item deletion)
+    pool,                               //< pool mode, destructors not called on item deletion, only on container deletion
+    pool_norebase,                      //< pool mode as above, but throws exception if item array is rebased (must be reserved)
+};
+
+////////////////////////////////////////////////////////////////////////////////
 struct changeset
 {
     uint16 mask;
@@ -184,7 +192,6 @@ Used by containers that can operate both in pooling and non-pooling mode.
 **/
 template<bool POOL, class T>
 struct constructor {};
-
 
 ///constructor helpers for pooling mode
 template<class T>

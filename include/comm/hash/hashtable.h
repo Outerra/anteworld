@@ -689,11 +689,11 @@ public:
         uints ts = _table.size();
         if( bucketn > ts )
         {
-            uints n = nearest_high_pow2(bucketn);
+            uints nb = nearest_high_pow2(bucketn);
 
             dynarray<Node*> temp;
-            temp.need_newc(n);
-            ints offset = _ALLOC.reserve(n);
+            temp.need_newc(nb);
+            ints offset = _ALLOC.reserve(nb);
 
             for( uints i=0; i<ts; ++i )
             {

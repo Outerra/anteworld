@@ -58,7 +58,7 @@ COID_NAMESPACE_BEGIN
 
 Allocates array of slots for given object type, and allows efficient allocation and deallocation of objects without
 having to resort to expensive system memory allocators.
-Objects within the array have a unique slot id that can be used to retrieve the objects by id or to have an id of the 
+Objects within the array have a unique slot id that can be used to retrieve the objects by id or to have an id of the
 object during its lifetime.
 The allocator has for_each and find_if methods that can run functors on each object managed by the allocator.
 
@@ -76,7 +76,7 @@ reserved in advance.
 @param TRACKING if true, slotalloc will contain data and methods needed for tracking modifications
 @param Es variadic types for optional parallel arrays which will be managed along with the main array
 **/
-template<class T, bool POOL=false, bool ATOMIC=false, bool TRACKING=false, class ...Es>
+template<class T, slotalloc_detail::mode POOL = slotalloc_detail::mode::nopool, bool ATOMIC = false, bool TRACKING = false, class ...Es>
 class slotalloc_base
     : protected slotalloc_detail::base<TRACKING, Es...>
 {
@@ -96,58 +96,58 @@ public:
     slotalloc_base() : _count(0)
     {}
 
-    explicit slotalloc_base( uints reserve_items ) : _count(0) {
+    explicit slotalloc_base(uints reserve_items) : _count(0) {
         reserve(reserve_items);
     }
 
     ~slotalloc_base() {
-        if(!POOL)
+        if (POOL == slotalloc_detail::mode::nopool)
             reset();
     }
 
     //@return value from ext array associated with given main array object
     template<int V>
-    typename std::tuple_element<V,extarray_t>::type::value_type&
-        assoc_value( const T* p ) {
+    typename std::tuple_element<V, extarray_t>::type::value_type&
+        assoc_value(const T* p) {
         return std::get<V>(*this)[get_item_id(p)];
     }
 
     //@return value from ext array associated with given main array object
     template<int V>
-    const typename std::tuple_element<V,extarray_t>::type::value_type&
-        assoc_value( const T* p ) const {
+    const typename std::tuple_element<V, extarray_t>::type::value_type&
+        assoc_value(const T* p) const {
         return std::get<V>(*this)[get_item_id(p)];
     }
 
     //@return value from ext array for given index
     template<int V>
-    typename std::tuple_element<V,extarray_t>::type::value_type&
-        value( uints index ) {
+    typename std::tuple_element<V, extarray_t>::type::value_type&
+        value(uints index) {
         return std::get<V>(*this)[index];
     }
 
     //@return value from ext array for given index
     template<int V>
-    const typename std::tuple_element<V,extarray_t>::type::value_type&
-        value( uints index ) const {
+    const typename std::tuple_element<V, extarray_t>::type::value_type&
+        value(uints index) const {
         return std::get<V>(*this)[index];
     }
 
     //@return ext array
     template<int V>
-    typename std::tuple_element<V,extarray_t>::type&
+    typename std::tuple_element<V, extarray_t>::type&
         value_array() {
         return std::get<V>(*this);
     }
 
     //@return ext array
     template<int V>
-    const typename std::tuple_element<V,extarray_t>::type&
+    const typename std::tuple_element<V, extarray_t>::type&
         value_array() const {
         return std::get<V>(*this);
     }
 
-    void swap( slotalloc_base& other ) {
+    void swap(slotalloc_base& other) {
         std::swap(_array, other._array);
         std::swap(_allocated, other._allocated);
         std::swap(_count, other._count);
@@ -156,12 +156,12 @@ public:
         static_cast<extarray_t*>(this)->swap(exto);
     }
 
-    friend void swap( slotalloc_base& a, slotalloc_base& b ) {
+    friend void swap(slotalloc_base& a, slotalloc_base& b) {
         a.swap(b);
     }
 
     //@return byte offset to the newly rebased array
-    ints reserve( uints nitems ) {
+    ints reserve(uints nitems) {
         T* old = _array.ptr();
         T* p = _array.reserve(nitems, true);
 
@@ -172,35 +172,35 @@ public:
 
     ///Insert object
     //@return pointer to the newly inserted object
-    T* push( const T& v ) {
+    T* push(const T& v) {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL, T>::copy_object(
+        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::copy_object(
             isold ? alloc(0) : append(),
-            !POOL || !isold,
+            POOL == slotalloc_detail::mode::nopool || !isold,
             v);
     }
 
     ///Insert object
     //@return pointer to the newly inserted object
-    T* push( T&& v ) {
+    T* push(T&& v) {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL, T>::copy_object(
+        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::copy_object(
             isold ? alloc(0) : append(),
-            !POOL || !isold,
+            POOL == slotalloc_detail::mode::nopool || !isold,
             std::forward<T>(v));
     }
 
     ///Add new object initialized with constructor matching the arguments
     template<class...Ps>
-    T* push_construct( Ps... ps )
+    T* push_construct(Ps... ps)
     {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL, T>::construct_object(
+        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(
             isold ? alloc(0) : append(),
-            !POOL || !isold,
+            POOL == slotalloc_detail::mode::nopool || !isold,
             std::forward<Ps>(ps)...);
     }
 
@@ -208,13 +208,13 @@ public:
     T* add() {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL, T>::construct_object(
+        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(
             isold ? alloc(0) : append(),
-            !POOL || !isold);
+            POOL == slotalloc_detail::mode::nopool || !isold);
     }
 
     ///Add range of objects initialized with default constructors
-    T* add_range( uints n ) {
+    T* add_range(uints n) {
         if (n == 0)
             return 0;
         if (n == 1)
@@ -224,7 +224,7 @@ public:
         T* p = alloc_range(n, &old);
 
         for (uints i = 0; i < n; ++i)
-            slotalloc_detail::constructor<POOL, T>::construct_object(p + i, i >= old);
+            slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(p + i, i >= old);
 
         return p;
     }
@@ -232,23 +232,23 @@ public:
     ///Add new object, uninitialized (no constructor invoked on the object)
     //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
     //@note if newitem == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
-    T* add_uninit( bool* newitem = 0 ) {
-        if(_count < _array.size()) {
+    T* add_uninit(bool* newitem = 0) {
+        if (_count < _array.size()) {
             T* p = alloc(0);
-            if(POOL) {
-                if(!newitem) destroy(*p);
+            if (POOL != slotalloc_detail::mode::nopool) {
+                if (!newitem) destroy(*p);
                 else *newitem = false;
             }
             return p;
         }
-        if(newitem) *newitem = true;
+        if (newitem) *newitem = true;
         return append();
     }
 
     ///Add new object, uninitialized (no constructor invoked on the object)
     //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
     //@note if nreused == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
-    T* add_range_uninit( uints n, uints* nreused = 0 ) {
+    T* add_range_uninit(uints n, uints* nreused = 0) {
         if (n == 0)
             return 0;
         if (n == 1) {
@@ -262,7 +262,7 @@ public:
         uints old;
         T* p = alloc_range(n, &old);
 
-        if (POOL && nreused == 0) {
+        if (POOL != slotalloc_detail::mode::nopool && nreused == 0) {
             for (uints i = 0; i < old; ++i)
                 destroy(p[i]);
         }
@@ -273,27 +273,27 @@ public:
         return p;
     }
 
-/*
-    //@return id of the next object that will be allocated with add/push methods
-    uints get_next_id() const {
-        return _unused != reinterpret_cast<const T*>(this)
-            ? _unused - _array.ptr()
-            : _array.size();
-    }*/
+    /*
+        //@return id of the next object that will be allocated with add/push methods
+        uints get_next_id() const {
+            return _unused != reinterpret_cast<const T*>(this)
+                ? _unused - _array.ptr()
+                : _array.size();
+        }*/
 
-    ///Delete object in the container
-    void del( T* p )
+        ///Delete object in the container
+    void del(T* p)
     {
         uints id = p - _array.ptr();
-        if(id >= _array.size())
+        if (id >= _array.size())
             throw exception("attempting to delete an invalid object ") << id;
 
-        DASSERT_RETVOID( get_bit(id) );
+        DASSERT_RETVOID(get_bit(id));
 
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(id);
 
-        if(!POOL)
+        if (POOL == slotalloc_detail::mode::nopool)
             p->~T();
         clear_bit(id);
 
@@ -301,7 +301,7 @@ public:
     }
 
     ///Del range of objects
-    void del_range( T* p, uints n ) {
+    void del_range(T* p, uints n) {
         if (n == 0)
             return;
         if (n == 1)
@@ -309,7 +309,7 @@ public:
 
         uints id = get_item_id(p);
 
-        if (!POOL) {
+        if (POOL == slotalloc_detail::mode::nopool) {
             auto b = _array.ptr() + id;
             auto e = b + n;
             for (; b < e; ++b)
@@ -323,7 +323,7 @@ public:
 
 
     ///Delete object by id
-    void del( uints id )
+    void del(uints id)
     {
         return del(_array.ptr() + id);
     }
@@ -332,32 +332,32 @@ public:
     uints count() const { return _count; }
 
     //@return true if next allocation would rebase the array
-    bool full() const { return (_count + 1)*sizeof(T) > _array.reserved_total(); }
+    bool full() const { return (_count + 1) * sizeof(T) > _array.reserved_total(); }
 
     ///Return an item given id
     //@param id id of the item
-    const T* get_item( uints id ) const
+    const T* get_item(uints id) const
     {
-        DASSERT_RET( id < _array.size() && get_bit(id), 0 );
+        DASSERT_RET(id < _array.size() && get_bit(id), 0);
         return _array.ptr() + id;
     }
 
     ///Return an item given id
     //@param id id of the item
     //@note non-const operator [] disabled on tracking allocators, use explicit get_mutable_item to indicate the element will be modified
-    template <bool T1=TRACKING, typename = std::enable_if_t<!T1>>
-    T* get_item( uints id )
+    template <bool T1 = TRACKING, typename = std::enable_if_t<!T1>>
+    T* get_item(uints id)
     {
-        DASSERT_RET( id < _array.size() && get_bit(id), 0 );
+        DASSERT_RET(id < _array.size() && get_bit(id), 0);
         return _array.ptr() + id;
     }
 
     ///Return an item given id
     //@param id id of the item
-    T* get_mutable_item( uints id )
+    T* get_mutable_item(uints id)
     {
-        DASSERT_RET( id < _array.size() && get_bit(id), 0 );
-        if(TRACKING)
+        DASSERT_RET(id < _array.size() && get_bit(id), 0);
+        if (TRACKING)
             tracker_t::set_modified(id);
         return _array.ptr() + id;
     }
@@ -367,7 +367,7 @@ public:
     }
 
     //@note non-const operator [] disabled on tracking allocators, use explicit get_mutable_item to indicate the element will be modified
-    template <bool T1=TRACKING, typename = std::enable_if_t<!T1>>
+    template <bool T1 = TRACKING, typename = std::enable_if_t<!T1>>
     T& operator [] (uints idx) {
         return *get_mutable_item(idx);
     }
@@ -375,67 +375,67 @@ public:
     ///Get a particular item from given slot or default-construct a new one there
     //@param id item id, reverts to add() if UMAXS
     //@param is_new optional if not null, receives true if the item was newly created
-    T* get_or_create( uints id, bool* is_new=0 )
+    T* get_or_create(uints id, bool* is_new = 0)
     {
-        if(id == UMAXS) {
-            if(is_new) *is_new = true;
+        if (id == UMAXS) {
+            if (is_new) *is_new = true;
             return add();
         }
 
-        if(id < _array.size()) {
+        if (id < _array.size()) {
             //within allocated space
-            if(TRACKING)
+            if (TRACKING)
                 tracker_t::set_modified(id);
 
             T* p = _array.ptr() + id;
 
-            if(get_bit(id)) {
+            if (get_bit(id)) {
                 //existing object
-                if(is_new) *is_new = false;
+                if (is_new) *is_new = false;
                 return p;
             }
 
-            if(!POOL)
+            if (POOL == slotalloc_detail::mode::nopool)
                 new(p) T;
 
             set_bit(id);
 
             ++_count;
 
-            if(is_new) *is_new = true;
+            if (is_new) *is_new = true;
             return p;
         }
 
         //extra space needed
-        uints n = id+1 - _array.size();
+        uints n = id + 1 - _array.size();
 
         //in POOL mode unallocated items in between valid ones are assumed to be constructed
-        if(POOL) {
+        if (POOL != slotalloc_detail::mode::nopool) {
             extarray_expand(n);
             _array.add(n);
         }
         else {
-            if(n > 1) {
-                extarray_expand_uninit(n-1);
-                _array.add_uninit(n-1);
+            if (n > 1) {
+                extarray_expand_uninit(n - 1);
+                extend_array(n - 1);
             }
             extarray_expand(1);
             _array.add(1);
         }
 
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(id);
 
         set_bit(id);
 
         ++_count;
 
-        if(is_new) *is_new = true;
+        if (is_new) *is_new = true;
         return _array.ptr() + id;
     }
 
     //@return id of given item, or UMAXS if the item is not managed here
-    uints get_item_id( const T* p ) const
+    uints get_item_id(const T* p) const
     {
         uints id = p - _array.ptr();
         return id < _array.size()
@@ -445,7 +445,7 @@ public:
 
     //@return if of given item in ext array or UMAXS if the item is not managed here
     template<int V, class K>
-    uints get_array_item_id( const K* p ) const
+    uints get_array_item_id(const K* p) const
     {
         auto& array = value_array<V>();
         uints id = p - array.ptr();
@@ -455,17 +455,17 @@ public:
     }
 
     //@return true if item with id is valid
-    bool is_valid_id( uints id ) const {
+    bool is_valid_id(uints id) const {
         return get_bit(id);
     }
 
     //@return true if item is valid
-    bool is_valid_item( const T* p ) const {
+    bool is_valid_item(const T* p) const {
         return get_bit(get_item_id(p));
     }
 
     bool operator == (const slotalloc_base& other) const {
-        if(_count != other._count)
+        if (_count != other._count)
             return false;
 
         const T* dif = find_if([&](const T& v, uints id) {
@@ -479,12 +479,12 @@ public:
     ///Reset content. Destructors aren't invoked in the pool mode, as the objects may still be reused.
     void reset()
     {
-        if(TRACKING)
+        if (TRACKING)
             mark_all_modified(false);
 
         //destroy occupied slots
-        if(!POOL) {
-            for_each([](T& p) {destroy(p);});
+        if (POOL == slotalloc_detail::mode::nopool) {
+            for_each([](T& p) {destroy(p); });
 
             extarray_reset();
         }
@@ -501,8 +501,8 @@ public:
     void discard()
     {
         //destroy occupied slots
-        if(!POOL) {
-            for_each([](T& p) {destroy(p);});
+        if (POOL == slotalloc_detail::mode::nopool) {
+            for_each([](T& p) {destroy(p); });
 
             extarray_reset_count();
 
@@ -534,7 +534,7 @@ protected:
     template<class Fn>
     using returns_void = std::integral_constant<bool, closure_traits<Fn>::returns_void::value>;
 
-
+    ///A non-tracking void fnc(const T&) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && !has_index<Fn>::value>>
     bool funccall(const Fn& fn, const arg0<Fn>& v, size_t&& index) const
     {
@@ -542,26 +542,29 @@ protected:
         return false;
     }
 
+    ///A tracking void fnc(T&)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && !has_index<Fn>::value && returns_void<Fn>::value>>
     bool funccall(const Fn& fn, arg0<Fn>& v, const size_t&& index) const
     {
         fn(v);
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(index);
 
         return TRACKING;
     }
 
+    ///Conditionally tracking bool fnc(T&)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && !has_index<Fn>::value && !returns_void<Fn>::value>>
     bool funccall(const Fn& fn, arg0<Fn>& v, size_t&& index) const
     {
         bool rval = static_cast<bool>(fn(v));
-        if(rval && TRACKING)
+        if (rval && TRACKING)
             tracker_t::set_modified(index);
 
         return rval && TRACKING;
     }
 
+    ///A non-tracking void fnc(const T&, index) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && has_index<Fn>::value>>
     bool funccall(const Fn& fn, const arg0<Fn>& v, size_t index) const
     {
@@ -569,28 +572,30 @@ protected:
         return false;
     }
 
+    ///A tracking void fnc(T&, index)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && has_index<Fn>::value && returns_void<Fn>::value>>
     bool funccall(const Fn& fn, arg0<Fn>& v, const size_t& index) const
     {
         fn(v, index);
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(index);
 
         return TRACKING;
     }
 
+    ///Conditionally tracking bool fnc(T&, index)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && has_index<Fn>::value && !returns_void<Fn>::value>>
     bool funccall(const Fn& fn, arg0<Fn>& v, size_t index) const
     {
         bool rval = static_cast<bool>(fn(v, index));
-        if(rval && TRACKING)
+        if (rval && TRACKING)
             tracker_t::set_modified(index);
 
         return rval && TRACKING;
     }
 
 
-    ///func call for for_each_modified (with ptr argument)
+    ///func call for for_each_modified (with ptr argument, 0 for deleted objects)
     template<typename Fn, typename = std::enable_if_t<!has_index<Fn>::value>>
     void funccallp(const Fn& fn, const arg0<Fn>& v, size_t&& index) const
     {
@@ -609,7 +614,7 @@ public:
     //@note const version doesn't handle array insertions/deletions during iteration
     //@param f functor with ([const] T&) or ([const] T&, size_t index) arguments
     template<typename Func>
-    void for_each( Func f ) const
+    void for_each(Func f) const
     {
         typedef std::remove_reference_t<typename closure_traits<Func>::template arg<0>> Tx;
         Tx* d = const_cast<Tx*>(_array.ptr());
@@ -617,15 +622,15 @@ public:
         uint_type const* e = const_cast<uint_type const*>(_allocated.ptre());
         uints s = 0;
 
-        for(uint_type const* p=b; p!=e; ++p, s+=MASK_BITS) {
-            if(*p == 0)
+        for (uint_type const* p = b; p != e; ++p, s += MASK_BITS) {
+            if (*p == 0)
                 continue;
 
             uints m = 1;
-            for(int i=0; i<MASK_BITS; ++i, m<<=1) {
-                if(*p & m)
-                    funccall(f, d[s+i], s+i);
-                else if((*p & ~(m-1)) == 0)
+            for (int i = 0; i < MASK_BITS; ++i, m <<= 1) {
+                if (*p & m)
+                    funccall(f, d[s + i], s + i);
+                else if ((*p & ~(m - 1)) == 0)
                     break;
             }
         }
@@ -636,7 +641,7 @@ public:
     //@param K ext array id
     //@param f functor with ([const] T&) or ([const] T&, size_t index) arguments, with T being the type of given value array
     template<int K, typename Func>
-    void for_each_in_array( Func f ) const
+    void for_each_in_array(Func f) const
     {
         auto d = value_array<K>().ptr();
 
@@ -644,15 +649,15 @@ public:
         uint_type const* e = const_cast<uint_type const*>(_allocated.ptre());
         uints s = 0;
 
-        for(uint_type const* p=b; p!=e; ++p, s+=MASK_BITS) {
-            if(*p == 0)
+        for (uint_type const* p = b; p != e; ++p, s += MASK_BITS) {
+            if (*p == 0)
                 continue;
 
             uints m = 1;
-            for(int i=0; i<MASK_BITS; ++i, m<<=1) {
-                if(*p & m)
-                    funccall(f, d[s+i], s+i);
-                else if((*p & ~(m-1)) == 0)
+            for (int i = 0; i < MASK_BITS; ++i, m <<= 1) {
+                if (*p & m)
+                    funccall(f, d[s + i], s + i);
+                else if ((*p & ~(m - 1)) == 0)
                     break;
             }
         }
@@ -662,8 +667,8 @@ public:
     //@note const version doesn't handle array insertions/deletions during iteration
     //@param bitplane_mask changeset bitplane mask (slotalloc_detail::changeset::bitplane_mask)
     //@param f functor with ([const] T* ptr) or ([const] T* ptr, size_t index) arguments; ptr can be null if item was deleted
-    template<typename Func, bool T1=TRACKING, typename = std::enable_if_t<T1>>
-    void for_each_modified( uint bitplane_mask, Func f ) const
+    template<typename Func, bool T1 = TRACKING, typename = std::enable_if_t<T1>>
+    void for_each_modified(uint bitplane_mask, Func f) const
     {
         const bool all_modified = bitplane_mask > slotalloc_detail::changeset::BITPLANE_MASK;
 
@@ -674,19 +679,19 @@ public:
         uint_type const* p = b;
 
         auto chs = tracker_t::get_changeset();
-        DASSERT( chs->size() >= uints(e - b) );
+        DASSERT(chs->size() >= uints(e - b));
 
         const changeset_t* chb = chs->ptr();
         const changeset_t* che = chs->ptre();
 
-        for(const changeset_t* ch=chb; ch<che; ++p) {
-            uints m = p<e ? *p : 0U;
+        for (const changeset_t* ch = chb; ch < che; ++p) {
+            uints m = p < e ? *p : 0U;
             uints s = (p - b) * MASK_BITS;
 
-            for(int i=0; ch<che && i<MASK_BITS; ++i, m>>=1, ++ch) {
-                if(all_modified || (ch->mask & bitplane_mask) != 0) {
-                    Tx* p = (m&1) != 0 ? d+s+i : 0;
-                    funccallp(f, p, s+i);
+            for (int i = 0; ch < che && i < MASK_BITS; ++i, m >>= 1, ++ch) {
+                if (all_modified || (ch->mask & bitplane_mask) != 0) {
+                    Tx* p = (m & 1) != 0 ? d + s + i : 0;
+                    funccallp(f, p, s + i);
                 }
             }
         }
@@ -704,17 +709,17 @@ public:
         uint_type const* e = const_cast<uint_type const*>(_allocated.ptre());
         uints s = 0;
 
-        for(uint_type const* p=b; p!=e; ++p, s+=MASK_BITS) {
-            if(*p == 0)
+        for (uint_type const* p = b; p != e; ++p, s += MASK_BITS) {
+            if (*p == 0)
                 continue;
 
             uints m = 1;
-            for(int i=0; i<MASK_BITS; ++i, m<<=1) {
-                if(*p & m) {
-                    if(funccall(f, d[s+i], s+i))
-                        return const_cast<T*>(d) + (s+i);
+            for (int i = 0; i < MASK_BITS; ++i, m <<= 1) {
+                if (*p & m) {
+                    if (funccall(f, d[s + i], s + i))
+                        return const_cast<T*>(d) + (s + i);
                 }
-                else if((*p & ~(m-1)) == 0)
+                else if ((*p & ~(m - 1)) == 0)
                     break;
             }
         }
@@ -734,7 +739,7 @@ public:
 
     //@{ functions for bit array
     template <class B>
-    static void set_bit( dynarray<B>& bitarray, uints k )
+    static void set_bit(dynarray<B>& bitarray, uints k)
     {
         static const int NBITS = 8 * sizeof(B);
         using U = underlying_bitrange_type_t<B>;
@@ -745,7 +750,7 @@ public:
     }
 
     template <class B>
-    static void clear_bit( dynarray<B>& bitarray, uints k )
+    static void clear_bit(dynarray<B>& bitarray, uints k)
     {
         static const int NBITS = 8 * sizeof(B);
         using U = underlying_bitrange_type_t<B>;
@@ -756,7 +761,7 @@ public:
     }
 
     template <class B>
-    static bool get_bit( const dynarray<B>& bitarray, uints k )
+    static bool get_bit(const dynarray<B>& bitarray, uints k)
     {
         static const int NBITS = 8 * sizeof(B);
         using U = underlying_bitrange_type_t<B>;
@@ -771,7 +776,7 @@ public:
     //@return new frame number
     uint advance_frame()
     {
-        if(!TRACKING)
+        if (!TRACKING)
             return 0;
 
         auto changeset = tracker_t::get_changeset();
@@ -784,9 +789,9 @@ public:
 
     ///Mark all objects that have the corresponding bit set as modified in current frame
     //@param clear_old if true, old change bits are cleared
-    void mark_all_modified( bool clear_old )
+    void mark_all_modified(bool clear_old)
     {
-        if(!TRACKING)
+        if (!TRACKING)
             return;
 
         uint_type const* b = const_cast<uint_type const*>(_allocated.ptr());
@@ -796,15 +801,15 @@ public:
         const uint16 preserve = clear_old ? 0xfffeU : 0U;
 
         auto chs = tracker_t::get_changeset();
-        DASSERT( chs->size() >= uints(e - b) );
+        DASSERT(chs->size() >= uints(e - b));
 
         changeset_t* chb = chs->ptr();
         changeset_t* che = chs->ptre();
 
-        for(changeset_t* ch=chb; ch<che; p+=MASK_BITS) {
-            uints m = p<e ? uints(*p) : 0U;
+        for (changeset_t* ch = chb; ch < che; p += MASK_BITS) {
+            uints m = p < e ? uints(*p) : 0U;
 
-            for(int i=0; ch<che && i<MASK_BITS; ++i, m>>=1, ++ch)
+            for (int i = 0; ch < che && i < MASK_BITS; ++i, m >>= 1, ++ch)
                 ch->mask = (ch->mask & preserve) | (m & 1);
         }
     }
@@ -821,31 +826,31 @@ private:
 
     ///Helper to expand all ext arrays
     template<size_t... Index>
-    void extarray_expand_( index_sequence<Index...>, uints n ) {
+    void extarray_expand_(index_sequence<Index...>, uints n) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).add(n), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).add(n), 0)...};
     }
 
-    void extarray_expand( uints n = 1 ) {
+    void extarray_expand(uints n = 1) {
         extarray_expand_(make_index_sequence<tracker_t::extarray_size>(), n);
     }
 
     ///Helper to expand all ext arrays
     template<size_t... Index>
-    void extarray_expand_uninit_( index_sequence<Index...>, uints n ) {
+    void extarray_expand_uninit_(index_sequence<Index...>, uints n) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).add(n), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).add(n), 0)...};
     }
 
-    void extarray_expand_uninit( uints n = 1 ) {
+    void extarray_expand_uninit(uints n = 1) {
         extarray_expand_uninit_(make_index_sequence<tracker_t::extarray_size>(), n);
     }
 
     ///Helper to reset all ext arrays
     template<size_t... Index>
-    void extarray_reset_( index_sequence<Index...> ) {
+    void extarray_reset_(index_sequence<Index...>) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).reset(), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).reset(), 0)...};
     }
 
     void extarray_reset() {
@@ -854,9 +859,9 @@ private:
 
     ///Helper to set_count(0) all ext arrays
     template<size_t... Index>
-    void extarray_reset_count_( index_sequence<Index...> ) {
+    void extarray_reset_count_(index_sequence<Index...>) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).set_size(0), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).set_size(0), 0)...};
     }
 
     void extarray_reset_count() {
@@ -865,9 +870,9 @@ private:
 
     ///Helper to discard all ext arrays
     template<size_t... Index>
-    void extarray_discard_( index_sequence<Index...> ) {
+    void extarray_discard_(index_sequence<Index...>) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).discard(), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).discard(), 0)...};
     }
 
     void extarray_discard() {
@@ -876,51 +881,51 @@ private:
 
     ///Helper to reserve all ext arrays
     template<size_t... Index>
-    void extarray_reserve_( index_sequence<Index...>, uints size ) {
+    void extarray_reserve_(index_sequence<Index...>, uints size) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)std::get<Index>(ext).reserve(size, true), 0)... };
+        int dummy[] = {0, ((void)std::get<Index>(ext).reserve(size, true), 0)...};
     }
 
-    void extarray_reserve( uints size ) {
+    void extarray_reserve(uints size) {
         extarray_reserve_(make_index_sequence<tracker_t::extarray_size>(), size);
     }
 
 
     ///Helper to iterate over all ext arrays
     template<typename F, size_t... Index>
-    void extarray_iterate_( index_sequence<Index...>, F fn ) {
+    void extarray_iterate_(index_sequence<Index...>, F fn) {
         extarray_t& ext = *this;
-        int dummy[] = { 0, ((void)fn(std::get<Index>(ext)), 0)... };
+        int dummy[] = {0, ((void)fn(std::get<Index>(ext)), 0)...};
     }
 
     template<typename F>
-    void extarray_iterate( F fn ) {
+    void extarray_iterate(F fn) {
         extarray_iterate_(make_index_sequence<tracker_t::extarray_size>(), fn);
     }
 
 
     ///Return allocated slot
-    T* alloc( uints* pid )
+    T* alloc(uints* pid)
     {
-        DASSERT( _count < _array.size() );
+        DASSERT(_count < _array.size());
 
         uint_type* p = _allocated.ptr();
         uint_type* e = _allocated.ptre();
-        for(; p!=e && *p==UMAXS; ++p);
+        for (; p != e && *p == UMAXS; ++p);
 
-        if(p == e)
+        if (p == e)
             *(p = _allocated.add()) = 0;
 
         uint8 bit = lsb_bit_set((uints)~*p);
         uints slot = (p - _allocated.ptr()) * MASK_BITS;
 
         uints id = slot + bit;
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(id);
 
-        DASSERT( !get_bit(id) );
+        DASSERT(!get_bit(id));
 
-        if(pid)
+        if (pid)
             *pid = id;
 
         *p |= uints(1) << bit;
@@ -929,11 +934,11 @@ private:
         return _array.ptr() + id;
     }
 
-    T* alloc_range( uints n, uints* old )
+    T* alloc_range(uints n, uints* old)
     {
         uints id = find_zero_bitrange(n, _allocated.ptr(), _allocated.ptre());
         uints nslots = align_to_chunks(id + n, MASK_BITS);
-        
+
         if (nslots > _allocated.size())
             _allocated.addc(nslots - _allocated.size());
 
@@ -941,7 +946,7 @@ private:
 
         uints nadd = id + n > _array.size() ? id + n - _array.size() : 0;
         if (nadd)
-            _array.add_uninit(nadd);
+            extend_array(nadd);
         *old = n - nadd;
 
         _count += n;
@@ -955,27 +960,43 @@ private:
     {
         uints count = _count;
 
-        DASSERT( count == _array.size() );
+        DASSERT(count == _array.size());
         set_bit(count);
 
         extarray_expand();
         ++_count;
 
-        if(TRACKING)
+        if (TRACKING)
             tracker_t::set_modified(count);
 
-        return _array.add_uninit(1);
+        return extend_array(1);
     }
 
-    void set_bit( uints k ) { return set_bit(_allocated, k); }
-    void clear_bit( uints k ) { return clear_bit(_allocated, k); }
-    bool get_bit( uints k ) const { return get_bit(_allocated, k); }
+    T* extend_array(uints n)
+    {
+        T* p;
+
+        if (POOL == slotalloc_detail::mode::pool_norebase) {
+            ints rebase;
+            p = _array.add_uninit(n, &rebase);
+            if (rebase)
+                throw exception("a fixed pool rebased");
+        }
+        else
+            p = _array.add_uninit(n);
+
+        return p;
+    }
+
+    void set_bit(uints k) { return set_bit(_allocated, k); }
+    void clear_bit(uints k) { return clear_bit(_allocated, k); }
+    bool get_bit(uints k) const { return get_bit(_allocated, k); }
 
     //WA for lambda template error
-    void static destroy(T& p) {p.~T();}
+    void static destroy(T& p) { p.~T(); }
 
 
-    static void update_changeset( uint frame, dynarray<changeset_t>& changeset )
+    static void update_changeset(uint frame, dynarray<changeset_t>& changeset)
     {
         //the changeset keeps n bits per each element, marking if there was a change in data
         // half of the bits correspond to the given number of most recent frames
@@ -993,15 +1014,15 @@ private:
         bool b4 = (frame & 3) == 0;
         bool b2 = (frame & 1) == 0;
 
-        for(changeset_t* ch = chb; ch < che; ++ch) {
+        for (changeset_t* ch = chb; ch < che; ++ch) {
             uint16 v = ch->mask;
             uint16 vs = (v << 1) & 0xaeff;                 //shifted bits
             uint16 va = ((v << 1) | (v << 2)) & 0x5100;    //aggregated bits
             uint16 vx = vs | va;
 
-            uint16 xc000 = (b8 ? vx : v) & (3<<14);
-            uint16 x3000 = (b4 ? vx : v) & (3<<12);
-            uint16 x0f00 = (b2 ? vx : v) & (15<<8);
+            uint16 xc000 = (b8 ? vx : v) & (3 << 14);
+            uint16 x3000 = (b4 ? vx : v) & (3 << 12);
+            uint16 x0f00 = (b2 ? vx : v) & (15 << 8);
             uint16 x00ff = vs & 0xff;
 
             ch->mask = xc000 | x3000 | x0f00 | x00ff;
@@ -1012,28 +1033,34 @@ private:
 //variants of slotalloc
 
 template<class T, class ...Es>
-using slotalloc = slotalloc_base<T,false,false,false,Es...>;
+using slotalloc = slotalloc_base<T, slotalloc_detail::mode::nopool, false, false, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_pool = slotalloc_base<T,true,false,false,Es...>;
+using slotalloc_pool = slotalloc_base<T, slotalloc_detail::mode::pool, false, false, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_atomic_pool = slotalloc_base<T,true,true,false,Es...>;
+using slotalloc_fixed_pool = slotalloc_base<T, slotalloc_detail::mode::pool_norebase, false, false, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_pool = slotalloc_base<T,true,false,true,Es...>;
+using slotalloc_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool, true, false, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_atomic_pool = slotalloc_base<T,true,true,true,Es...>;
+using slotalloc_fixed_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool_norebase, true, false, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_atomic = slotalloc_base<T,false,true,false,Es...>;
+using slotalloc_tracking_pool = slotalloc_base<T, slotalloc_detail::mode::pool, false, true, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_atomic = slotalloc_base<T,false,true,true,Es...>;
+using slotalloc_tracking_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool, true, true, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking = slotalloc_base<T,false,false,true,Es...>;
+using slotalloc_atomic = slotalloc_base<T, slotalloc_detail::mode::nopool, true, false, Es...>;
+
+template<class T, class ...Es>
+using slotalloc_tracking_atomic = slotalloc_base<T, slotalloc_detail::mode::nopool, true, true, Es...>;
+
+template<class T, class ...Es>
+using slotalloc_tracking = slotalloc_base<T, slotalloc_detail::mode::nopool, false, true, Es...>;
 
 
 COID_NAMESPACE_END

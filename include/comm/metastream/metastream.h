@@ -1869,7 +1869,7 @@ private:
 
     ////////////////////////////////////////////////////////////////////////////////
     MetaDesc::Var* last_var() const     { return _stack.last()->var; }
-    void pop_var()                      { RASSERTL( _stack.pop(_curvar) ); }
+    void pop_var()                      { DASSERT_RUN( _stack.pop(_curvar) ); }
 
     void push_var( bool read ) {
         _stack.push(_curvar);

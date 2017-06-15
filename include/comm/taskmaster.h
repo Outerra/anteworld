@@ -84,8 +84,8 @@ public:
         _synclevels.reserve(16, false);
 
         _threads.alloc(nthreads);
-        _threads.for_each([&](threadinfo& ti) {
-            ti.order = uint(&ti - _threads.ptr());
+        _threads.for_each([&](threadinfo& ti, uints id) {
+            ti.order = uint(id);
             ti.master = this;
             ti.tid.create(threadfunc, &ti, 0, "taskmaster");
         });
@@ -300,11 +300,11 @@ protected:
     struct invoker : invoker_common<Fn, Args...>
     {
         invoker(int sync, const Fn& fn, Args&& ...args)
-            : invoker_common(sync, fn, std::forward<Args>(args)...)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
         {}
 
         void invoke() override final {
-            invoke_fn(make_index_sequence<sizeof...(Args)>());
+            this->invoke_fn(make_index_sequence<sizeof...(Args)>());
         }
 
         size_t size() const override final {
@@ -317,12 +317,12 @@ protected:
     struct invoker_memberfn : invoker_common<Fn, Args...>
     {
         invoker_memberfn(int sync, Fn fn, const C& obj, Args&&... args)
-            : invoker_common(sync, fn, std::forward<Args>(args)...)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
             , _obj(obj)
         {}
 
         void invoke() override final {
-            invoke_memberfn(_obj, make_index_sequence<sizeof...(Args)>());
+            this->invoke_memberfn(_obj, make_index_sequence<sizeof...(Args)>());
         }
 
         size_t size() const override final {

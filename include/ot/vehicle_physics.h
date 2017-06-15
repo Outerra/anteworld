@@ -140,7 +140,9 @@ public:
     uint load_sound( const coid::token& filename );
 
     ///Attach sound emitter to a model joint
-    uint add_sound_emitter( const coid::token& joint );
+    //@param joint bone name
+    //@param type sound type: -1 interior only, 0 universal, 1 exterior only
+    uint add_sound_emitter( const coid::token& joint, int type = 0 );
 
     ///Define circular spotlight source
     //@param offset model-space offset relative to the bone or model pivot
@@ -400,7 +402,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 1419456203;
+    static const int HASHID = 621972067;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -468,7 +470,7 @@ inline iref<T> vehicle_physics::get( T* _subclass_, void* p )
     typedef iref<T> (*fn_creator)(vehicle_physics*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::vehicle_physics.get@1419456203";
+    static const coid::token ifckey = "ot::vehicle_physics.get@621972067";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -558,8 +560,8 @@ inline void vehicle_physics::log_inf( const coid::token& text )
 inline uint vehicle_physics::load_sound( const coid::token& filename )
 { return VT_CALL(uint,(const coid::token&),24)(filename); }
 
-inline uint vehicle_physics::add_sound_emitter( const coid::token& joint )
-{ return VT_CALL(uint,(const coid::token&),25)(joint); }
+inline uint vehicle_physics::add_sound_emitter( const coid::token& joint, int type )
+{ return VT_CALL(uint,(const coid::token&,int),25)(joint,type); }
 
 inline uint vehicle_physics::add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint )
 { return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),26)(offset,dir,lp,joint); }

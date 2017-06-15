@@ -11,6 +11,8 @@
 
 namespace snd { class group; }
 
+#include <ot/sound_cfg.h>
+
 namespace snd {
     class group;
 }
@@ -33,9 +35,11 @@ public:
     uint load_sound( const coid::token& filename );
 
     ///
-    uint create_source( uint bone );
+    //@param bone bone id
+    //@param type sound type
+    uint create_source( uint bone, ot::sound_type type = ot::sound_type::universal );
 
-    uint create_source_wo_bone();
+    uint create_source_wo_bone( ot::sound_type type = ot::sound_type::universal );
 
     /// set source ECEF position once it's used source always be using ECEF
     void set_source_ecef( uint source_id, const double3& pos );
@@ -92,7 +96,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 3246480834;
+    static const int HASHID = 1679981906;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -106,7 +110,7 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::sndgrp.create@3246480834");
+        static const coid::token _dc("ot::sndgrp.create@1679981906");
         static const coid::token _djs("ot::sndgrp@wrapper.js");
         static const coid::token _dlua("ot::sndgrp@wrapper.lua");
         static const coid::token _dnone;
@@ -157,7 +161,7 @@ inline iref<T> sndgrp::_get_sndgrp( T* _subclass_, snd::group* p )
     typedef iref<T> (*fn_creator)(sndgrp*, snd::group*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@3246480834";
+    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@1679981906";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -175,7 +179,7 @@ inline iref<T> sndgrp::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(sndgrp*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp.create@3246480834";
+    static const coid::token ifckey = "ot::sndgrp.create@1679981906";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -193,11 +197,11 @@ inline iref<T> sndgrp::create( T* _subclass_ )
 inline uint sndgrp::load_sound( const coid::token& filename )
 { return VT_CALL(uint,(const coid::token&),0)(filename); }
 
-inline uint sndgrp::create_source( uint bone )
-{ return VT_CALL(uint,(uint),1)(bone); }
+inline uint sndgrp::create_source( uint bone, ot::sound_type type )
+{ return VT_CALL(uint,(uint,ot::sound_type),1)(bone,type); }
 
-inline uint sndgrp::create_source_wo_bone()
-{ return VT_CALL(uint,(),2)(); }
+inline uint sndgrp::create_source_wo_bone( ot::sound_type type )
+{ return VT_CALL(uint,(ot::sound_type),2)(type); }
 
 inline void sndgrp::set_source_ecef( uint source_id, const double3& pos )
 { return VT_CALL(void,(uint,const double3&),3)(source_id,pos); }

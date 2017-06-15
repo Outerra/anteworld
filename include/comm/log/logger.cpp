@@ -57,22 +57,22 @@ static bool enable_debug_out = false;
 static void write_console_text( const logmsg& msg )
 {
     const charstr& text = msg.str();
-    ELogType type = msg.get_type();
+    log::type type = msg.get_type();
 
     static HANDLE hstdout = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    if(type != ELogType::Info) {
+    if(type != log::info) {
         uint flg;
 
         switch(type) {
-        case ELogType::Exception: flg = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
-        case ELogType::Error:     flg = FOREGROUND_RED | FOREGROUND_INTENSITY; break;
-        case ELogType::Warning:   flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
-        case ELogType::Info:      flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
-        case ELogType::Highlight: flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
-        case ELogType::Debug:     flg = FOREGROUND_GREEN | FOREGROUND_BLUE; break;
-        case ELogType::Perf:      flg = FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
-        default:                  flg = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+        case log::exception: flg = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case log::error:     flg = FOREGROUND_RED | FOREGROUND_INTENSITY; break;
+        case log::warning:   flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+        case log::info:      flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+        case log::highlight: flg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case log::debug:     flg = FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+        case log::perf:      flg = FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+        default:                   flg = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
         }
 
         SetConsoleTextAttribute(hstdout, flg);
@@ -80,7 +80,7 @@ static void write_console_text( const logmsg& msg )
 
     fwrite(text.ptr(), 1, text.len(), stdout);
 
-    if(type != ELogType::Info)
+    if(type != log::info)
         SetConsoleTextAttribute(hstdout, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 
     if (enable_debug_out)
@@ -100,7 +100,7 @@ static void write_console_text( const logmsg& msg )
 
 namespace coid {
 
-ref<logmsg> canlog(ELogType type, const tokenhash & hash, const void * inst)
+ref<logmsg> canlog(log::type type, const tokenhash & hash, const void * inst)
 {
     return interface_register::canlog(type, hash, inst);
 }
@@ -137,7 +137,9 @@ public:
         
         if(_obj->_logger) {
             //first destroy just queues the message
-            _obj->finalize(this);
+            logger* x = _obj->_logger;
+            if (_obj->finalize(this))
+                x->flush();
         }
         else {
             //back to the pool
@@ -218,7 +220,7 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 logmsg::logmsg()
-    : _logger(0), _type(ELogType::None)
+    : _logger(0), _type(log::none)
 {
     //reserve memory from process allocator
     _str.reserve(128, PROCWIDE_SINGLETON(comm_array_mspace).msp);
@@ -237,14 +239,18 @@ void logmsg::write()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void logmsg::finalize( policy_msg* p )
+bool logmsg::finalize( policy_msg* p )
 {
-    if(_type == ELogType::None)
+    if(_type == log::none)
         _type = deduce_type();
+
+    bool flush = _str.last_char() == '\r';
 
     _logger_file = _logger->file();
     _logger->enqueue(ref<logmsg>(p));
     _logger = 0;
+
+    return flush;
 }
 
 
@@ -253,6 +259,7 @@ void logmsg::finalize( policy_msg* p )
 ////////////////////////////////////////////////////////////////////////////////
 logger::logger( bool std_out, bool cache_msgs )
 	: _stdout(std_out)
+    , _minlevel(coid::log::last)
 {
 	SINGLETON(log_writer);
 
@@ -267,21 +274,32 @@ void logger::terminate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> logger::create_msg( ELogType type, const tokenhash& hash, const void* inst, const int64* mstime )
+void logger::set_log_level(log::type minlevel)
+{
+    _minlevel = minlevel;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash, const void* inst, const int64* mstime )
 {
     //TODO check hash, inst
+    if (type > _minlevel)
+        return ref<logmsg>();
 
     ref<logmsg> rmsg = operator()(type, mstime);
-    if(hash)
+    if (hash)
         rmsg->str() << '[' << hash << "] ";
 
     return rmsg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> logger::operator()( ELogType t, const int64* time_ms )
+ref<logmsg> logger::operator()( log::type t, const int64* time_ms )
 {
     ref<logmsg> msg = create_msg(t);
+    if (!msg)
+        return msg;
+
     charstr& str = msg->str();
 
     if(time_ms) {
@@ -296,8 +314,11 @@ ref<logmsg> logger::operator()( ELogType t, const int64* time_ms )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> logger::create_msg( ELogType type )
+ref<logmsg> logger::create_msg( log::type type )
 {
+    if (type > _minlevel)
+        return ref<logmsg>();
+
     ref<logmsg> msg = ref<logmsg>(policy_msg::create());
     msg->set_type(type);
     msg->set_logger(this);
@@ -315,7 +336,7 @@ void logger::enqueue( ref<logmsg>&& msg )
 void logger::post( const token& txt, const token& prefix )
 {
     token msg = txt;
-    ELogType type = logmsg::consume_type(msg);
+    log::type type = logmsg::consume_type(msg);
 
     ref<logmsg> rmsg = ref<logmsg>(policy_msg::create());
     rmsg->set_logger(this);

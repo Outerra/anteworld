@@ -105,7 +105,7 @@ void* thread_manager::def_thread( void* pinfo )
 	catch(thread::CancelException &) {
 	}
     catch(const std::exception& e) {
-        auto log = canlog(ELogType::Exception, "threadmgr");
+        auto log = canlog(log::exception, "threadmgr");
         if(log)
             log->str() << "exception in thread " << ti->name << ": " << e.what();
     }
