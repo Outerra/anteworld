@@ -106,6 +106,25 @@ struct type_deconst {typedef T type; typedef const T type_const;};
 template<class K>
 struct type_deconst<const K> {typedef K type; typedef const K type_const;};
 */
+
+////////////////////////////////////////////////////////////////////////////////
+
+///Obtain T& if type is a non-pointer, or T* otherwise
+template<class T>
+struct nonptr_reference {
+    typedef T& type;
+};
+
+template<class T>
+struct nonptr_reference<T&> {
+    typedef T& type;
+};
+
+template<class T>
+struct nonptr_reference<T*> {
+    typedef T* type;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 struct type_base

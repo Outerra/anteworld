@@ -287,6 +287,11 @@ opcd directory::truncate( zstring fname, uint64 size )
 ////////////////////////////////////////////////////////////////////////////////
 static void timet_to_filetime( timet t, FILETIME* ft )
 {
+    uint64 ftx = (t.t * 10000000ULL) + 116444736000000000;
+
+    ft->dwHighDateTime = uint32(ftx >> 32);
+    ft->dwLowDateTime = uint32(ftx);
+/*
     struct tm tm;
     _gmtime64_s(&tm, &t.t);
 
@@ -300,7 +305,7 @@ static void timet_to_filetime( timet t, FILETIME* ft )
     systime.wSecond = tm.tm_sec;
     systime.wMilliseconds = 0;
 
-    SystemTimeToFileTime(&systime, ft);
+    SystemTimeToFileTime(&systime, ft);*/
 }
 
 opcd directory::set_file_times(zstring fname, timet actime, timet modtime)

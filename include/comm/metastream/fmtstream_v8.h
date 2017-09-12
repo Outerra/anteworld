@@ -310,7 +310,7 @@ public:
 
         ifc_create_wrapper_fn wrap = reinterpret_cast<ifc_create_wrapper_fn>(v->intergen_wrapper(T::IFC_BACKEND_JS));
         if (!wrap) {
-            return NULLv8(iso);
+            return V8_NULL(iso);
         }
 
         return wrap(v.get(), v8::Handle<v8::Context>());

@@ -355,6 +355,8 @@ public:
 	void flush();
 
     void set_log_level( log::type minlevel = log::last );
+
+    static void enable_debug_out(bool en);
 };
 
 

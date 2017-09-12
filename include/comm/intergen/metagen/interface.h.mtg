@@ -69,8 +69,8 @@ $-[/event]$
 public:
 $-(/if)$
     // --- creators ---
-
 $-[method static?]$
+
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
@@ -145,6 +145,26 @@ $-(/if)$
 
     const coid::token& intergen_default_creator( EBackend bck ) const override $-(if !virtual?)$ final$(/if)$ {
         return intergen_default_creator_static(bck);
+    }
+
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<$name$, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "$ns rest="::" after="::"$$name$";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
     }
 
 protected:

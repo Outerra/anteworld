@@ -1991,6 +1991,10 @@ public:
         return me.begins_with_icase(tok);
     }
 
+    bool begins_with(char c) const { return first_char() == c; }
+    bool begins_with_icase(char c) const { return ::tolower(first_char()) == ::tolower(c); }
+
+
     bool ends_with(const token& tok) const
     {
         token me = *this;
@@ -2002,6 +2006,9 @@ public:
         token me = *this;
         return me.ends_with_icase(tok);
     }
+
+    bool ends_with(char c) const { return last_char() == c; }
+    bool ends_with_icase(char c) const { return ::tolower(last_char()) == ::tolower(c); }
 
 
 

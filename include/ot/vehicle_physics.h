@@ -454,6 +454,26 @@ public:
         return intergen_default_creator_static(bck);
     }
 
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<vehicle_physics, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ot::vehicle_physics";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
+    }
+
 protected:
 
     typedef void (*cleanup_fn)(vehicle_physics*, intergen_interface*);

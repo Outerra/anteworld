@@ -376,8 +376,16 @@ public:
 protected:
 
     //@{Helper functions for for_each to allow calling with optional index argument
+    ///Functor argument type reference or pointer
     template<class Fn>
     using arg0 = typename std::remove_reference<typename closure_traits<Fn>::template arg<0>>::type;
+
+    template<class Fn>
+    using arg0ref = typename coid::nonptr_reference<typename closure_traits<Fn>::template arg<0>>::type;
+
+    ///Functor const argument type reference or pointer
+    template<class Fn>
+    using arg0constref = typename coid::nonptr_reference<const typename closure_traits<Fn>::template arg<0>>::type;
 
     template<class Fn>
     using is_const = std::is_const<arg0<Fn>>;
@@ -390,28 +398,28 @@ protected:
 
     ///fnc(const T&) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && !has_index<Fn>::value>>
-    result_type<Fn> funccall(const Fn& fn, const arg0<Fn>& v, count_t& index) const
+    result_type<Fn> funccall(const Fn& fn, arg0constref<Fn> v, count_t& index) const
     {
         return fn(v);
     }
 
     ///fnc(T&)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && !has_index<Fn>::value>>
-    result_type<Fn> funccall(const Fn& fn, arg0<Fn>& v, const count_t& index) const
+    result_type<Fn> funccall(const Fn& fn, arg0ref<Fn> v, const count_t& index) const
     {
         return fn(v);
     }
 
     ///fnc(const T&, index) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && has_index<Fn>::value>>
-    result_type<Fn> funccall(const Fn& fn, const arg0<Fn>& v, count_t index) const
+    result_type<Fn> funccall(const Fn& fn, arg0constref<Fn> v, count_t index) const
     {
         return fn(v, index);
     }
 
     ///fnc(T&, index)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && has_index<Fn>::value>>
-    result_type<Fn> funccall(const Fn& fn, arg0<Fn>& v, const count_t index) const
+    result_type<Fn> funccall(const Fn& fn, arg0ref<Fn> v, const count_t index) const
     {
         return fn(v, index);
     }
@@ -425,12 +433,10 @@ public:
     template<typename Func>
     void for_each( Func fn ) const
     {
-        typedef std::remove_reference_t<typename closure_traits<Func>::template arg<0>> Tx;
-        
         count_t n = size();
         for(count_t i=0; i<n; ++i) {
-            Tx* p = const_cast<Tx*>(_ptr);
-            funccall(fn, p[i], i);
+            T& v = const_cast<T&>(_ptr[i]);
+            funccall(fn, v, i);
 
             count_t nn = size();
             if(n > nn) {
@@ -449,8 +455,10 @@ public:
     T* find_if( Func fn ) const
     {
         count_t n = size();
-        for(count_t i=0; i<n; ++i)
-            if(funccall(fn, _ptr[i], i)) return _ptr+i;
+        for (count_t i = 0; i < n; ++i) {
+            T& v = const_cast<T&>(_ptr[i]);
+            if (funccall(fn, v, i)) return _ptr + i;
+        }
         return 0;
     }
 

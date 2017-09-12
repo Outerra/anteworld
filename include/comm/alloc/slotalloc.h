@@ -71,28 +71,37 @@ All objects are destroyed with the destruction of the allocator object.
 Safe to use from a single producer / single consumer threading mode, as long as the working set is
 reserved in advance.
 
-@param POOL if true, do not call destructors on item deletion, only on container deletion
-@param ATOMIC if true, ins/del operations and versioning are done as atomic operations
-@param TRACKING if true, slotalloc will contain data and methods needed for tracking modifications
+@param T array element type
+@param MODE see slotalloc_mode flags
 @param Es variadic types for optional parallel arrays which will be managed along with the main array
 **/
-template<class T, slotalloc_detail::mode POOL = slotalloc_detail::mode::nopool, bool ATOMIC = false, bool TRACKING = false, class ...Es>
+template<
+    class T,
+    slotalloc_mode MODE = slotalloc_mode::base,
+    class ...Es>
 class slotalloc_base
-    : protected slotalloc_detail::base<TRACKING, Es...>
+    : protected slotalloc_detail::base<MODE & slotalloc_mode::versioning, MODE & slotalloc_mode::tracking, Es...>
 {
-    typedef slotalloc_detail::base<TRACKING, Es...>
+protected:
+
+    typedef slotalloc_detail::base<MODE & slotalloc_mode::versioning, MODE & slotalloc_mode::tracking, Es...>
         tracker_t;
 
     typedef typename tracker_t::extarray_t
         extarray_t;
 
-    typedef typename tracker_t::changeset_t
+    typedef typename slotalloc_detail::changeset
         changeset_t;
+
+    enum : bool { POOL = MODE & slotalloc_mode::pool };
+    enum : bool { NOREBASE = MODE & slotalloc_mode::norebase };
+    enum : bool { ATOMIC = MODE & slotalloc_mode::atomic };
+    enum : bool { TRACKING = MODE & slotalloc_mode::tracking };
+    enum : bool { VERSIONING = MODE & slotalloc_mode::versioning };
 
 public:
 
     ///Construct slotalloc container
-    //@param pool true for pool mode, in which removed objects do not have destructors invoked
     slotalloc_base() : _count(0)
     {}
 
@@ -101,7 +110,7 @@ public:
     }
 
     ~slotalloc_base() {
-        if (POOL == slotalloc_detail::mode::nopool)
+        if (!POOL)
             reset();
     }
 
@@ -175,9 +184,9 @@ public:
     T* push(const T& v) {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::copy_object(
+        return slotalloc_detail::constructor<POOL, T>::copy_object(
             isold ? alloc(0) : append(),
-            POOL == slotalloc_detail::mode::nopool || !isold,
+            !POOL || !isold,
             v);
     }
 
@@ -186,9 +195,9 @@ public:
     T* push(T&& v) {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::copy_object(
+        return slotalloc_detail::constructor<POOL, T>::copy_object(
             isold ? alloc(0) : append(),
-            POOL == slotalloc_detail::mode::nopool || !isold,
+            !POOL || !isold,
             std::forward<T>(v));
     }
 
@@ -198,9 +207,9 @@ public:
     {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(
+        return slotalloc_detail::constructor<POOL, T>::construct_object(
             isold ? alloc(0) : append(),
-            POOL == slotalloc_detail::mode::nopool || !isold,
+            !POOL || !isold,
             std::forward<Ps>(ps)...);
     }
 
@@ -208,9 +217,9 @@ public:
     T* add() {
         bool isold = _count < _array.size();
 
-        return slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(
+        return slotalloc_detail::constructor<POOL, T>::construct_object(
             isold ? alloc(0) : append(),
-            POOL == slotalloc_detail::mode::nopool || !isold);
+            !POOL || !isold);
     }
 
     ///Add range of objects initialized with default constructors
@@ -224,7 +233,7 @@ public:
         T* p = alloc_range(n, &old);
 
         for (uints i = 0; i < n; ++i)
-            slotalloc_detail::constructor<POOL != slotalloc_detail::mode::nopool, T>::construct_object(p + i, i >= old);
+            slotalloc_detail::constructor<POOL, T>::construct_object(p + i, i >= old);
 
         return p;
     }
@@ -235,7 +244,7 @@ public:
     T* add_uninit(bool* newitem = 0) {
         if (_count < _array.size()) {
             T* p = alloc(0);
-            if (POOL != slotalloc_detail::mode::nopool) {
+            if (POOL) {
                 if (!newitem) destroy(*p);
                 else *newitem = false;
             }
@@ -262,7 +271,7 @@ public:
         uints old;
         T* p = alloc_range(n, &old);
 
-        if (POOL != slotalloc_detail::mode::nopool && nreused == 0) {
+        if (POOL && nreused == 0) {
             for (uints i = 0; i < old; ++i)
                 destroy(p[i]);
         }
@@ -281,7 +290,7 @@ public:
                 : _array.size();
         }*/
 
-        ///Delete object in the container
+    ///Delete object in the container
     void del(T* p)
     {
         uints id = p - _array.ptr();
@@ -292,8 +301,10 @@ public:
 
         if (TRACKING)
             tracker_t::set_modified(id);
+        if (VERSIONING)
+            this->bump_version(id);
 
-        if (POOL == slotalloc_detail::mode::nopool)
+        if (!POOL)
             p->~T();
         clear_bit(id);
 
@@ -308,12 +319,15 @@ public:
             return del(p);
 
         uints id = get_item_id(p);
+        uints idk = id;
 
-        if (POOL == slotalloc_detail::mode::nopool) {
-            auto b = _array.ptr() + id;
-            auto e = b + n;
-            for (; b < e; ++b)
+        auto b = _array.ptr() + id;
+        auto e = b + n;
+        for (; b < e; ++b) {
+            if (!POOL)
                 b->~T();
+            if (VERSIONING)
+                this->bump_version(idk++);
         }
 
         clear_bitrange(id, n, _allocated.ptr());
@@ -321,18 +335,78 @@ public:
         _count -= n;
     }
 
-
     ///Delete object by id
     void del(uints id)
     {
+        DASSERT_RETVOID(id < _array.size());
         return del(_array.ptr() + id);
+    }
+
+
+    ///Delete object by versionid
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    void del(versionid vid)
+    {
+        DASSERT_RETVOID(this->check_versionid(vid));
+
+        return del(_array.ptr() + vid.id);
     }
 
     //@return number of used slots in the container
     uints count() const { return _count; }
 
+    //@return allocated count (not necessarily used)
+    uints allocated_count() const { return _array.size(); }
+
     //@return true if next allocation would rebase the array
     bool full() const { return (_count + 1) * sizeof(T) > _array.reserved_total(); }
+
+
+    //@{ accessors with versionid argument, enabled only if versioning is on
+
+    ///Return an item given id
+    //@param id id of the item
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    const T* get_item(versionid vid) const
+    {
+        DASSERT_RET(vid.id < _array.size() && this->check_versionid(vid) && get_bit(vid.id), 0);
+        return _array.ptr() + vid.id;
+    }
+
+    ///Return an item given id
+    //@param id id of the item
+    //@note non-const operator [] disabled on tracking allocators, use explicit get_mutable_item to indicate the element will be modified
+    template <bool T1 = VERSIONING && !TRACKING, typename = std::enable_if_t<T1>>
+    T* get_item(versionid vid)
+    {
+        DASSERT_RET(vid.id < _array.size() && this->check_versionid(vid) && get_bit(vid.id), 0);
+        return _array.ptr() + vid.id;
+    }
+
+    ///Return an item given id
+    //@param id id of the item
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    T* get_mutable_item(versionid vid)
+    {
+        DASSERT_RET(vid.id < _array.size() && this->check_versionid(vid) && get_bit(vid.id), 0);
+        if (TRACKING)
+            tracker_t::set_modified(vid.id);
+        return _array.ptr() + vid.id;
+    }
+
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    const T& operator [] (versionid vid) const {
+        return *get_item(vid);
+    }
+
+    //@note non-const operator [] disabled on tracking allocators, use explicit get_mutable_item to indicate the element will be modified
+    template <bool T1 = VERSIONING && !TRACKING, typename = std::enable_if_t<T1>>
+    T& operator [] (versionid vid) {
+        return *get_mutable_item(vid);
+    }
+
+    //@}
+
 
     ///Return an item given id
     //@param id id of the item
@@ -362,15 +436,16 @@ public:
         return _array.ptr() + id;
     }
 
-    const T& operator [] (uints idx) const {
-        return *get_item(idx);
+    const T& operator [] (uints id) const {
+        return *get_item(id);
     }
 
     //@note non-const operator [] disabled on tracking allocators, use explicit get_mutable_item to indicate the element will be modified
     template <bool T1 = TRACKING, typename = std::enable_if_t<!T1>>
-    T& operator [] (uints idx) {
-        return *get_mutable_item(idx);
+    T& operator [] (uints id) {
+        return *get_mutable_item(id);
     }
+
 
     ///Get a particular item from given slot or default-construct a new one there
     //@param id item id, reverts to add() if UMAXS
@@ -395,7 +470,7 @@ public:
                 return p;
             }
 
-            if (POOL == slotalloc_detail::mode::nopool)
+            if (!POOL)
                 new(p) T;
 
             set_bit(id);
@@ -410,7 +485,7 @@ public:
         uints n = id + 1 - _array.size();
 
         //in POOL mode unallocated items in between valid ones are assumed to be constructed
-        if (POOL != slotalloc_detail::mode::nopool) {
+        if (POOL) {
             extarray_expand(n);
             _array.add(n);
         }
@@ -444,7 +519,7 @@ public:
     }
 
     //@return if of given item in ext array or UMAXS if the item is not managed here
-    template<int V, class K>
+    template<int V, class K, bool T1 = VERSIONING, typename = std::enable_if_t<!T1>>
     uints get_array_item_id(const K* p) const
     {
         auto& array = value_array<V>();
@@ -454,9 +529,25 @@ public:
             : UMAXS;
     }
 
+    //@return versionid of given item
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    versionid get_item_versionid(const T* p) const
+    {
+        uints id = p - _array.ptr();
+        return id < _array.size()
+            ? this->get_versionid(id)
+            : versionid();
+    }
+
     //@return true if item with id is valid
     bool is_valid_id(uints id) const {
         return get_bit(id);
+    }
+
+    //@return true if item with id is valid
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    bool is_valid_id(versionid vid) const {
+        return this->check_versionid(vid) && get_bit(vid.id);
     }
 
     //@return true if item is valid
@@ -483,7 +574,7 @@ public:
             mark_all_modified(false);
 
         //destroy occupied slots
-        if (POOL == slotalloc_detail::mode::nopool) {
+        if (!POOL) {
             for_each([](T& p) {destroy(p); });
 
             extarray_reset();
@@ -501,7 +592,7 @@ public:
     void discard()
     {
         //destroy occupied slots
-        if (POOL == slotalloc_detail::mode::nopool) {
+        if (!POOL) {
             for_each([](T& p) {destroy(p); });
 
             extarray_reset_count();
@@ -526,6 +617,12 @@ protected:
     using arg0 = typename std::remove_reference<typename closure_traits<Fn>::template arg<0>>::type;
 
     template<class Fn>
+    using arg0ref = typename coid::nonptr_reference<typename closure_traits<Fn>::template arg<0>>::type;
+
+    template<class Fn>
+    using arg0constref = typename coid::nonptr_reference<const typename closure_traits<Fn>::template arg<0>>::type;
+
+    template<class Fn>
     using is_const = std::is_const<arg0<Fn>>;
 
     template<class Fn>
@@ -536,7 +633,7 @@ protected:
 
     ///A non-tracking void fnc(const T&) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && !has_index<Fn>::value>>
-    bool funccall(const Fn& fn, const arg0<Fn>& v, size_t&& index) const
+    bool funccall(const Fn& fn, arg0constref<Fn> v, size_t&& index) const
     {
         fn(v);
         return false;
@@ -544,7 +641,7 @@ protected:
 
     ///A tracking void fnc(T&)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && !has_index<Fn>::value && returns_void<Fn>::value>>
-    bool funccall(const Fn& fn, arg0<Fn>& v, const size_t&& index) const
+    bool funccall(const Fn& fn, arg0ref<Fn> v, const size_t&& index) const
     {
         fn(v);
         if (TRACKING)
@@ -555,7 +652,7 @@ protected:
 
     ///Conditionally tracking bool fnc(T&)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && !has_index<Fn>::value && !returns_void<Fn>::value>>
-    bool funccall(const Fn& fn, arg0<Fn>& v, size_t&& index) const
+    bool funccall(const Fn& fn, arg0ref<Fn> v, size_t&& index) const
     {
         bool rval = static_cast<bool>(fn(v));
         if (rval && TRACKING)
@@ -566,7 +663,7 @@ protected:
 
     ///A non-tracking void fnc(const T&, index) const
     template<typename Fn, typename = std::enable_if_t<is_const<Fn>::value && has_index<Fn>::value>>
-    bool funccall(const Fn& fn, const arg0<Fn>& v, size_t index) const
+    bool funccall(const Fn& fn, arg0constref<Fn> v, size_t index) const
     {
         fn(v, index);
         return false;
@@ -574,7 +671,7 @@ protected:
 
     ///A tracking void fnc(T&, index)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && has_index<Fn>::value && returns_void<Fn>::value>>
-    bool funccall(const Fn& fn, arg0<Fn>& v, const size_t& index) const
+    bool funccall(const Fn& fn, arg0ref<Fn> v, const size_t& index) const
     {
         fn(v, index);
         if (TRACKING)
@@ -585,7 +682,7 @@ protected:
 
     ///Conditionally tracking bool fnc(T&, index)
     template<typename Fn, typename = std::enable_if_t<!is_const<Fn>::value && has_index<Fn>::value && !returns_void<Fn>::value>>
-    bool funccall(const Fn& fn, arg0<Fn>& v, size_t index) const
+    bool funccall(const Fn& fn, arg0ref<Fn> v, size_t index) const
     {
         bool rval = static_cast<bool>(fn(v, index));
         if (rval && TRACKING)
@@ -597,13 +694,13 @@ protected:
 
     ///func call for for_each_modified (with ptr argument, 0 for deleted objects)
     template<typename Fn, typename = std::enable_if_t<!has_index<Fn>::value>>
-    void funccallp(const Fn& fn, const arg0<Fn>& v, size_t&& index) const
+    void funccallp(const Fn& fn, arg0constref<Fn> v, size_t&& index) const
     {
         fn(v);
     }
 
     template<typename Fn, typename = std::enable_if_t<has_index<Fn>::value>>
-    void funccallp(const Fn& fn, const arg0<Fn>& v, size_t index) const
+    void funccallp(const Fn& fn, arg0constref<Fn> v, size_t index) const
     {
         fn(v, index);
     }
@@ -976,11 +1073,11 @@ private:
     {
         T* p;
 
-        if (POOL == slotalloc_detail::mode::pool_norebase) {
+        if (NOREBASE) {
             ints rebase;
             p = _array.add_uninit(n, &rebase);
             if (rebase)
-                throw exception("a fixed pool rebased");
+                throw exception("a fixed array rebased");
         }
         else
             p = _array.add_uninit(n);
@@ -1033,34 +1130,45 @@ private:
 //variants of slotalloc
 
 template<class T, class ...Es>
-using slotalloc = slotalloc_base<T, slotalloc_detail::mode::nopool, false, false, Es...>;
+using slotalloc = slotalloc_base<T, slotalloc_mode::base, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_pool = slotalloc_base<T, slotalloc_detail::mode::pool, false, false, Es...>;
+using slotalloc_pool = slotalloc_base<T, slotalloc_mode::pool, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_fixed_pool = slotalloc_base<T, slotalloc_detail::mode::pool_norebase, false, false, Es...>;
+using slotalloc_fixed_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::norebase, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool, true, false, Es...>;
+using slotalloc_atomic_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::atomic, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_fixed_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool_norebase, true, false, Es...>;
+using slotalloc_fixed_atomic_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::norebase | slotalloc_mode::atomic, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_pool = slotalloc_base<T, slotalloc_detail::mode::pool, false, true, Es...>;
+using slotalloc_tracking_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::tracking, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_atomic_pool = slotalloc_base<T, slotalloc_detail::mode::pool, true, true, Es...>;
+using slotalloc_tracking_atomic_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::atomic | slotalloc_mode::tracking, Es...>;
+
 
 template<class T, class ...Es>
-using slotalloc_atomic = slotalloc_base<T, slotalloc_detail::mode::nopool, true, false, Es...>;
+using slotalloc_versioning_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::versioning, Es...>;
 
 template<class T, class ...Es>
-using slotalloc_tracking_atomic = slotalloc_base<T, slotalloc_detail::mode::nopool, true, true, Es...>;
+using slotalloc_versioning_atomic_pool = slotalloc_base<T, slotalloc_mode::pool | slotalloc_mode::atomic | slotalloc_mode::versioning, Es...>;
+
 
 template<class T, class ...Es>
-using slotalloc_tracking = slotalloc_base<T, slotalloc_detail::mode::nopool, false, true, Es...>;
+using slotalloc_atomic = slotalloc_base<T, slotalloc_mode::atomic, Es...>;
+
+template<class T, class ...Es>
+using slotalloc_tracking_atomic = slotalloc_base<T, slotalloc_mode::atomic | slotalloc_mode::tracking, Es...>;
+
+template<class T, class ...Es>
+using slotalloc_tracking = slotalloc_base<T, slotalloc_mode::tracking, Es...>;
+
+
+
 
 
 COID_NAMESPACE_END

@@ -98,20 +98,24 @@ COID_NAMESPACE_BEGIN
 
 struct memtrack {
     ptrdiff_t size;                     //< size allocated since the last memtrack_list call
-    size_t totalsize;                   //< total allocated size
+    size_t cursize;                     //< total allocated size
+    size_t lifesize;                    //< lifetime allocated size
     unsigned int nallocs;               //< number of allocations since the last memtrack_list call
-    unsigned int ntotalallocs;          //< total number of allocations since beginning
+    unsigned int ncurallocs;            //< total current number of allocations
+    unsigned int nlifeallocs;           //< lifetime number of allocations
     const char* name;                   //< class identifier
 
     void swap(memtrack& m) {
         std::swap(size, m.size);
-        std::swap(totalsize, m.totalsize);
+        std::swap(cursize, m.cursize);
+        std::swap(lifesize, m.lifesize);
         std::swap(nallocs, m.nallocs);
-        std::swap(ntotalallocs, m.ntotalallocs);
+        std::swap(ncurallocs, m.ncurallocs);
+        std::swap(nlifeallocs, m.nlifeallocs);
         std::swap(name, m.name);
     }
 
-    memtrack() : size(0), totalsize(0), nallocs(0), ntotalallocs(0), name(0) {}
+    memtrack() : size(0), cursize(0), lifesize(0), nallocs(0), ncurallocs(0), nlifeallocs(0), name(0) {}
 };
 
 

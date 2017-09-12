@@ -104,10 +104,18 @@ void* thread_manager::def_thread( void* pinfo )
     }
 	catch(thread::CancelException &) {
 	}
+    catch(const std::bad_alloc& e) {
+        memtrack_dump("memory.log", false);
+        auto log = canlog(log::exception, "threadmgr");
+        if(log)
+            log->str() << "out of memory in thread " << ti->name << ": " << e.what() << '\r';
+        throw;
+    }
     catch(const std::exception& e) {
         auto log = canlog(log::exception, "threadmgr");
         if(log)
-            log->str() << "exception in thread " << ti->name << ": " << e.what();
+            log->str() << "exception in thread " << ti->name << ": " << e.what() << '\r';
+        throw;
     }
     /*catch(...) {
 		DASSERT(false && "unknown exception thrown!");

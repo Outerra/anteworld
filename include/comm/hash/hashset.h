@@ -93,14 +93,12 @@ public:
 
     const VAL* insert_value( const value_type& val )
     {
-        this->adjust(1);
         typename _HT::Node** v = this->__insert_unique(val);
         return v  ?  &(*v)->_val  :  0;
     }
 
     const VAL* insert_value( value_type&& val )
     {
-        this->adjust(1);
         typename _HT::Node** v = this->__insert_unique(std::forward<value_type>(val));
         return v  ?  &(*v)->_val  :  0;
     }
@@ -226,14 +224,12 @@ public:
 
     const VAL* insert_value( const value_type& val )
     {
-        this->adjust(1);
         typename _HT::Node** v = this->__insert_equal(val);
         return v  ?  &(*v)->_val  :  0;
     }
     
     const VAL* insert_value( value_type&& val )
     {
-        this->adjust(1);
         typename _HT::Node** v = this->__insert_equal(std::forward<value_type>(val));
         return v  ?  &(*v)->_val  :  0;
     }

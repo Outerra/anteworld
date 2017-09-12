@@ -48,11 +48,11 @@
 
 using namespace coid;
 
+static bool _enable_debug_out = false;
+
 #ifdef SYSTYPE_WIN
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-
-static bool enable_debug_out = false;
 
 static void write_console_text( const logmsg& msg )
 {
@@ -83,7 +83,7 @@ static void write_console_text( const logmsg& msg )
     if(type != log::info)
         SetConsoleTextAttribute(hstdout, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 
-    if (enable_debug_out)
+    if (_enable_debug_out)
         stdoutstream::debug_out(text.c_str());
 }
 
@@ -271,6 +271,12 @@ logger::logger( bool std_out, bool cache_msgs )
 void logger::terminate()
 {
     SINGLETON(log_writer).terminate();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void logger::enable_debug_out(bool en)
+{
+    _enable_debug_out = en;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

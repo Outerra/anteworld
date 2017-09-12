@@ -41,6 +41,7 @@
 #include "../dynarray.h"
 #include "../commexception.h"
 
+#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 COID_NAMESPACE_BEGIN
@@ -48,6 +49,8 @@ COID_NAMESPACE_BEGIN
 ///Packer/unpacker for ZSTD
 struct packer_zstd
 {
+    COIDNEWDELETE("packer_zstd");
+
     packer_zstd() : _cstream(0), _dstream(0), _offset(0)
     {}
 
@@ -121,7 +124,7 @@ struct packer_zstd
     }
 
     ///Pack data in streaming mode
-    //@param src data to pack
+    //@param src data to pack, 0 to flush
     //@param size byt size of data
     //@param bon output binstream to write to
     //@param ZSTD complevel compression level
@@ -240,6 +243,29 @@ struct packer_zstd
         _offset = zin.pos;
 
         return zot.pos;
+    }
+
+    void reset_read() {
+        ZSTD_resetDStream(_dstream);
+    }
+
+    void reset_write(uints size = 0) {
+        ZSTD_resetCStream(_cstream, size);
+    }
+
+    bool eof() const {
+        ZSTD_inBuffer zin;
+        zin.pos = _offset;
+        zin.size = _buf.size();
+        zin.src = _buf.ptr();
+
+        ZSTD_outBuffer zot;
+        zot.pos = 0;
+        zot.size = 0;
+        zot.dst = 0;
+
+        uints rem = ZSTD_decompressStream(_dstream, &zot, &zin);
+        return rem == 0;
     }
 
 private:

@@ -5,6 +5,14 @@
 #include <comm/metastream/metastream.h>
 
 namespace ot {
+
+enum class sound_class : uint8 {
+    global,
+    ambient,
+    vehicle,
+    effect,
+    music
+};
     
 enum class sound_type {
     interior = -1,                      //< sound can be heard in interior, attenuated in exterior

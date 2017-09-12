@@ -48,8 +48,8 @@ opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, con
     zstring* z = txt.get();
 
     coidlog_error("", "Assertion failed in " << file << '(' << line
-        << "), function " << function << ":\n"
-        << expr << (z ? "\n    " : "") << (z ? z->get_token() : token())
+        << "), function " << function << ":\n\""
+        << expr << (z ? "\": " : "\"") << (z ? z->get_token() : token())
         << '\r' //forces log flush
     );
 

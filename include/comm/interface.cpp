@@ -19,10 +19,16 @@ struct entry
     token ns;
     token script;
     token hash;
+    token modulename;
 
     void* creator_ptr;
 
-    operator token() const { return ifcname; }
+    //@return interface string without the module name
+    operator token() const {
+        uints ml = modulename.len();
+        if (ml) ++ml;
+        return token(ifcname.ptr(), ifcname.ptre() - ml);
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,9 +65,14 @@ public:
     //virtual in order to invoke code from the main exe module when calling from dlls
     /**
         @param ifcname in one of the following forms:
-            [ns1[::ns2[...]]]::classname@wrapper[.scriptname]                   wrap existing object
-            [ns1[::ns2[...]]]::classname.creatorname@hashvalue                  c++ versioned creator
-            [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname         script creator
+            [ns1[::ns2[...]]]::classname@wrapper[.scriptname]               wrap existing interface object
+            [ns1[::ns2[...]]]::classname@maker[.scriptname]                 create script interface object from host
+            [ns1[::ns2[...]]]::classname.creatorname@hashvalue              c++ versioned creator
+            [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname     c++ creator of JS interface object
+            [ns1[::ns2[...]]]::scriptname::classname.creatorname            creator from script
+            [ns1[::ns2[...]]]::classname@client.clientname                  client creator
+
+            all can be followed by module name, [*modulename]
     **/
     virtual bool register_interface_creator(
         const coid::token& ifcname,
@@ -71,18 +82,24 @@ public:
         charstr tmp = ifcname;
 
         token ns = tmp;
+        token modulename = ns.cut_right_back('*', token::cut_trait_remove_sep_default_empty());
         token wrapper = ns.cut_right_group_back("::");
         token classname = wrapper.cut_left('@');
         token creatorname = classname.cut_right_back('.');
         token script = wrapper.cut_right('.', token::cut_trait_remove_sep_default_empty());
 
+        uints ml = modulename.len();
+        if (ml)
+            ml++;
+        token key = token(tmp.ptr(), tmp.ptre() - ml);
+
         GUARDTHIS(_mx);
 
         if(!creator_ptr) {
-            return _hash.erase_value(ifcname, 0);
+            return _hash.erase_value(key, 0);
         }
         else {
-            entry* en = _hash.insert_value_slot(ifcname);
+            entry* en = _hash.insert_value_slot(key);
             if(en) {
                 en->creator_ptr = creator_ptr;
                 en->ifcname.takeover(tmp);
@@ -91,6 +108,7 @@ public:
                 en->creatorname = creatorname;
                 en->hash = wrapper;
                 en->script = script;
+                en->modulename = modulename;
                 return true;
             }
         }
@@ -111,14 +129,25 @@ public:
             if(i->script)
                 continue;
 
-            if(name.match(i->ifcname)) {
+            if(name.match(token(*i))) {
                 creator* p = dst.add();
                 p->creator_ptr = i->creator_ptr;
-                p->name = token(i->ifcname);
+                p->name = token(*i);
             }
         }
 
         return dst;
+    }
+
+    virtual interface_register::wrapper_fn get_interface_wrapper( const token& name ) const
+    {
+        zstring str = name;
+        str.get_str() << "@wrapper";
+
+        GUARDTHIS(_mx);
+
+        const entry* en = _hash.find_value(name);
+        return en ? (interface_register::wrapper_fn)en->creator_ptr : nullptr;
     }
 
     virtual dynarray<creator>& get_interface_creators( const token& name, const token& script, dynarray<creator>& dst )
@@ -149,7 +178,7 @@ public:
 
             creator* p = dst.add();
             p->creator_ptr = i->creator_ptr;
-            p->name = token(i->ifcname);
+            p->name = token(*i);
         }
 
         return dst;
@@ -187,10 +216,36 @@ public:
 
             creator* p = dst.add();
             p->creator_ptr = i->creator_ptr;
-            p->name = token(i->ifcname);
+            p->name = token(*i);
         }
 
         return dst;
+    }
+
+    virtual interface_register::wrapper_fn get_interface_client( const token& client, const token& iface, const token& module ) const
+    {
+        zstring str = iface;
+        str.get_str() << "@client" << '.' << client;
+
+        GUARDTHIS(_mx);
+
+        const entry* en = _hash.find_value(iface);
+
+        if (en && module && module != en->modulename)
+            return nullptr;
+
+        return en ? (interface_register::wrapper_fn)en->creator_ptr : nullptr;
+    }
+
+    virtual void* get_interface_maker( const token& name, const token& script ) const
+    {
+        zstring str = name;
+        str.get_str() << "@maker" << '.' << script;
+
+        GUARDTHIS(_mx);
+
+        const entry* en = _hash.find_value(name);
+        return en ? en->creator_ptr : nullptr;
     }
 
 
@@ -318,6 +373,33 @@ void interface_register::setup( const token& path, fn_log_t log, fn_acc_t access
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+interface_register::wrapper_fn interface_register::get_interface_wrapper( const token& name )
+{
+    //interface creator name:
+    // [ns1::[ns2:: ...]]::class
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.get_interface_wrapper(name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void* interface_register::get_interface_maker( const token& name, const token& script )
+{
+    //interface name:
+    // [ns1::[ns2:: ...]]::class
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.get_interface_maker(name, script);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+interface_register::wrapper_fn interface_register::get_interface_client( const token& client, const token& iface, const token& module )
+{
+    //interface creator name:
+    // [ns1::[ns2:: ...]]::class
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.get_interface_client(client, iface, module);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 dynarray<interface_register::creator>& interface_register::get_interface_creators( const token& name, const token& script, dynarray<interface_register::creator>& dst )
 {
     //interface creator names:
@@ -359,7 +441,11 @@ bool interface_register::register_interface_creator( const token& ifcname, void*
         return false;
     }
 
-    return reg.register_interface_creator(ifcname, creator_ptr);
+    charstr tmp = ifcname;
+    tmp << '*';
+    dynamic_library::module_name(tmp, true);
+
+    return reg.register_interface_creator(tmp, creator_ptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

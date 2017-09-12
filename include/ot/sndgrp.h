@@ -85,6 +85,7 @@ public:
 
     template<class T>
     static iref<T> _get_sndgrp( T* _subclass_, snd::group* p );
+
     ///Create a sound group object
     //@note 
     static iref<sndgrp> create() {
@@ -146,6 +147,26 @@ public:
 
     const coid::token& intergen_default_creator( EBackend bck ) const override final {
         return intergen_default_creator_static(bck);
+    }
+
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<sndgrp, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ot::sndgrp";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
     }
 
 protected:

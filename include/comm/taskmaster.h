@@ -166,8 +166,12 @@ public:
         auto& level = _synclevels[tlevel];
         ++level.priority;
 
+        //wait for threads to complete tasks, possibly helping with a pending task
+        bool working = false;
         while (level.njobs > 0) {
-            process_specific_task(tlevel);
+            if (!working)
+                thread::wait(0);
+            working = process_specific_task(tlevel);
         }
 
         --level.priority;
@@ -289,7 +293,7 @@ protected:
 
     private:
 
-        typedef std::tuple<Args...> tuple_t;
+        typedef std::tuple<std::remove_reference_t<Args>...> tuple_t;
 
         Fn _fn;
         tuple_t _tuple;
@@ -374,6 +378,8 @@ private:
 
     void* threadfunc( int order )
     {
+        coidlog_info("taskmaster", "thread " << order << " running");
+
         do
         {
             wait();
@@ -403,6 +409,8 @@ private:
             }
         }
         while (1);
+
+        coidlog_info("taskmaster", "thread " << order << " exiting");
 
         return 0;
     }
@@ -492,7 +500,7 @@ private:
     volatile int _qsize;                //< current queue size, used also as a semaphore
     volatile bool _quitting;
 
-    slotalloc<granule> _taskdata;
+    slotalloc_atomic<granule> _taskdata;
 
     queue<invoker_base*> _queue;
 

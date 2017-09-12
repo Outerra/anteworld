@@ -450,6 +450,7 @@
     <ClInclude Include="..\..\..\binstream\filestreamgz.h" />
     <ClInclude Include="..\..\..\binstream\packstreamlz4.h" />
     <ClInclude Include="..\..\..\binstream\packstreamzip.h" />
+    <ClInclude Include="..\..\..\binstream\packstreamzstd.h" />
     <ClInclude Include="..\..\..\binstream\stdstream.h" />
     <ClInclude Include="..\..\..\binstream\stlstream.h" />
     <ClInclude Include="..\..\..\binstream\txtcachestream.h" />

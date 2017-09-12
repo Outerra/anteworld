@@ -58,7 +58,7 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 1521478720;
+    static const int HASHID = 1571811577;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -72,9 +72,9 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ifc1::ifc2::thingface.get@1521478720");
-        static const coid::token _djs("ifc1::ifc2::js::thingface@wrapper");
-        static const coid::token _dlua("ifc1::ifc2::lua::thingface@wrapper");
+        static const coid::token _dc("ifc1::ifc2::thingface.get@1571811577");
+        static const coid::token _djs("ifc1::ifc2::thingface@wrapper.js");
+        static const coid::token _dlua("ifc1::ifc2::thingface@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
@@ -131,7 +131,7 @@ inline iref<T> thingface::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(thingface*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ifc1::ifc2::thingface.get@1521478720";
+    static const coid::token ifckey = "ifc1::ifc2::thingface.get@1571811577";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

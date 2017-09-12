@@ -95,7 +95,7 @@ struct token
 
     ///Constructor from a single char
     //@note beware that this may point to the stack and get invalidated outside the scope
-    token( const char& c )
+    explicit token( const char& c )
         : _ptr(&c), _pte(&c+1)
     {}
 
@@ -1622,6 +1622,10 @@ struct token
         return true;
     }
 
+    bool begins_with( char c ) const {
+        return first_char() == c;
+    }
+
     bool begins_with_icase( const token& tok, uints off=0 ) const
     {
         if( tok.lens()+off > lens() )
@@ -1635,6 +1639,10 @@ struct token
                 return false;
         }
         return true;
+    }
+
+    bool begins_with_icase( char c ) const {
+        return tolower(first_char()) == tolower(c);
     }
 
     bool ends_with( const token& tok ) const
@@ -1652,6 +1660,10 @@ struct token
         return true;
     }
 
+    bool ends_with( char c ) const {
+        return last_char() == c;
+    }
+
     bool ends_with_icase( const token& tok ) const
     {
         if( tok.lens() > lens() )
@@ -1665,6 +1677,10 @@ struct token
                 return false;
         }
         return true;
+    }
+
+    bool ends_with_icase( char c ) const {
+        return tolower(last_char()) == tolower(c);
     }
 
     ///Consume leading character if matches the given one, returning 1, otherwise return 0

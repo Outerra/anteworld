@@ -82,12 +82,16 @@ $-(/if)$
     $name$_js_dispatcher() $-(if event?)$ : _bound_events(false)$(/if)$
     {}
 
-    $name$_js_dispatcher( $ns rest="::" after="::"$$name$* orig ) $(if event?)$: _bound_events(false) $(/if)${
+    explicit $name$_js_dispatcher( $ns rest="::" after="::"$$name$* orig ) $(if event?)$: _bound_events(false) $(/if)${
         _base.create(orig);
         _vtable = _base->vtable();
         //V8_PERSISTENT(v8::Isolate::GetCurrent(), _context, context);
 
 		_host = _base->host<policy_intrusive_base>();
+    }
+
+    void set_host( policy_intrusive_base* host ) {
+        _host = host;
     }
 
     ~$name$_js_dispatcher() {
@@ -411,11 +415,12 @@ $-(elif)$
     //return value
    $-(if return.iref.true?)$
     $return.type$ _rval_;
+    from_v8(r__, _rval_);
    $-(elif)$
     static_assert( CHECK::meta_operator_exists<$return.type$>::value, "missing metastream operator for '$return.type$'" );
     threadcached<$return.type$> _rval_;
+    from_v8(obj__->Get(v8::symbol("$$ret")), _rval_);
    $-(/if)$
-    from_v8(r__, _rval_);
   $-(/if)$
   $-[args outarg?]$
 
@@ -540,7 +545,7 @@ v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<v8::String> property, const 
     args.GetReturnValue().Set(r__);
 #else
     return V8_ESCAPE(handle_scope__, r__);
-#endif    
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,7 +590,7 @@ $-(/if)$
     args.GetReturnValue().Set(value);
 #else
     return V8_ESCAPE(handle_scope__, value);
-#endif    
+#endif
 }
 $-(/if)$
 
@@ -925,6 +930,10 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const script_handle
             context = V8_NEWTYPE(iso, Context);
     }
 
+    //set early here as sometimes the invoked creator methods want to access it
+    if (ctx)
+        *ctx = V8_ESCAPE(handle_scope__, context);
+
     v8::Context::Scope context_scope(context);
     //V8_PERSISTENT(iso, ifc->_context, context);
 
@@ -975,9 +984,6 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const script_handle
             context->Global()->Set(v8::symbol(bindname), V8_LOCAL(iso, ifc->_object));
     }
 
-    if (ctx)
-        *ctx = V8_ESCAPE(handle_scope__, context);
-    
     return ifc;
 }
 
@@ -1057,7 +1063,7 @@ $-[args outarg?]$
     $-(/if)$
     r__->Set(v8::symbol("$name$"), to_v8($name$));
 $[/args]-$
-    
+
     return V8_ESCAPE(handle_scope__, r__);
 }
 
@@ -1096,6 +1102,32 @@ v8::Handle<v8::Value> create_wrapper_$name$( ::$ns rest="::" after="::"$$name$* 
     return V8_ESCAPE(scope, obj);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+///Create JS interface from a host
+static iref<$ns rest="::" after="::"$js::$name$_js_dispatcher> create_maker_$name$( policy_intrusive_base* host, v8::Handle<v8::Context> context )
+{
+    v8::Isolate* iso = context.IsEmpty() ? v8::Isolate::GetCurrent() : context->GetIsolate();
+    if (context.IsEmpty())
+        context = V8_CUR_CONTEXT(iso);
+
+    // check that the orig points to an object
+    if (!host)
+        return 0;
+
+    v8::Context::Scope context_scope(context);
+    V8_ESCAPABLE_SCOPE(iso, scope);
+
+    // create interface object
+    iref<$ns rest="::" after="::"$js::$name$_js_dispatcher> ifc;
+
+    ifc.create(new $ns rest="::" after="::"$js::$name$_js_dispatcher);
+    ifc->set_host(host);
+
+    ifc->create_interface_object(context, false);
+
+    return ifc;
+}
+
 $-(/if)$
 ////////////////////////////////////////////////////////////////////////////////
 static void register_binders_for_$name$( bool on )
@@ -1119,6 +1151,11 @@ $-(if virtual!)$
     interface_register::register_interface_creator(
         "$ns rest="::" after="::"$$name$@wrapper.js",
         on ? (void*)&create_wrapper_$name$ : nullptr);
+
+    //js interface creator from host
+    interface_register::register_interface_creator(
+        "$ns rest="::" after="::"$$name$@maker.js",
+        on ? (void*)&create_maker_$name$ : nullptr);        
 $-(/if)$
 }
 

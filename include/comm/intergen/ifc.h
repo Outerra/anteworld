@@ -297,6 +297,9 @@ private:
 ///Force registration of a script binder in a statically-linked library
 #define FORCE_REGISTER_BINDER_INTERFACE(ns,ifc,script) \
     namespace ns { namespace script { void* force_register_##ifc(); static void* autoregger_##ifc = force_register_##ifc(); }}
-    
+
+///Register a derived client interface class
+#define IFC_REGISTER_CLIENT(client) \
+    static int _autoregger = client::register_client<client>();
 
 #endif //__INTERGEN_IFC_H__

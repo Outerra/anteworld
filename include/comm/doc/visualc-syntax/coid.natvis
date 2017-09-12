@@ -2,7 +2,7 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
 <Type Name="coid::charstr">
-    <DisplayString>size={((unsigned int*)_tstr._ptr)[-1]} {_tstr._ptr,s}</DisplayString>
+    <DisplayString>size={((size_t*)_tstr._ptr)[-1]} {_tstr._ptr,s}</DisplayString>
 </Type>
 
 <Type Name="coid::token">
@@ -11,11 +11,6 @@
 
 <Type Name="coid::opcd">
     <DisplayString>code={_ptr->_code} {_ptr->_desc,s}</DisplayString>
-</Type>
-
-    
-<Type Name="coid::dynarray&lt;char,unsigned int,*&gt;">
-    <DisplayString>size={((unsigned int*)_ptr)[-1]} {_ptr,s}</DisplayString>
 </Type>
 
 <Type Name="coid::dynarray&lt;*,*,*&gt;">

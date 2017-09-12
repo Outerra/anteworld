@@ -356,6 +356,9 @@
       <Filter>sync</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\taskmaster.h" />
+    <ClInclude Include="..\..\..\binstream\packstreamzstd.h">
+      <Filter>binstream</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
