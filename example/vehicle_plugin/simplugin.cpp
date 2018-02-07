@@ -7,8 +7,9 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 simplugin::simplugin(const iref<ot::vehicle_physics>& vehicle)
-    : _value(0)
+    : _value(0), _counter(0)
 {
+    _vehicle = vehicle;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16,8 +17,13 @@ iref<simplugin> simplugin::create(const iref<ot::vehicle_physics>& vehicle)
 {
     DASSERT_RET(!vehicle.is_empty(), 0);
 
-    if (vehicle)
-        vehicle->light(0, true);
-
     return new simplugin(vehicle);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void simplugin::do_something()
+{
+    //blink lights
+    if (_vehicle)
+        _vehicle->light_mask(UMAX32, (++_counter & 64) != 0);
 }

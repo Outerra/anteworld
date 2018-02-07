@@ -29,8 +29,11 @@ public:
 
     ifc_fn int get_value() const { return _value; }
 
+    ifc_fn void do_something();
 
 private:
 
-    int _value;
+    int _value, _counter;
+
+    iref<ot::vehicle_physics> _vehicle;
 };
