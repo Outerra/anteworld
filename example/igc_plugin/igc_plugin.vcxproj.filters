@@ -4,6 +4,7 @@
     <ClCompile Include="igc_plugin.cpp" />
     <ClCompile Include="plugin.intergen.cpp" />
     <ClCompile Include="plugin.intergen.js.cpp" />
+    <ClCompile Include="plugin.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="ifc">
@@ -17,5 +18,8 @@
     <ClInclude Include="ifc\plugin_interface.js.h">
       <Filter>ifc</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <hpp Include="plugin.hpp" />
   </ItemGroup>
 </Project>

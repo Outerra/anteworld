@@ -23,13 +23,13 @@ public:
     {
         typedef iref<::plugin_interface> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "js::plugin_interface.get@creator";
-        
-        if(!binder)
+        static const coid::token ifckey = "plugin_interface.get@creator.js";
+
+        if (!binder)
             binder = reinterpret_cast<fn_bind>(
                 coid::interface_register::get_interface_creator(ifckey));
 
-        if(!binder)
+        if (!binder)
             throw coid::exception("interface binder inaccessible: ") << ifckey;
 
         return binder(script, bindvar, ctx);
