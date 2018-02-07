@@ -267,7 +267,6 @@
     <ClInclude Include="..\..\..\regex.h" />
     <ClInclude Include="..\..\..\retcodes.h" />
     <ClInclude Include="..\..\..\rnd.h" />
-    <ClInclude Include="..\..\..\segarray.h" />
     <ClInclude Include="..\..\..\singleton.h" />
     <ClInclude Include="..\..\..\str.h" />
     <ClInclude Include="..\..\..\strgen.h" />
@@ -357,6 +356,12 @@
       <Filter>sync</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\taskmaster.h" />
+    <ClInclude Include="..\..\..\binstream\packstreamzstd.h">
+      <Filter>binstream</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\binstream\filestreamzstd.h">
+      <Filter>binstream</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -464,5 +469,8 @@
     <ClCompile Include="..\..\..\commassert.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
   </ItemGroup>
 </Project>

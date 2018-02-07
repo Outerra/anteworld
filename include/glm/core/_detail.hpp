@@ -444,7 +444,11 @@ namespace detail
 #	define GLM_ALIGNED_STRUCT(x) __declspec(align(x)) struct 
 #	define GLM_RESTRICT __declspec(restrict)
 #	define GLM_RESTRICT_VAR __restrict
-#	define GLM_CONSTEXPR 
+#   if GLM_COMPILER > GLM_COMPILER_VC2013 
+#	    define GLM_CONSTEXPR constexpr
+#   else
+#	    define GLM_CONSTEXPR 
+#   endif
 #elif(GLM_COMPILER & GLM_COMPILER_INTEL)
 #	define GLM_DEPRECATED
 #	define GLM_ALIGN(x) __declspec(align(x))

@@ -41,27 +41,58 @@
 
 COID_NAMESPACE_BEGIN
 
-struct ELogType {
-    enum etype {
-        None = -1,
-        Exception=0,
-        Error,
-        Warning,
-        Info,
-        Highlight,
-        Debug,
-        Perf,
-        Last,
-    } value;
+namespace log {
 
-    operator etype() const { return value; }
-    
-    ELogType( etype t ) : value(t)
-    {}
-
-    explicit ELogType( int t ) : value((etype)t)
-    {}
+enum type {
+    none = -1,
+    exception = 0,
+    error,
+    warning,
+    highlight,
+    info,
+    debug,
+    perf,
+    last,
 };
+
+static const type* values() {
+    static type _values[] = {
+        none,
+        exception,
+        error,
+        warning,
+        highlight,
+        info,
+        debug,
+        perf,
+        last,
+    };
+    return _values;
+}
+
+static const char** names() {
+    static const char* _names[] = {
+        "none",
+        "exception",
+        "error",
+        "warning",
+        "highlight",
+        "info",
+        "debug",
+        "perf",
+        "last",
+        0
+    };
+    return _names;
+}
+
+static const char* name(type t) {
+    return t >= none && t <= last
+        ? names()[t + 1]
+        : 0;
+}
+
+} //namespace log
 
 class logger_file;
 class logger;
@@ -69,7 +100,7 @@ class logmsg;
 class policy_msg;
 
 //@return logmsg object if given log type and source is currently allowed to log
-ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
+ref<logmsg> canlog( log::type type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
 
 
 #ifdef COID_VARIADIC_TEMPLATES
@@ -79,23 +110,23 @@ ref<logmsg> canlog( ELogType type, const tokenhash& hash = tokenhash(), const vo
 //@param hash source identifier (used for filtering)
 //@param fmt @see charstr.print
 template<class ...Vs>
-void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs);
+void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs);
 
 #endif //COID_VARIADIC_TEMPLATES
 
 ////////////////////////////////////////////////////////////////////////////////
 //@{ Log message with specified severity
-#define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::None, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Perf, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_info(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Info, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Highlight, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Warning, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Error, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::none, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::perf, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_info(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::info, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::highlight, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::log::warning, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::error, src ); if(q) {q->str() << msg; }} while(0)
 //@}
 
 ///Log fatal error and throw exception with the same message
-#define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
+#define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
 
 //@{ Log error if condition fails
 #define coidlog_assert(test, src, msg)          do { if(!(test)) coidlog_error(src, msg); } while(0)
@@ -105,7 +136,7 @@ void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... v
 
 ///Debug message existing only in debug builds
 #ifdef _DEBUG
-#define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::ELogType::Debug, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if(q) {q->str() << msg; }} while(0)
 #else
 #define coidlog_devdbg(src, msg)
 #endif
@@ -127,7 +158,7 @@ protected:
     logger* _logger;
     ref<logger_file> _logger_file;
 
-    ELogType _type;
+    log::type _type;
     charstr _str;
 
 public:
@@ -157,29 +188,29 @@ public:
     void write();
 
     ///Consume type prefix from the message
-    static ELogType consume_type( token& msg )
+    static log::type consume_type( token& msg )
     {
-        ELogType t = ELogType::Info;
+        log::type t = log::info;
         if(msg.consume_icase("error:"))
-            t = ELogType::Error;
+            t = log::error;
         else if(msg.consume_icase("warn:") || msg.consume_icase("warning:"))
-            t = ELogType::Warning;
+            t = log::warning;
         else if(msg.consume_icase("info:"))
-            t = ELogType::Info;
+            t = log::info;
         else if(msg.consume_icase("msg:"))
-            t = ELogType::Highlight;
+            t = log::highlight;
         else if(msg.consume_icase("dbg:") || msg.consume_icase("debug:"))
-            t = ELogType::Debug;
+            t = log::debug;
         else if(msg.consume_icase("perf:"))
-            t = ELogType::Perf;
+            t = log::perf;
 
         msg.skip_whitespace();
         return t;
     }
 
-    static const token& type2tok( ELogType t )
+    static const token& type2tok( log::type t )
     {
-        static token st[1 + int(ELogType::Last)]={
+        static token st[1 + int(log::last)]={
             "",
             "FATAL: ",
             "ERROR: ",
@@ -191,27 +222,28 @@ public:
         };
         static token empty;
 
-        return t<ELogType::Last ? st[1 + int(t)] : empty;
+        return t<log::last ? st[1 + int(t)] : empty;
     }
 
-    ELogType deduce_type() const {
+    log::type deduce_type() const {
         token tok = _str;
-        ELogType t = consume_type(tok);
+        log::type t = consume_type(tok);
         //if(tok.ptr() > _str.ptr())
         //    _str.del(0, tok.ptr() - _str.ptr());
         return t;
     }
 
-    ELogType get_type() const { return _type; }
+    log::type get_type() const { return _type; }
 
-	void set_type(ELogType t) { _type = t; }
+	void set_type(log::type t) { _type = t; }
 
     charstr& str() { return _str; }
     const charstr& str() const { return _str; }
 
 protected:
 
-    void finalize( policy_msg* p );
+    //@return true if looger should be flushed (msg ended with \r)
+    bool finalize( policy_msg* p );
 };
 
 typedef ref<logmsg> logmsg_ptr;
@@ -225,7 +257,7 @@ typedef ref<logmsg> logmsg_ptr;
 //@param hash source identifier (used for filtering)
 //@param fmt @see charstr.print
 template<class ...Vs>
-inline void printlog( ELogType type, const tokenhash& hash, const token& fmt, Vs&&... vs)
+inline void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs)
 {
     ref<logmsg> msgr = canlog(type, hash);
     if (!msgr)
@@ -260,6 +292,7 @@ protected:
 
 	ref<logger_file> _logfile;
 
+    log::type _minlevel;
     bool _stdout;
 
 public:
@@ -280,7 +313,7 @@ public:
     ///Formatted log message
     template<class ...Vs>
     void print( const token& fmt, Vs&&... vs ) {
-        ref<logmsg> msgr = create_msg(ELogType::None);
+        ref<logmsg> msgr = create_msg(log::none);
         if(!msgr)
             return;
 
@@ -290,7 +323,7 @@ public:
 
     ///Formatted log message
     template<class ...Vs>
-    void print( ELogType type, const tokenhash& hash, const void* inst, const token& fmt, Vs&&... vs )
+    void print( log::type type, const tokenhash& hash, const void* inst, const token& fmt, Vs&&... vs )
     {
         ref<logmsg> msgr = create_msg(type, hash, inst);
         if(!msgr)
@@ -303,23 +336,27 @@ public:
 #endif
 
     //@return logmsg, filling the prefix by the log type (e.g. ERROR: )
-    ref<logmsg> operator()( ELogType type = ELogType::Info, const int64* time_ms = 0 );
+    ref<logmsg> operator()( log::type type = log::info, const int64* time_ms = 0 );
 
     //@return an empty logmsg object
-    ref<logmsg> create_msg( ELogType type );
+    ref<logmsg> create_msg( log::type type );
 
     ///Creates logmsg object if given log message type is enabled
     //@param type log level
     //@param hash tokenhash identifying the client (interface) name
     //@param inst optional instance id
     //@return logmsg reference or null if not enabled
-    ref<logmsg> create_msg( ELogType type, const tokenhash& hash, const void* inst, const int64* mstime = 0 );
+    ref<logmsg> create_msg( log::type type, const tokenhash& hash, const void* inst, const int64* mstime = 0 );
 
     const ref<logger_file>& file() const { return _logfile; }
 
     virtual void enqueue( ref<logmsg>&& msg );
 
 	void flush();
+
+    void set_log_level( log::type minlevel = log::last );
+
+    static void enable_debug_out(bool en);
 };
 
 

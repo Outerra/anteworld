@@ -51,6 +51,8 @@
 
 COID_NAMESPACE_BEGIN
 
+class charstr;
+
 #ifdef SYSTYPE_WIN
 #   define HAVE_STRUCT_TIMESPEC 1
     struct timespec {
@@ -83,6 +85,44 @@ static inline void _sysEndianSwap( uint16 *x )
 {
     *x = (( *x >>  8 ) & 0x00FF ) |
         (( *x <<  8 ) & 0xFF00 ) ;
+}
+
+template <int S>
+inline void endian_swap(void* p, uints count);
+
+template <>
+inline void endian_swap<sizeof(uint8)>(void* p, uints count) {
+}
+
+template <>
+inline void endian_swap<sizeof(uint16)>(void* p, uints count)
+{
+    uint16* d = (uint16*)p;
+    for (uints i = 0; i < count; ++i)
+        d[i] = (d[i] >> 8) | (d[i] << 8);
+}
+
+template <>
+inline void endian_swap<sizeof(uint32)>(void* p, uints count)
+{
+    uint32* d = (uint32*)p;
+    for (uints i = 0; i < count; ++i)
+        d[i] = (d[i] >> 24) | ((d[i] >> 8) & 0xff00u) | ((d[i] << 8) & 0xff0000u) | (d[i] << 24);
+}
+
+template <>
+inline void endian_swap<sizeof(uint64)>(void* p, uints count)
+{
+    uint64* d = (uint64*)p;
+    for (uints i = 0; i < count; ++i)
+        d[i] = (d[i] >> 56)
+            | ((d[i] >> 40) & 0x000000000000ff00ull)
+            | ((d[i] >> 24) & 0x0000000000ff0000ull)
+            | ((d[i] >>  8) & 0x00000000ff000000ull)
+            | ((d[i] <<  8) & 0x0000ff0000000000ull)
+            | ((d[i] << 24) & 0x0000ff0000000000ull)
+            | ((d[i] << 40) & 0x00ff000000000000ull)
+            |  (d[i] << 56);
 }
 
 inline uint16 sysEndianLittle16( uint16 x )
@@ -204,23 +244,23 @@ inline float sysEndianBigFloat(float x) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-class sysDynamicLibrary
+class dynamic_library
 {
+public:
 #ifdef SYSTYPE_WIN
     typedef ints handle;
 #else
     typedef void *handle;
 #endif
 
-    handle _handle;
-
-public:
-
-    ~sysDynamicLibrary();
-    sysDynamicLibrary( const char* libname = 0 );
+    ~dynamic_library();
+    dynamic_library( const char* libname = 0 );
 
     bool open( const char* libname );
     bool close();
+    void forget() {
+        _handle = 0;
+    }
     const char* error() const;
 
     void *getFuncAddress ( const char *funcname );
@@ -228,6 +268,14 @@ public:
     bool is_valid() {return _handle != 0;}
 
     static handle load_library( const char* libname );
+    static void *getFuncAddress(handle lib_handle, const char *funcname);
+
+    static charstr& module_path(charstr& dst, bool append = false);
+    static charstr& module_name(charstr& dst, bool append = false);
+
+private:
+
+    handle _handle;
 };
 
 

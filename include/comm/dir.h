@@ -114,6 +114,40 @@ public:
         return path;
     }
 
+    static charstr& validate_filename(charstr& filename, char replacement_char = '_') {
+        static char forbidden_chars[] = {'\\','/',':', '*', '?','\"','<', '>', '|'};
+        
+        DASSERT(replacement_char != forbidden_chars[0] &&
+            replacement_char != forbidden_chars[1] &&
+            replacement_char != forbidden_chars[2] &&
+            replacement_char != forbidden_chars[3] &&
+            replacement_char != forbidden_chars[4] &&
+            replacement_char != forbidden_chars[5] &&
+            replacement_char != forbidden_chars[6] &&
+            replacement_char != forbidden_chars[7] &&
+            replacement_char != forbidden_chars[8]);
+
+        coid::token tok = coid::token(filename);
+        const char * s = tok._ptr;
+        const char * e = tok._pte;
+        for (const char * i = s; i != e; i++) {
+            if (*i == forbidden_chars[0] ||
+                *i == forbidden_chars[1] ||
+                *i == forbidden_chars[2] ||
+                *i == forbidden_chars[3] ||
+                *i == forbidden_chars[4] ||
+                *i == forbidden_chars[5] ||
+                *i == forbidden_chars[6] ||
+                *i == forbidden_chars[7] ||
+                *i == forbidden_chars[8]) 
+            {
+                filename[i - s] = replacement_char;
+            }
+        }
+
+        return filename;
+    }
+
     bool is_entry_open() const;
     bool is_entry_directory() const;
     bool is_entry_subdirectory() const;     //< a directory, but not . or ..

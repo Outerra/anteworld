@@ -2,44 +2,52 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
 <Type Name="coid::charstr">
-    <DisplayString>size={((unsigned int*)_tstr._ptr)[-1]} {_tstr._ptr,s}</DisplayString>
+    <DisplayString Condition="_tstr._ptr == 0">size = 0 "" (null)</DisplayString>
+    <DisplayString>size = {((size_t*)_tstr._ptr)[-1] - 1} {_tstr._ptr,s8}</DisplayString>
+    <StringView>_tstr._ptr,s8</StringView>
 </Type>
 
 <Type Name="coid::token">
-    <DisplayString>size={_pte-_ptr} {_ptr,s}</DisplayString>
+    <DisplayString Condition="_ptr == 0">size = 0 "" (null)</DisplayString>
+    <DisplayString Condition="_ptr == _pte">size = 0 ""</DisplayString>
+    <DisplayString>size = {_pte-_ptr} {_ptr,[_pte-_ptr]s8}</DisplayString>
 </Type>
 
 <Type Name="coid::opcd">
     <DisplayString>code={_ptr->_code} {_ptr->_desc,s}</DisplayString>
 </Type>
 
-    
-<Type Name="coid::dynarray&lt;char,unsigned int,*&gt;">
-    <DisplayString>size={((unsigned int*)_ptr)[-1]} {_ptr,s}</DisplayString>
-</Type>
-
-<Type Name="coid::dynarray&lt;*,unsigned int,*&gt;">
-    <DisplayString>size={((unsigned int*)_ptr)[-1]}</DisplayString>
+<Type Name="coid::dynarray&lt;*,*,*&gt;">
+    <DisplayString Condition="_ptr == 0">size = 0</DisplayString>
+    <DisplayString>size = {((size_t*)_ptr)[-1]}</DisplayString>
     <Expand>
-        <Item Name="[size]" ExcludeView="simple" >((unsigned int*)_ptr)[-1]</Item>
-        <Item Name="[capacity]" ExcludeView="simple">((unsigned int*)_ptr)[-2]/sizeof(*_ptr)</Item>
+        <Item Name="[size]" ExcludeView="simple" >((size_t*)_ptr)[-1]</Item>
+        <Item Name="[capacity]" ExcludeView="simple">((size_t*)_ptr)[-2]/sizeof(*_ptr)</Item>
         <ArrayItems> 
-            <Size>((unsigned int*)_ptr)[-1]</Size> 
+            <Size>((size_t*)_ptr)[-1]</Size> 
             <ValuePointer>_ptr</ValuePointer> 
         </ArrayItems> 
     </Expand>
 </Type>
 
-<Type Name="coid::dynarray&lt;*,unsigned __int64,*&gt;">
-    <DisplayString>size={((unsigned __int64*)_ptr)[-1]}</DisplayString>
-    <Expand>
-        <Item Name="[size]" ExcludeView="simple" >((unsigned __int64*)_ptr)[-1]</Item>
-        <Item Name="[capacity]" ExcludeView="simple">((unsigned __int64*)_ptr)[-2]/sizeof(*_ptr)</Item>
-        <ArrayItems> 
-            <Size>((unsigned __int64*)_ptr)[-1]</Size> 
-            <ValuePointer>_ptr</ValuePointer> 
-        </ArrayItems> 
-    </Expand>
+<Type Name="coid::slotalloc_base&lt;*,*&gt;">
+    <DisplayString>size = {_count}</DisplayString>
+</Type>
+
+<Type Name="coid::slotalloc&lt;*,*&gt;">
+    <DisplayString>size = {_count}</DisplayString>
+</Type>
+
+<Type Name="ref&lt;*&gt;">
+    <SmartPointer Usage="Minimal">_o</SmartPointer>
+    <DisplayString Condition="_o == 0">{{empty}}</DisplayString>
+    <DisplayString>{_o,x}</DisplayString>
+</Type>
+
+<Type Name="iref&lt;*&gt;">
+    <SmartPointer Usage="Minimal">_p</SmartPointer>
+    <DisplayString Condition="_p == 0">{{empty}}</DisplayString>
+    <DisplayString>{_p,x}</DisplayString>
 </Type>
     
 </AutoVisualizer>

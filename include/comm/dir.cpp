@@ -89,7 +89,8 @@ bool directory::is_valid_directory(zstring arg)
 {
     token tok = arg.get_token();
 
-    bool dosdrive = tok.len() == 2 && tok[1] == ':';
+    const uint tlen = tok.len();
+    bool dosdrive = tlen > 1 && tlen <= 3 && tok[1] == ':';
     bool lastsep = tok.last_char() == '\\' || tok.last_char() == '/';
 
     if(!dosdrive && lastsep) {
@@ -422,8 +423,11 @@ opcd directory::delete_files(token path_and_pattern)
 ////////////////////////////////////////////////////////////////////////////////
 opcd directory::mkdir_tree(token name, bool last_is_file, uint mode)
 {
-    while(name.last_char() == '/' || name.last_char() == '\\')
+    bool dirend = false;
+    while (name.last_char() == '/' || name.last_char() == '\\') {
         name.shift_end(-1);
+        dirend = true;
+    }
 
     zstring path = name;
     char* pc = (char*)path.c_str();
@@ -442,7 +446,7 @@ opcd directory::mkdir_tree(token name, bool last_is_file, uint mode)
         }
     }
 
-    return last_is_file ? ersNOERR : mkdir(path, mode);
+    return last_is_file && !dirend ? ersNOERR : mkdir(path, mode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

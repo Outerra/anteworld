@@ -140,7 +140,9 @@ public:
     uint load_sound( const coid::token& filename );
 
     ///Attach sound emitter to a model joint
-    uint add_sound_emitter( const coid::token& joint );
+    //@param joint bone name
+    //@param type sound type: -1 interior only, 0 universal, 1 exterior only
+    uint add_sound_emitter( const coid::token& joint, int type = 0 );
 
     ///Define circular spotlight source
     //@param offset model-space offset relative to the bone or model pivot
@@ -367,7 +369,11 @@ protected:
     //@return true if camera exists and switching was handled
     virtual bool switch_seat( int camera ) { return false; }
 
-    virtual void ext_param( const coid::token& name, float value ) {}
+    ///Set/get externally provided parameter
+    //@param name parameter name
+    //@param value value to set, null means requesting value
+    //@return new/existing param value
+    virtual float ext_param( const coid::token& name, const float* value ){ throw coid::exception("handler not implemented"); }
 
     virtual void force_bind_script_events() {}
 
@@ -400,7 +406,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 1419456203;
+    static const int HASHID = 2793576084;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -452,6 +458,26 @@ public:
         return intergen_default_creator_static(bck);
     }
 
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<vehicle_physics, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ot::vehicle_physics";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
+    }
+
 protected:
 
     typedef void (*cleanup_fn)(vehicle_physics*, intergen_interface*);
@@ -468,7 +494,7 @@ inline iref<T> vehicle_physics::get( T* _subclass_, void* p )
     typedef iref<T> (*fn_creator)(vehicle_physics*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::vehicle_physics.get@1419456203";
+    static const coid::token ifckey = "ot::vehicle_physics.get@2793576084";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -558,8 +584,8 @@ inline void vehicle_physics::log_inf( const coid::token& text )
 inline uint vehicle_physics::load_sound( const coid::token& filename )
 { return VT_CALL(uint,(const coid::token&),24)(filename); }
 
-inline uint vehicle_physics::add_sound_emitter( const coid::token& joint )
-{ return VT_CALL(uint,(const coid::token&),25)(joint); }
+inline uint vehicle_physics::add_sound_emitter( const coid::token& joint, int type )
+{ return VT_CALL(uint,(const coid::token&,int),25)(joint,type); }
 
 inline uint vehicle_physics::add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint )
 { return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),26)(offset,dir,lp,joint); }

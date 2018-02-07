@@ -38,6 +38,7 @@
 * ***** END LICENSE BLOCK ***** */
 
 #include "commtypes.h"
+#include "commassert.h"
 
 #if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
 #include <atomic>
@@ -80,11 +81,18 @@ inline void _BitScanReverse64(ulong* idx, uint64 v) {
 //@{
 //@return position of the lowest or highest bit set
 //@note return value is undefined when the input is 0
-inline uint8 lsb_bit_set( uint v )   { ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
-inline uint8 lsb_bit_set( uint64 v ) { ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
-inline uint8 msb_bit_set( uint v )   { ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
-inline uint8 msb_bit_set( uint64 v ) { ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
+inline uint8 lsb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
+inline uint8 lsb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
+inline uint8 msb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
+inline uint8 msb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
 //@}
+
+#ifdef SYSTYPE_32
+inline uint8 __popcnt64(uint64 val) {
+    return uint8(__popcnt(uint(val)) + __popcnt(uint(val >> 32)));
+}
+#endif
+
 #else
 //@{
 //@return position of the lowest or highest bit set
@@ -94,6 +102,10 @@ inline uint8 lsb_bit_set( uint64 v ) { return __builtin_ctzll(v); }
 inline uint8 msb_bit_set( uint v )   { return 31-__builtin_clzl(v); }
 inline uint8 msb_bit_set( uint64 v ) { return 63-__builtin_clzll(v); }
 //@}
+
+inline uint8 __popcnt16(ushort v) { return uint8(__builtin_popcount(v)); }
+inline uint8 __popcnt(uint v) { return uint8(__builtin_popcount(v)); }
+inline uint8 __popcnt64(uint64 v) { return uint8(__builtin_popcountll(v)); }
 #endif
 
 COID_NAMESPACE_BEGIN
@@ -145,7 +157,7 @@ inline uchar int_lower_pow2( uints x ) {
 //@return exponent of nearest equal or higher power of two number
 //@note for x == 0 returns 0
 inline uchar int_high_pow2(uints x) {
-    return x
+    return x > 1
         ? 1 + msb_bit_set(x - 1)
         : 0;
 }
@@ -158,16 +170,58 @@ inline uints nearest_high_pow2( uints x ) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+//@return count of bits set to 1
+inline uint8 population_count(uint16 val) { return uint8(__popcnt16(val)); }
+inline uint8 population_count(uint32 val) { return uint8(__popcnt(val)); }
+inline uint8 population_count(uint64 val) { return uint8(__popcnt64(val)); }
+
+#ifdef SYSTYPE_WIN
+# ifdef SYSTYPE_32
+inline uint8 population_count(ints val) { return population_count(uint32(val)); }
+inline uint8 population_count(uints val) { return population_count(uint32(val)); }
+# else //SYSTYPE_64
+inline uint8 population_count(int val) { return population_count(uint32(val)); }
+inline uint8 population_count(uint val) { return population_count(uint32(val)); }
+# endif
+#elif defined(SYSTYPE_32)
+inline uint8 population_count(long val) { return population_count(uint32(val)); }
+inline uint8 population_count(ulong val) { return population_count(uint32(val)); }
+#endif //SYSTYPE_WIN
+
+////////////////////////////////////////////////////////////////////////////////
+
 #if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
 
 template <class T>
 struct underlying_bitrange_type {
     typedef std::make_unsigned_t<std::remove_cv_t<T>> type;
+    typedef T base;
+
+    static type fetch_and(base& v, type m) {
+        type r = v;
+        v &= m;
+        return r;
+    }
+
+    static type fetch_or(base& v, type m) {
+        type r = v;
+        v |= m;
+        return r;
+    }
 };
 
 template <class T>
 struct underlying_bitrange_type<std::atomic<T>> {
     typedef std::make_unsigned_t<std::remove_cv_t<T>> type;
+    typedef std::atomic<T> base;
+
+    static type fetch_and(base& v, type m) {
+        return v.fetch_and(m);
+    }
+
+    static type fetch_or(base& v, type m) {
+        return v.fetch_or(m);
+    }
 };
 
 template <class T>
@@ -229,14 +283,17 @@ inline uints find_zero_bitrange( uints n, const T* begin, const T* end )
     while (true);
 }
 
+//@return number of bits in the range that were set
 template <class T>
-void set_bitrange( uints from, uints n, T* ptr )
+uint set_bitrange( uints from, uints n, T* ptr )
 {
-    using U = underlying_bitrange_type_t<T>;
+    using Ub = underlying_bitrange_type<T>;
+    using U = typename Ub::type;
 
     static const int NBITS = 8 * sizeof(T);
     uints slot = from / NBITS;
     uints bit = from % NBITS;
+    uint count = 0;
 
     ptr += slot;
 
@@ -246,19 +303,26 @@ void set_bitrange( uints from, uints n, T* ptr )
             nbmax = uint8(n);
         n -= nbmax;
 
-        *ptr++ |= (U(-1) >> (NBITS-nbmax)) << bit;
+        U m = (U(-1) >> (NBITS - nbmax)) << bit;
+        U r = Ub::fetch_or(*ptr++, m);
+        count += population_count(~r & m);
         bit = 0;
     }
+
+    return count;
 }
 
+//@return number of bits in the range that were set
 template <class T>
-void clear_bitrange( uints from, uints n, T* ptr )
+uint clear_bitrange( uints from, uints n, T* ptr )
 {
-    using U = underlying_bitrange_type_t<T>;
+    using Ub = underlying_bitrange_type<T>;
+    using U = typename Ub::type;
 
     static const int NBITS = 8 * sizeof(T);
     uints slot = from / NBITS;
     uints bit = from % NBITS;
+    uint count = 0;
 
     ptr += slot;
 
@@ -268,9 +332,13 @@ void clear_bitrange( uints from, uints n, T* ptr )
             nbmax = uint8(n);
         n -= nbmax;
 
-        *ptr++ &= ~((U(-1) >> (NBITS-nbmax)) << bit);
+        U m = (U(-1) >> (NBITS - nbmax)) << bit;
+        U r = Ub::fetch_and(*ptr++, ~m);
+        count += population_count(r & m);
         bit = 0;
     }
+
+    return count;
 }
 
 #endif

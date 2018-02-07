@@ -65,6 +65,8 @@ class filestream : public binstream
 {
 public:
 
+    COIDNEWDELETE("coid::filestream");
+
     virtual uint binstream_attributes( bool in0out1 ) const override
     {
         return 0;
@@ -168,6 +170,8 @@ public:
     /// a,+ - append
     virtual opcd open( const zstring& name, const token& attr = "" ) override
     {
+        close();
+
         int flg=0;
         int rw=0,sh=0;
         

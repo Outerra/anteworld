@@ -263,7 +263,7 @@ public:
     }
     
 
-    virtual bool is_open() const        { return _bin->is_open(); }
+    virtual bool is_open() const        { return _bin && _bin->is_open(); }
 
     void flush_cache(bool final)
     {

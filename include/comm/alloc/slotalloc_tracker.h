@@ -18,7 +18,7 @@
 *
 * The Initial Developer of the Original Code is
 * Outerra.
-* Portions created by the Initial Developer are Copyright (C) 2016
+* Portions created by the Initial Developer are Copyright (C) 2016,2017
 * the Initial Developer. All Rights Reserved.
 *
 * Contributor(s):
@@ -38,14 +38,38 @@
 *
 * ***** END LICENSE BLOCK ***** */
 
-#include "slotalloc.h"
 #include "../binstring.h"
 
 COID_NAMESPACE_BEGIN
 
+////////////////////////////////////////////////////////////////////////////////
+enum class slotalloc_mode
+{
+    base            = 0,
+    pool            = 1,                //< pool mode, destructors not called on item deletion, only on container deletion
+
+    atomic          = 4,                //< ins/del operations are done as atomic operations
+    tracking        = 8,                //< adds data and methods needed for tracking the modifications
+    versioning      = 16,               //< adds data and methods needed to track version of array items, to handle cases when a new item occupies the same slot and old references to the slot should be invalid
+
+    multikey        = 128,              //< used by slothash for multi-key value support
+};
+
+inline constexpr slotalloc_mode operator | (slotalloc_mode a, slotalloc_mode b) {
+    return slotalloc_mode(uint(a) | uint(b));
+}
+
+inline constexpr bool operator & (slotalloc_mode a, slotalloc_mode b) {
+    return (uint(a) & uint(b)) != 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 namespace slotalloc_detail {
 
 ////////////////////////////////////////////////////////////////////////////////
+///Bitmask for tracking item modifications
+//@note frame changes aggregated like this: 8844222211111111 (MSb to LSb)
 struct changeset
 {
     uint16 mask;
@@ -97,25 +121,86 @@ struct changeset
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
 
-
-/**
-@brief Slot allocator base with optional modification tracking. Adds an extra array with change masks per item.
-**/
-template<bool TRACKING, class...Es>
-struct base
+///Non-versioning base class
+template<bool VERSIONING, class...Es>
+struct base_versioning
     : public std::tuple<dynarray<Es>...>
 {
-    typedef changeset changeset_t;
     typedef std::tuple<dynarray<Es>...>
         extarray_t;
-    typedef std::tuple<Es...>
-        extarray_element_t;
 
     enum : size_t { extarray_size = sizeof...(Es) };
 
+
+    versionid get_versionid(uints id) const {
+        return versionid(id, 0);
+    }
+
+    bool check_versionid(versionid vid) const {
+        return true;
+    }
+
+    void bump_version(uints id) {}
+};
+
+///Versioning base class specialization
+template<class...Es>
+struct base_versioning<true, Es...>
+    : public std::tuple<dynarray<Es>..., dynarray<uint8>>
+{
+    typedef std::tuple<dynarray<Es>..., dynarray<uint8>>
+        extarray_t;
+
+    enum : size_t { extarray_size = sizeof...(Es) + 1 };
+
+
+    versionid get_versionid(uints id) const {
+        DASSERT_RET(id < 0x00ffffffU, versionid());
+        return versionid(uint(id), version_array()[id]);
+    }
+
+    bool check_versionid(versionid vid) const {
+        uint8 ver = version_array()[vid.id];
+        return vid.version == ver;
+    }
+
+    void bump_version(uints id) {
+        ++version_array()[id];
+    }
+
+private:
+
+    dynarray<uint8>& version_array() {
+        return std::get<sizeof...(Es)>(*this);
+    }
+
+    const dynarray<uint8>& version_array() const {
+        return std::get<sizeof...(Es)>(*this);
+    }
+};
+
+
+/**
+@brief Slot allocator base with optional modification tracking. Adds an extra array with change tracking mask per item
+**/
+template<bool VERSIONING, bool TRACKING, class...Es>
+struct base
+    : public base_versioning<VERSIONING, Es...>
+{
+    typedef base_versioning<VERSIONING, Es...>
+        base_t;
+
+    //typedef changeset changeset_t;
+    //typedef std::tuple<dynarray<Es>...>
+    //    extarray_t;
+    //typedef std::tuple<Es...>
+    //    extarray_element_t;
+
+
     void swap( base& other ) {
-        static_cast<extarray_t*>(this)->swap(other);
+        static_cast<typename base_t::extarray_t*>(this)->swap(other);
     }
 
     void set_modified( uints k ) const {}
@@ -126,24 +211,27 @@ struct base
 };
 
 ///
-template<class...Es>
-struct base<true, Es...>
-    : public std::tuple<dynarray<Es>..., dynarray<changeset>>
+template<bool VERSIONING, class...Es>
+struct base<VERSIONING, true, Es...>
+    : public base_versioning<VERSIONING, Es..., changeset>// std::tuple<dynarray<Es>..., dynarray<changeset>>
 {
-    typedef changeset changeset_t;
-    typedef std::tuple<dynarray<Es>..., dynarray<changeset>>
-        extarray_t;
-    typedef std::tuple<Es..., changeset>
-        extarray_element_t;
+    typedef base_versioning<VERSIONING, Es..., changeset>
+        base_t;
 
-    enum : size_t { extarray_size = sizeof...(Es) + 1 };
+    //typedef changeset changeset_t;
+    //typedef std::tuple<dynarray<Es>..., dynarray<changeset>>
+    //    extarray_t;
+    //typedef std::tuple<Es..., changeset>
+    //    extarray_element_t;
+
+    //enum : size_t { extarray_size = sizeof...(Es) + 1 };
 
     base()
         : _frame(0)
     {}
 
     void swap( base& other ) {
-        static_cast<extarray_t*>(this)->swap(other);
+        static_cast<typename base_t::extarray_t*>(this)->swap(other);
         std::swap(_frame, other._frame);
     }
 
@@ -185,7 +273,6 @@ Used by containers that can operate both in pooling and non-pooling mode.
 template<bool POOL, class T>
 struct constructor {};
 
-
 ///constructor helpers for pooling mode
 template<class T>
 struct constructor<true, T>
@@ -206,12 +293,23 @@ struct constructor<true, T>
         return dst;
     }
 
+    static T* construct_default( T* dst, bool isnew ) {
+        return isnew
+            ? new(dst) T
+            : dst;
+    }
+
     template<class...Ps>
-    static T* construct_object( T* dst, bool isnew, Ps... ps ) {
+    static T* construct_object( T* dst, bool isnew, Ps&&... ps ) {
         if(isnew)
             new(dst) T(std::forward<Ps>(ps)...);
-        else
-            *dst = T(ps...);
+        else {
+            //only in pool mode on reused objects, when someone calls push_construct
+            //this is not a good usage pattern as it cannot reuse existing storage of the old object
+            // (which is what pool mode is about)
+            dst->~T();
+            new(dst) T(std::forward<Ps>(ps)...);
+        }
         return dst;
     }
 };
@@ -230,8 +328,12 @@ struct constructor<false, T>
         return new(dst) T(std::forward<T>(v));
     }
 
+    static T* construct_default( T* dst, bool isnew ) {
+        return new(dst) T;
+    }
+
     template<class...Ps>
-    static T* construct_object( T* dst, bool isnew, Ps... ps ) {
+    static T* construct_object( T* dst, bool isnew, Ps&&... ps ) {
         DASSERT(isnew);
         return new(dst) T(std::forward<Ps>(ps)...);
     }

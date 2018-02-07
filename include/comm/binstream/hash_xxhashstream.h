@@ -139,14 +139,14 @@ public:
         XXH32_reset(_wrhash, _seed);
     }
 
-    hash_xxhashstream( uint seed = 47 )
+    hash_xxhashstream( uint seed = 47 ) : _bin(0)
     {
         _wrhash = XXH32_createState();
         _rdhash = XXH32_createState();
         init(seed);
     }
 
-    hash_xxhashstream( binstream& bin, uint seed = 47 )
+    hash_xxhashstream( binstream& bin, uint seed = 47 ) : _bin(0)
     {
         _wrhash = XXH32_createState();
         _rdhash = XXH32_createState();

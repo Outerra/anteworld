@@ -606,10 +606,16 @@ public:
 template<> \
 class lua_streamer<CTYPE>{\
 public:\
-    static void to_lua(const CTYPE val) {\
+    static void to_lua(const CTYPE& val) {\
         auto& streamer = THREAD_SINGLETON(lua_streamer_context);\
         lua_State * L = streamer.get_cur_state();\
         lua_push##LTOPREFIX(L,static_cast<lua_##LTYPE>(val));\
+    }\
+    static void to_lua(const CTYPE* val) {\
+        auto& streamer = THREAD_SINGLETON(lua_streamer_context);\
+        lua_State * L = streamer.get_cur_state();\
+        if (val) lua_push##LTOPREFIX(L,static_cast<lua_##LTYPE>(*val));\
+        else lua_pushnil(L);\
     }\
 \
     static void from_lua(CTYPE& val){\
@@ -653,6 +659,12 @@ public:
         auto& streamer = THREAD_SINGLETON(lua_streamer_context); 
             lua_State * L = streamer.get_cur_state(); 
             lua_pushboolean(L, static_cast<lua_Integer>(val)); 
+    }
+    static void to_lua(const bool* val) {
+        auto& streamer = THREAD_SINGLETON(lua_streamer_context); 
+        lua_State * L = streamer.get_cur_state(); 
+        if (val) lua_pushboolean(L, static_cast<lua_Integer>(*val));
+        else lua_pushnil(L);
     }
     static void from_lua(bool& val) {
         auto& streamer = THREAD_SINGLETON(lua_streamer_context);

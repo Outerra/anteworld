@@ -1,5 +1,43 @@
 #pragma once
 
+/* ***** BEGIN LICENSE BLOCK *****
+* Version: MPL 1.1/GPL 2.0/LGPL 2.1
+*
+* The contents of this file are subject to the Mozilla Public License Version
+* 1.1 (the "License"); you may not use this file except in compliance with
+* the License. You may obtain a copy of the License at
+* http://www.mozilla.org/MPL/
+*
+* Software distributed under the License is distributed on an "AS IS" basis,
+* WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+* for the specific language governing rights and limitations under the
+* License.
+*
+* The Original Code is COID/comm module.
+*
+* The Initial Developer of the Original Code is
+* Outerra.
+* Portions created by the Initial Developer are Copyright (C) 2017
+* the Initial Developer. All Rights Reserved.
+*
+* Contributor(s):
+* Brano Kemen
+*
+* Alternatively, the contents of this file may be used under the terms of
+* either the GNU General Public License Version 2 or later (the "GPL"), or
+* the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+* in which case the provisions of the GPL or the LGPL are applicable instead
+* of those above. If you wish to allow use of your version of this file only
+* under the terms of either the GPL or the LGPL, and not to allow others to
+* use your version of this file under the terms of the MPL, indicate your
+* decision by deleting the provisions above and replace them with the notice
+* and other provisions required by the GPL or the LGPL. If you do not delete
+* the provisions above, a recipient may use your version of this file under
+* the terms of any one of the MPL, the GPL or the LGPL.
+*
+* ***** END LICENSE BLOCK ***** */
+
+
 #include "../alloc/slotalloc.h"
 #include <type_traits>
 
@@ -9,7 +47,7 @@ COID_NAMESPACE_BEGIN
 template<class T, class KEY>
 struct extractor
 {
-    KEY operator()( const T& value ) const { return value; }
+    KEY operator()(const T& value) const { return value; }
 };
 
 template<class T, class KEY>
@@ -33,36 +71,36 @@ struct extractor<T*, KEY>
 template<
     class T,
     class KEY,
+    slotalloc_mode MODE = slotalloc_mode::base,
     class EXTRACTOR = extractor<T, KEY>,
     class HASHFUNC = hasher<KEY>,
-    bool MULTIKEY=false,
-    bool POOL=false,
-    bool TRACKING=false,
     class...Es
 >
 class slothash
-    : public slotalloc_base<T,POOL,false,TRACKING,Es...,uint>
+    : public slotalloc_base<T, MODE, Es..., uint>
 {
-    typedef slotalloc_base<T,POOL,false,TRACKING,Es...,uint> base;
+    typedef slotalloc_base<T, MODE, Es..., uint> base;
 
     //static constexpr int SEQTABLE_ID = sizeof...(Es);
 
     //@return table with ids pointing to the next object in hash socket chain
     dynarray<uint>& seqtable() {
-        return base::value_array<sizeof...(Es)>();
+        return base::template value_array<sizeof...(Es)>();
     }
 
     const dynarray<uint>& seqtable() const {
-        return base::value_array<sizeof...(Es)>();
+        return base::template value_array<sizeof...(Es)>();
     }
+
+    enum : bool { MULTIKEY = MODE & slotalloc_mode::multikey };
 
 public:
 
     T* add() = delete;
-    T* add_uninit( bool* ) = delete;
-    T* get_or_create( uints, bool* ) = delete;
+    T* add_uninit(bool*, uints*) = delete;
+    T* get_or_create(uints, bool*) = delete;
 
-    slothash( uint reserve_items = 64 )
+    slothash(uint reserve_items = 64)
         : base(reserve_items)
     {
         //append related array for hash table sequences
@@ -72,11 +110,16 @@ public:
     }
 
     //@return object with given key or null if no matching object was found
+    //@param key lookup key
+    //@param slot [out] optional ptr to variable receiving slot id
     template<class FKEY = KEY>
-    const T* find_value( const FKEY& key ) const
+    const T* find_value(const FKEY& key, uint* slot = 0) const
     {
         uint b = bucket(key);
         uint id = find_object(b, key);
+
+        if (slot)
+            *slot = id;
 
         return id != UMAX32 ? base::get_item(id) : 0;
     }
@@ -87,11 +130,11 @@ public:
     //@return found object or pointer to a newly created one
     //@note if isnew is true, caller has to set the object pointed to by the return value
     template<class FKEY = KEY>
-    T* find_or_insert_value_slot( const FKEY& key, bool* isnew=0 )
+    T* find_or_insert_value_slot(const FKEY& key, bool* isnew = 0)
     {
         uint id;
         bool isnew_ = find_or_insert_value_slot_uninit_(key, &id);
-        if(isnew)
+        if (isnew)
             *isnew = isnew_;
 
         return isnew_
@@ -105,20 +148,53 @@ public:
     //@return found object or pointer to a newly created one
     //@note if isnew is true, caller has to in-place construct the object pointed to by the return value
     template<class FKEY = KEY>
-    T* find_or_insert_value_slot_uninit( const FKEY& key, bool* isnew=0 )
+    T* find_or_insert_value_slot_uninit(const FKEY& key, bool* isnew = 0)
     {
         uint id;
         bool isnew_ = find_or_insert_value_slot_uninit_(key, &id);
-        if(isnew)
+        if (isnew)
             *isnew = isnew_;
 
         return base::get_mutable_item(id);
     }
 
+    ///Update existing item by reassigning it under a new key
+    //@param id existing item id
+    //@param key new lookup key
+    //@return value object
+    //@note caller is required tu physically update the key in the object to match given new key
+    template<class FKEY = KEY>
+    T* update_value_slot(uint id, const FKEY& newkey)
+    {
+        //delete old key
+
+        T* p = base::get_mutable_item(id);
+        if (!p)
+            return p;
+
+        const KEY& oldkey = _EXTRACTOR(*p);
+        uint bo = bucket(oldkey);
+
+        //remove id from the bucket list
+        uint* n = find_object_entry(bo, oldkey);
+        DASSERT(*n == id);
+
+        *n = seqtable()[id];
+
+        //insert new key
+
+        uint bn = bucket(newkey);
+
+        seqtable()[id] = _buckets[bn];
+        _buckets[bn] = id;
+
+        return p;
+    }
+
     ///Insert a new slot for the key
     //@return pointer to the new item or nullptr if the key already exists and MULTIKEY is false
     template<class...Ps>
-    T* push_construct( Ps... ps ) {
+    T* push_construct(Ps&&... ps) {
         T* p = base::push_construct(std::forward<Ps>(ps)...);
         return insert_value_(p);
     }
@@ -127,16 +203,16 @@ public:
     //@param id requested slot id; if occupied it will be destroyed first
     //@return pointer to the uninitialized slot for the key or nullptr if the key already exists and MULTIKEY is false
     template<class...Ps>
-    T* push_construct_in_slot( uint id, Ps... ps )
+    T* push_construct_in_slot(uint id, Ps&&... ps)
     {
         bool isnew;
         T* p = base::get_or_create(id, &isnew);
 
-        if(!isnew)
+        if (!isnew)
             //destroy old hash links
             destroy_value_(id);
 
-        slotalloc_detail::constructor<POOL, T>::construct_object(p, isnew, ps...);
+        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, isnew, std::forward<Ps>(ps)...);
 
         return insert_value_(p);
     }
@@ -144,43 +220,43 @@ public:
 
     ///Push value into slothash
     //@return newly inserted item or nullptr if the key was already taken
-    T* push( const T& val )
+    T* push(const T& val)
     {
         const KEY& key = _EXTRACTOR(val);
         bool isnew;
         T* p = insert_value_slot_uninit_(key, &isnew);
-        if(p)
-            slotalloc_detail::constructor<POOL, T>::copy_object(p, isnew, val);
+        if (p)
+            slotalloc_detail::constructor<base::POOL, T>::copy_object(p, isnew, val);
         return p;
     }
 
     ///Push value into slothash
     //@return newly inserted item or nullptr if the key was already taken
-    T* push( T&& val )
+    T* push(T&& val)
     {
         const KEY& key = _EXTRACTOR(val);
         bool isnew;
         T* p = insert_value_slot_uninit_(key, &isnew);
-        if(p)
-            slotalloc_detail::constructor<POOL, T>::copy_object(p, isnew, std::forward<T>(val));
+        if (p)
+            slotalloc_detail::constructor<base::POOL, T>::copy_object(p, isnew, std::forward<T>(val));
         return p;
     }
 
     ///Delete item from hash map
-    void del( T* p )
+    void del(T* p)
     {
         uint id = (uint)get_item_id(p);
-        DASSERT_RETVOID( id != UMAX32 );
+        DASSERT_RETVOID(id != UMAX32);
 
         destroy_value_(id);
         base::del(p);
     }
 
     ///Delete object by id
-    void del( uints id )
+    void del(uint id)
     {
-        DASSERT_RETVOID( id != UMAX32 );
-        
+        DASSERT_RETVOID(id != UMAX32);
+
         T* p = destroy_value_(id);
         base::del(p);
     }
@@ -189,20 +265,20 @@ public:
     ///Delete all items that match the key
     //@return number of deleted items
     template<class FKEY = KEY>
-    uints erase( const FKEY& key )
+    uints erase(const FKEY& key)
     {
         uint b = bucket(key);
         uint c = 0;
 
         uint* n = find_object_entry(b, key);
-        while(*n != UMAX32) {
-            if(!(_EXTRACTOR(*base::get_mutable_item(*n)) == key))
+        while (*n != UMAX32) {
+            if (!(_EXTRACTOR(*base::get_mutable_item(*n)) == key))
                 break;
 
             uint id = *n;
             *n = seqtable()[id];
 
-            base::del(id);
+            base::del_item(id);
             ++c;
         }
 
@@ -216,30 +292,35 @@ public:
         memset(_buckets.ptr(), 0xff, _buckets.byte_size());
     }
 
-    void swap( slothash& other ) {
+    void swap(slothash& other) {
         base::swap(other);
         _buckets.swap(other._buckets);
     }
 
-    friend void swap( slothash& a, slothash& b ) {
+    friend void swap(slothash& a, slothash& b) {
         a.swap(b);
     }
 
 protected:
 
     template<class FKEY = KEY>
-    uint bucket( const FKEY& k ) const {
+    uint bucket(const FKEY& k) const {
         return uint(_HASHFUNC(k) % _buckets.size());
+    }
+
+    template<>
+    uint bucket<tokenhash>(const tokenhash& key) const {
+        return uint(key.hash() % _buckets.size());
     }
 
     ///Find first node that matches the key
     template<class FKEY = KEY>
-    uint find_object( uint bucket, const FKEY& k ) const
+    uint find_object(uint bucket, const FKEY& k) const
     {
         uint n = _buckets[bucket];
-        while(n != UMAX32)
+        while (n != UMAX32)
         {
-            if(_EXTRACTOR(*base::get_item(n)) == k)
+            if (_EXTRACTOR(*base::get_item(n)) == k)
                 return n;
             n = seqtable()[n];
         }
@@ -248,12 +329,12 @@ protected:
     }
 
     template<class FKEY = KEY>
-    uint* find_object_entry( uint bucket, const FKEY& k )
+    uint* find_object_entry(uint bucket, const FKEY& k)
     {
         uint* n = &_buckets[bucket];
-        while(*n != UMAX32)
+        while (*n != UMAX32)
         {
-            if(_EXTRACTOR(*base::get_item(*n)) == k)
+            if (_EXTRACTOR(*base::get_item(*n)) == k)
                 return n;
             n = &seqtable()[*n];
         }
@@ -262,13 +343,13 @@ protected:
     }
 
     template<class FKEY = KEY>
-    bool find_or_insert_value_slot_uninit_( const FKEY& key, uint* pid )
+    bool find_or_insert_value_slot_uninit_(const FKEY& key, uint* pid)
     {
         uint b = bucket(key);
         uint id = find_object(b, key);
 
         bool isnew = id == UMAX32;
-        if(isnew) {
+        if (isnew) {
             T* p = base::add_uninit();
             id = (uint)base::get_item_id(p);
 
@@ -277,13 +358,13 @@ protected:
         }
 
         *pid = id;
-        
+
         return isnew;
     }
 
     ///Find uint* where the new id should be written
     template<class FKEY = KEY>
-    uint* get_object_entry( const FKEY& key )
+    uint* get_object_entry(const FKEY& key)
     {
         uint b = bucket(key);
         uint* fid = find_object_entry(b, key);
@@ -295,10 +376,10 @@ protected:
     }
 
     template<class FKEY = KEY>
-    T* init_value_slot_( uint id, const FKEY& key )
+    T* init_value_slot_(uint id, const FKEY& key)
     {
         uint* fid = get_object_entry(key);
-        if(!fid)
+        if (!fid)
             return 0;   //item with the same key exists, not a multi-key map
 
         seqtable()[id] = *fid;
@@ -307,7 +388,7 @@ protected:
         return base::get_mutable_item(id);
     }
 
-    T* insert_value_( T* p )
+    T* insert_value_(T* p)
     {
         uint id = (uint)base::get_item_id(p);
         const KEY& key = _EXTRACTOR(*p);
@@ -316,23 +397,23 @@ protected:
     }
 
     template<class FKEY = KEY>
-    T* insert_value_slot_uninit_( const FKEY& key, bool* isnew )
+    T* insert_value_slot_uninit_(const FKEY& key, bool* isnew)
     {
         uint* fid = get_object_entry(key);
-        if(!fid)
+        if (!fid)
             return 0;
 
         T* p = base::add_uninit(isnew);
 
         uint id = (uint)base::get_item_id(p);
-        
+
         seqtable()[id] = *fid;
         *fid = id;
 
         return p;
     }
 
-    T* destroy_value_( uints id )
+    T* destroy_value_(uints id)
     {
         T* p = base::get_mutable_item(id);
         const KEY& key = _EXTRACTOR(*p);
@@ -340,7 +421,7 @@ protected:
 
         //remove id from the bucket list
         uint* n = find_object_entry(b, key);
-        DASSERT( *n == id );
+        DASSERT(*n == id);
 
         *n = seqtable()[id];
         return p;
@@ -354,5 +435,59 @@ private:
     coid::dynarray<uint> _buckets;      //< table with ids of first objects belonging to the given hash socket
     //coid::dynarray<uint>* _seqtable;    //< table with ids pointing to the next object in hash socket chain
 };
+
+
+//variants of slothash
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_pool = slothash<T, KEY, slotalloc_mode::pool, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_tracking_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::tracking, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_versioning = slothash<T, KEY, slotalloc_mode::versioning, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_atomic = slothash<T, KEY, slotalloc_mode::atomic, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_versioning_atomic = slothash<T, KEY, slotalloc_mode::atomic | slotalloc_mode::versioning, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_versioning_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::versioning, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_atomic_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::atomic, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_versioning_atomic_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::atomic | slotalloc_mode::versioning, EXTRACTOR, HASHFUNC, Es...>;
+
+
+
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_tracking_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::tracking | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_versioning = slothash<T, KEY, slotalloc_mode::versioning | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_atomic = slothash<T, KEY, slotalloc_mode::atomic | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_versioning_atomic = slothash<T, KEY, slotalloc_mode::atomic | slotalloc_mode::versioning | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_versioning_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::versioning | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_atomic_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::atomic | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
+
+template<class T, class KEY, class EXTRACTOR = extractor<T, KEY>, class HASHFUNC = hasher<KEY>, class ...Es>
+using slothash_multikey_versioning_atomic_pool = slothash<T, KEY, slotalloc_mode::pool | slotalloc_mode::atomic | slotalloc_mode::versioning | slotalloc_mode::multikey, EXTRACTOR, HASHFUNC, Es...>;
 
 COID_NAMESPACE_END

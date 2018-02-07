@@ -45,37 +45,6 @@
 #include <comm/binstream/filestream.h>
 #include <v8/v8.h>
 
-namespace js {
-
-#ifdef V8_MAJOR_VERSION
-
-typedef v8::FunctionCallbackInfo<v8::Value>     ARGUMENTS;
-typedef void                                    CBK_RET;
-
-inline void THROW( v8::Isolate* iso, v8::Local<v8::Value> (*err)(v8::Local<v8::String>), const coid::token& s ) {
-    iso->ThrowException((*err)(v8::String::NewFromUtf8(iso, s.ptr(), v8::String::kNormalString, s.len())));
-}
-
-#define v8_Undefined(iso)   v8::Undefined(iso)
-#define v8_Null(iso)        v8::Null(iso)
-
-#else
-
-typedef v8::Arguments                           ARGUMENTS;
-typedef v8::Handle<v8::Value>                   CBK_RET;
-
-inline v8::Handle<v8::Value> THROW( v8::Isolate* iso, v8::Local<v8::Value> (*err)(v8::Handle<v8::String>), const coid::token& s ) {
-    return v8::ThrowException(err(v8::String::New(s.ptr(), s.len())));
-}
-
-#define v8_Undefined(iso)   v8::Undefined()
-#define v8_Null(iso)        v8::Null()
-
-#endif
-
-} //namespace js
-
-
 ///Helper for script loading
 struct script_handle
 {
@@ -174,19 +143,12 @@ struct script_handle
     ///Load and run script
     v8::Handle<v8::Script> load_script()
     {
-#ifdef V8_MAJOR_VERSION
-        v8::Isolate* iso = v8::Isolate::GetCurrent();
-        v8::EscapableHandleScope scope(iso);
+        V8_DECL_ISO(iso);
+        V8_ESCAPABLE_SCOPE(iso, scope);
+
         v8::Handle<v8::Context> context = has_context()
             ? _context
-            : v8::Context::New(iso);
-#else
-        v8::HandleScope scope;
-        v8::Handle<v8::Context> context = has_context()
-            ? _context
-            : v8::Context::New();
-#endif
-    
+            : V8_CUR_CONTEXT(iso);
         v8::Context::Scope context_scope(context);
 
         coid::token script_tok, script_path = _url;
@@ -253,11 +215,7 @@ public:
     ///
     static void throw_js_error( v8::TryCatch& tc, const coid::token& str = coid::token() )
     {
-#ifdef V8_MAJOR_VERSION
-        v8::HandleScope handle_scope(v8::Isolate::GetCurrent());
-#else
-        v8::HandleScope handle_scope;
-#endif
+        V8_HANDLE_SCOPE(v8::Isolate::GetCurrent(), handle_scope);
         v8::String::Utf8Value exc(tc.Exception());
 
         v8::Handle<v8::Message> message = tc.Message();
@@ -279,30 +237,51 @@ public:
     }
 
     ///
-    static js::CBK_RET js_include(const js::ARGUMENTS& args)
+    static v8::CBK_RET js_include(const v8::ARGUMENTS& args)
     {
-        if(args.Length() < 1)
-            return js::CBK_RET();
+        coid::charstr dst;
+        coid::token relpath;
 
-        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        V8_DECL_ISO(iso);
+        V8_ESCAPABLE_SCOPE(iso, scope);
+
+        if (args.Length() < 1)
+        {
+            //return current path of the 0th stack frame when called without arguments
+
+            if (!script_handle::get_target_path("", 0, dst, &relpath))
+                return (v8::CBK_RET)V8_UNDEFINED;
+
+            coid::charstr urlenc = "file:///";
+            urlenc.append_encode_url(relpath, false);
+
+            v8::Handle<v8::String> source = v8::string_utf8(urlenc);
+
+#ifdef V8_MAJOR_VERSION
+            args.GetReturnValue().Set(source);
+            return;
+#else
+            return scope.Close(source);
+#endif
+        }
+
+        uint frame = args.Length() > 1
+            ? (uint)args[1]->ToInteger()->Value()
+            : 0;
 
         v8::String::Utf8Value str(args[0]);
         coid::token path = coid::token(*str, str.length());
         path.trim_whitespace();
 
-        coid::charstr dst;
-        if(0 != script_handle::get_target_path(path, 0, dst, 0)) {
+        if (0 != script_handle::get_target_path(path, 0, dst, &relpath)) {
             (dst = "invalid path ") << path;
-            return (js::CBK_RET)js::THROW(iso, v8::Exception::Error, dst);
+            return v8::throw_js(iso, v8::Exception::Error, dst);
         }
 
-        //if(!dst.ends_with(".js"))
-        //    dst << ".js";
-
         coid::bifstream bif(dst);
-        if(!bif.is_open()) {
+        if (!bif.is_open()) {
             dst.ins(0, coid::token("error opening file "));
-            return (js::CBK_RET)js::THROW(iso, v8::Exception::Error, dst);
+            return v8::throw_js(iso, v8::Exception::Error, dst);
         }
 
         coid::binstreambuf buf;
@@ -310,19 +289,14 @@ public:
 
         coid::token js = buf;
 
-#ifdef V8_MAJOR_VERSION
-        v8::EscapableHandleScope scope(iso);
-        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
-#else
-        v8::HandleScope scope;
-        v8::Local<v8::Context> ctx = v8::Context::GetCurrent();
-#endif
+        v8::Local<v8::Context> ctx = V8_CUR_CONTEXT(iso);
+
         v8::TryCatch trycatch;
         v8::Handle<v8::String> result = v8::string_utf8("$result");
-        ctx->Global()->Set(result, v8_Undefined(iso));
+        ctx->Global()->Set(result, V8_UNDEFINED);
 
         coid::zstring filepath;
-        filepath.get_str() << "file:///" << dst;
+        filepath.get_str() << "file:///" << relpath;
 
         v8::Handle<v8::String> source = v8::string_utf8(js);
         v8::Handle<v8::String> spath  = v8::string_utf8(filepath);
@@ -337,7 +311,7 @@ public:
             throw_js_error(trycatch, "js_include: ");
 
         v8::Handle<v8::Value> rval = ctx->Global()->Get(result);
-        ctx->Global()->Set(result, v8_Undefined(iso));
+        ctx->Global()->Set(result, V8_UNDEFINED);
 
 #ifdef V8_MAJOR_VERSION
         args.GetReturnValue().Set(rval);
@@ -368,9 +342,9 @@ struct interface_context
     //v8::Persistent<v8::Script> _script;
     v8::Persistent<v8::Object> _object;
 
-    v8::Local<v8::Context> context( v8::Isolate* iso ) {
+    v8::Local<v8::Context> context( v8::Isolate* iso ) const {
 #ifdef V8_MAJOR_VERSION
-        return _object .Get(iso)->CreationContext();
+        return _object.Get(iso)->CreationContext();
 #else
         return _object->CreationContext();
 #endif
@@ -437,7 +411,7 @@ inline v8::Handle<v8::Value> wrap_object( intergen_interface* orig, v8::Handle<v
 #else
         return handle_scope.Close(fn(orig, context));
 #endif
-    return v8_Undefined(iso);
+    return V8_UNDEFINED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

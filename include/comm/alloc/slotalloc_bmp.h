@@ -21,7 +21,7 @@ private:
 public:
 
     /// size: preallocated size
-    slotalloc_bmp(const uint size = 32 * 32)
+    slotalloc_bmp(const uint size = 4096)
         : _bmp()
         , _items()
     {
@@ -152,6 +152,8 @@ public:
 
         return (b - _bmp.ptr()) * 32 + index;
     }
+
+    uint size() const { return _items.size(); }
 
 };
 

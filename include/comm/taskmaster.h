@@ -84,8 +84,8 @@ public:
         _synclevels.reserve(16, false);
 
         _threads.alloc(nthreads);
-        _threads.for_each([&](threadinfo& ti) {
-            ti.order = uint(&ti - _threads.ptr());
+        _threads.for_each([&](threadinfo& ti, uints id) {
+            ti.order = uint(id);
             ti.master = this;
             ti.tid.create(threadfunc, &ti, 0, "taskmaster");
         });
@@ -109,6 +109,19 @@ public:
         sl.submitter = submitter;
 
         return level;
+    }
+
+    ///Run fn(index) in parallel in task level 0
+    //@param first begin index value
+    //@param last end index value
+    //@param fn function(index) to run
+    template <typename Index, typename Fn>
+    void parallel_for(Index first, Index last, const Fn& fn) {
+        for (; first != last; ++first) {
+            push(0, fn, first);
+        }
+
+        wait(0);
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
@@ -166,8 +179,12 @@ public:
         auto& level = _synclevels[tlevel];
         ++level.priority;
 
+        //wait for threads to complete tasks, possibly helping with a pending task
+        bool working = false;
         while (level.njobs > 0) {
-            process_specific_task(tlevel);
+            if (!working)
+                thread::wait(0);
+            working = process_specific_task(tlevel);
         }
 
         --level.priority;
@@ -230,20 +247,15 @@ protected:
     ///Unit of allocation for tasks
     struct granule
     {
-        uint64 dummy[2 * sizeof(uints) / 4];
+        uint8 dummy[8 * sizeof(void*)];
     };
 
     granule* alloc_data(uints size)
     {
-        auto base = _taskdata.get_array().ptr();
-
         uints n = align_to_chunks(size, sizeof(granule));
-        granule* p = _taskdata.add_range_uninit(n);
+        granule* p = _taskdata.add_contiguous_range_uninit(n);
 
-        //no rebase
-        DASSERT(base == _taskdata.get_array().ptr());
-
-        coidlog_devdbg("taskmaster", "pushed task id " << _taskdata.get_item_id(p));
+        //coidlog_devdbg("taskmaster", "pushed task id " << _taskdata.get_item_id(p));
         return p;
     }
 
@@ -284,12 +296,12 @@ protected:
 
         template <class C, size_t ...I>
         void invoke_memberfn(C& obj, index_sequence<I...>) {
-            ((*obj).*_fn)(std::get<I>(_tuple)...);
+            (obj.*_fn)(std::get<I>(_tuple)...);
         }
 
     private:
 
-        typedef std::tuple<Args...> tuple_t;
+        typedef std::tuple<std::remove_reference_t<Args>...> tuple_t;
 
         Fn _fn;
         tuple_t _tuple;
@@ -300,11 +312,11 @@ protected:
     struct invoker : invoker_common<Fn, Args...>
     {
         invoker(int sync, const Fn& fn, Args&& ...args)
-            : invoker_common(sync, fn, std::forward<Args>(args)...)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
         {}
 
         void invoke() override final {
-            invoke_fn(make_index_sequence<sizeof...(Args)>());
+            this->invoke_fn(make_index_sequence<sizeof...(Args)>());
         }
 
         size_t size() const override final {
@@ -312,17 +324,22 @@ protected:
         }
     };
 
-    ///invoker for member functions
+    ///invoker for member functions (on copied objects)
     template <typename Fn, typename C, typename ...Args>
     struct invoker_memberfn : invoker_common<Fn, Args...>
     {
         invoker_memberfn(int sync, Fn fn, const C& obj, Args&&... args)
-            : invoker_common(sync, fn, std::forward<Args>(args)...)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
             , _obj(obj)
         {}
 
+        invoker_memberfn(int sync, Fn fn, C&& obj, Args&&... args)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+            , _obj(std::forward<C>(obj))
+        {}
+
         void invoke() override final {
-            invoke_memberfn(_obj, make_index_sequence<sizeof...(Args)>());
+            this->invoke_memberfn(_obj, make_index_sequence<sizeof...(Args)>());
         }
 
         size_t size() const override final {
@@ -332,6 +349,50 @@ protected:
     private:
 
         C _obj;
+    };
+
+    ///invoker for member functions (on pointers)
+    template <typename Fn, typename C, typename ...Args>
+    struct invoker_memberfn<Fn, C*, Args...> : invoker_common<Fn, Args...>
+    {
+        invoker_memberfn(int sync, Fn fn, C* obj, Args&&... args)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+            , _obj(obj)
+        {}
+
+        void invoke() override final {
+            this->invoke_memberfn(*_obj, make_index_sequence<sizeof...(Args)>());
+        }
+
+        size_t size() const override final {
+            return sizeof(*this);
+        }
+
+    private:
+
+        C* _obj;
+    };
+
+    ///invoker for member functions (on irefs)
+    template <typename Fn, typename C, typename ...Args>
+    struct invoker_memberfn<Fn, iref<C>, Args...> : invoker_common<Fn, Args...>
+    {
+        invoker_memberfn(int sync, Fn fn, const iref<C>& obj, Args&&... args)
+            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+            , _obj(obj)
+        {}
+
+        void invoke() override final {
+            this->invoke_memberfn(*_obj, make_index_sequence<sizeof...(Args)>());
+        }
+
+        size_t size() const override final {
+            return sizeof(*this);
+        }
+
+    private:
+
+        iref<C> _obj;
     };
 
 
@@ -374,6 +435,8 @@ private:
 
     void* threadfunc( int order )
     {
+        coidlog_info("taskmaster", "thread " << order << " running");
+
         do
         {
             wait();
@@ -403,6 +466,8 @@ private:
             }
         }
         while (1);
+
+        coidlog_info("taskmaster", "thread " << order << " exiting");
 
         return 0;
     }
@@ -441,9 +506,9 @@ private:
     void run_task( invoker_base* task, int order )
     {
         uints id = _taskdata.get_item_id((granule*)task);
-        coidlog_devdbg("taskmaster", "thread " << order << " processing task id " << id);
+        //coidlog_devdbg("taskmaster", "thread " << order << " processing task id " << id);
 
-        DASSERT(_taskdata.is_valid_id(id));
+        DASSERT_RETVOID(_taskdata.is_valid_id(id));
         task->invoke();
 
         int sync = task->task_level();
@@ -489,10 +554,10 @@ private:
 
     std::mutex _sync;
     std::condition_variable _cv;
-    volatile int _qsize;                //< current queue size, used also as a semaphore
+    std::atomic_int _qsize;             //< current queue size, used also as a semaphore
     volatile bool _quitting;
 
-    slotalloc<granule> _taskdata;
+    slotalloc_atomic<granule> _taskdata;
 
     queue<invoker_base*> _queue;
 

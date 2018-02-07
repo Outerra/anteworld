@@ -116,19 +116,28 @@ public:
 	coid::int32 add_refcount() {
         return COUNTER::inc(&_count);
     }
-/*
-	bool add_ref_lock() {
-		for( ;; ) {
-			coid::int32 tmp = _count;
-			if( tmp==0 ) return false;
-			if( COUNTER::b_cas( &_count, tmp+1, tmp ) ) return true;
-		}
-	}*/
 
-	coid::int32 release_refcount() {
-		coid::int32 count = COUNTER::dec(&_count);
+    //@return true if refcount was safely incremented (didn't go to 0)
+    bool can_add_refcount() {
+        int previous = _count;
+        for (;;)
+        {
+            if (previous == 0)
+                return false;
+            if (COUNTER::b_cas(&_count, previous + 1, previous))
+                break;
+            previous = _count;
+        }
+        return true;
+    }
+
+	coid::int32 release_refcount(void** ptref = 0) {
+        policy_base_* p = this;
+        coid::int32 count = COUNTER::dec(&_count);
+
 		if(count == 0) {
-            _destroy();
+            if(ptref) *ptref = 0;
+            p->_destroy();
         }
 		return count;
 	}

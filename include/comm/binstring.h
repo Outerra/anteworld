@@ -100,7 +100,7 @@ public:
 
 #ifdef COID_VARIADIC_TEMPLATES
     template<class T, class...Ps>
-    T& push(Ps... ps) {
+    T& push(Ps&&... ps) {
         return *new(pad_alloc<T>()) T(std::forward<Ps>(ps)...);
     }
 #endif //COID_VARIADIC_TEMPLATES

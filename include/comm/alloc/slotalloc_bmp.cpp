@@ -15,6 +15,8 @@ struct test_data
     {}
 };
 
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 void coid::test::slotalloc_bmp()
 {
     coid::slotalloc_bmp<test_data> data;

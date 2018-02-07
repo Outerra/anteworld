@@ -40,6 +40,7 @@
 
 #include "namespace.h"
 #include <type_traits>
+#include <limits>
 
 #if defined(__MINGW32__)
 
@@ -148,6 +149,12 @@
 # define xstrcasecmp      strcasecmp
 #endif
 
+///Static constant, adjustable in debug, const & optimized in release builds
+#ifdef _DEBUG
+#define STATIC_DBG static
+#else
+#define STATIC_DBG static const
+#endif
 
 //#define _USE_32BIT_TIME_T
 #include <sys/types.h>
@@ -260,6 +267,30 @@ using coid::ushort;
 
 COID_NAMESPACE_BEGIN
 
+///Versioned item id for slot allocators
+struct versionid
+{
+    uint id : 24;
+    uint version : 8;
+
+    versionid() : id(0x00ffffff), version(0xff)
+    {}
+
+    versionid(uint id, uint8 version) : id(id), version(version)
+    {}
+
+    bool valid() const { return ((id << 8) | version) != UINT_MAX; }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+template<class INT, class INTFROM>
+inline INT saturate_cast(INTFROM a) {
+    static_assert(std::is_integral<INT>::value, "integral type required");
+    INT minv = std::numeric_limits<INT>::min();
+    INT maxv = std::numeric_limits<INT>::max();
+    return a > maxv ? maxv : (a < minv ? minv : INT(a));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class INT>
@@ -364,7 +395,6 @@ COID_NAMESPACE_END
 #define UMAX32      0xffffffffUL
 #define UMAX64      0xffffffffffffffffULL
 #define WMAX        0xffff
-
 
 #include "net_ul.h"
 

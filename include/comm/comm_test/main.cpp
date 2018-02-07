@@ -57,6 +57,29 @@ int main( int argc, char* argv[] )
 #endif
 
     {
+        slotalloc<charstr> ss;
+        slotalloc_pool<charstr> sp;
+
+        for (int i = 0; i < 256 + 1; ++i) {
+            ss.push_construct("abc");
+            sp.push_construct("def");
+        }
+
+        sp.del_item(0);
+        sp.push("ghi");
+
+        DASSERT(sp[0] == "ghi");
+
+        for (int i = 0; i < 256 + 1; ++i) {
+            ss.del_item(i);
+            sp.del_item(i);
+        }
+
+        ss.add_range(513);
+        sp.add_range(513);
+    }
+
+    {
         auto amx = [](value& x) {};
         auto ami = [](value& x, uints i) {};
         auto axx = [](const value& x) {};

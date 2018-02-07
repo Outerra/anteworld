@@ -39,14 +39,19 @@
 
 #include "../namespace.h"
 #include "../dynarray.h"
+#include "../commexception.h"
 
+#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 COID_NAMESPACE_BEGIN
 
+///Packer/unpacker for ZSTD
 struct packer_zstd
 {
-    packer_zstd() : _dstream(0)
+    COIDNEWDELETE("packer_zstd");
+
+    packer_zstd() : _cstream(0), _dstream(0), _offset(0)
     {}
 
     ~packer_zstd() {
@@ -56,17 +61,18 @@ struct packer_zstd
         }
     }
 
+    ///Pack block of data
     //@param src src data
     //@param size input size
     //@param dst target buffer (append)
     //@return compressed size
-    uints pack( const void* src, uints size, dynarray<uint8>& dst, int compression_level = 1 )
+    uints pack( const void* src, uints size, dynarray<uint8>& dst, int complevel = 3 )
     {
         uints osize = dst.size();
         uints dmax = ZSTD_compressBound(size);
         uint8* p = dst.add(dmax);
 
-        uints ls = ZSTD_compress(p, dmax, src, size, compression_level);
+        uints ls = ZSTD_compress(p, dmax, src, size, complevel);
         if(ZSTD_isError(ls))
             return UMAXS;
 
@@ -74,7 +80,7 @@ struct packer_zstd
         return ls;
     }
 
-    ///
+    ///Unpack block of data
     //@param src src data
     //@param size available input size
     //@param dst target buffer
@@ -90,36 +96,204 @@ struct packer_zstd
         uints origsize = dst.size();
 
         const uints outblocksize = ZSTD_DStreamOutSize();
-        ZSTD_outBuffer bot;
-        ZSTD_inBuffer bin;
+        ZSTD_outBuffer zot;
+        ZSTD_inBuffer zin;
 
-        bin.src = src;
-        bin.size = size;
-        bin.pos = 0;
-        bot.pos = 0;
-        bot.size = dstsize && dstsize <= UMAX64 ? uints(dstsize) : outblocksize;
-        bot.dst = dst.add(bot.size);
+        zin.src = src;
+        zin.size = size;
+        zin.pos = 0;
+        zot.pos = 0;
+        zot.size = dstsize && dstsize <= UMAX64 ? uints(dstsize) : outblocksize;
+        zot.dst = dst.add(zot.size);
 
-        uints r;
-        while((r = ZSTD_decompressStream(_dstream, &bot, &bin)) != 0) {
-            if(ZSTD_isError(r))
+        uints rem;
+        while((rem = ZSTD_decompressStream(_dstream, &zot, &zin)) != 0) {
+            if(ZSTD_isError(rem))
                 return UMAXS;
 
-            uints drem = bot.size - bot.pos;
-            if(r > drem) {
-                dst.add(r-drem);
-                bot.dst = dst.ptr() + origsize;
+            if (rem == 0)   //fully read
+                break;
+            if (zot.pos == zot.size) {
+                //needs more out space
+                dst.add(outblocksize);
+                zot.size = dst.size() - origsize;
+                zot.dst = dst.ptr() + origsize;
+            }
+            if (zin.pos == zin.size) {
+                //insufficient input data
+                return 0;
             }
         }
 
-        dst.resize(origsize + bot.pos);
+        dst.resize(origsize + zot.pos);
 
-        return bin.pos;
+        return zin.pos;
+    }
+
+    ///Pack data in streaming mode
+    //@param src data to pack, 0 to flush
+    //@param size byt size of data
+    //@param bon output binstream to write to
+    //@param ZSTD complevel compression level
+    uints pack_stream( const void* src, uints size, binstream& bon, int complevel=3 )
+    {
+        if (!src && (!_cstream || _buf.size() == 0))
+            return 0;
+
+        if (!_cstream)
+            _cstream = ZSTD_createCStream();
+
+        if (_buf.size() == 0) {
+            uints res = ZSTD_initCStream(_cstream, complevel);
+            if (ZSTD_isError(res))
+                throw exception() << "stream initialization failure";
+
+            _buf.alloc(ZSTD_CStreamInSize());
+        }
+
+        ZSTD_outBuffer zout;
+        zout.pos = _offset;
+        zout.size = _buf.reserved_total();
+        zout.dst = _buf.ptr();
+
+        if (src == 0) {
+            //flush
+            while (ZSTD_endStream(_cstream, &zout) > 0) {
+                bon.xwrite_raw(zout.dst, zout.pos);
+                zout.pos = 0;
+            }
+
+            if(zout.pos > 0)
+                bon.xwrite_raw(zout.dst, zout.pos);
+            _offset = 0;
+
+            //reset buffer to indicate stream needs to be initialized again
+            _buf.reset();
+
+            return 0;
+        }
+
+        ZSTD_inBuffer zin;
+        zin.src = src;
+        zin.size = size;
+        zin.pos = 0;
+
+        do {
+            uints res = ZSTD_compressStream(_cstream, &zout, &zin);
+            if (ZSTD_isError(res))
+                throw exception() << "packer error";
+
+            if (zout.pos >= zout.size) {
+                bon.xwrite_raw(zout.dst, zout.pos);
+                zout.pos = 0;
+            }
+        }
+        while (zin.size > zin.pos);
+
+        _offset = zout.pos;
+        return size;
+    }
+
+    ///Unpack data in streaming mode
+    //@param bin binstream to read from
+    //@param dst destination buffer to write to
+    //@param size size of dest buffer
+    //@return unpacked size, can be less than size argument if there's no more data
+    ints unpack_stream( binstream& bin, void* dst, uints size )
+    {
+        if (!_dstream) {
+            _dstream = ZSTD_createDStream();
+            ZSTD_initDStream(_dstream);
+
+            _buf.reserve(ZSTD_DStreamInSize(), false);
+        }
+
+        ZSTD_inBuffer zin;
+        zin.pos = _offset;
+        zin.size = _buf.size();
+        zin.src = _buf.ptr();
+
+        ZSTD_outBuffer zot;
+        zot.pos = 0;
+        zot.size = size;
+        zot.dst = dst;
+
+        bool isend = false;
+
+        while (zot.pos < zot.size) {
+            if (zin.pos >= zin.size && !isend) {
+                //read next chunk of input
+                uints tot = _buf.reserved_total();
+                uints rlen = tot;
+                bin.read_raw(_buf.ptr(), rlen);
+
+                uints read = tot - rlen;
+                if (read > 0) {
+                    zin.size = read;
+                    _buf.set_size(read);
+
+                    zin.pos = 0;
+                }
+                else
+                    isend = true;
+
+                _offset = 0;
+            }
+
+            uints rem = ZSTD_decompressStream(_dstream, &zot, &zin);
+            if (rem == 0)   //fully read stream
+                break;
+            if (ZSTD_isError(rem))
+                return -1;
+            if (isend) //not enough data
+                break;
+        }
+
+        _offset = zin.pos;
+
+        return zot.pos;
+    }
+
+    void reset_read() {
+        if (_dstream)
+            ZSTD_resetDStream(_dstream);
+
+        _offset = 0;
+        _buf.reset();
+    }
+
+    void reset_write(uints size = 0) {
+        if (_cstream)
+            ZSTD_resetCStream(_cstream, size);
+
+        _offset = 0;
+        _buf.reset();
+    }
+
+    bool eof() const {
+        if (!_dstream)
+            return true;
+
+        ZSTD_inBuffer zin;
+        zin.pos = _offset;
+        zin.size = _buf.size();
+        zin.src = _buf.ptr();
+
+        ZSTD_outBuffer zot;
+        zot.pos = 0;
+        zot.size = 0;
+        zot.dst = 0;
+
+        uints rem = ZSTD_decompressStream(_dstream, &zot, &zin);
+        return rem == 0;
     }
 
 private:
 
+    ZSTD_CStream* _cstream;
     ZSTD_DStream* _dstream;
+    dynarray<uint8> _buf;
+    uints _offset;
 };
 
 COID_NAMESPACE_END

@@ -267,7 +267,6 @@
     <ClInclude Include="..\..\..\regex.h" />
     <ClInclude Include="..\..\..\retcodes.h" />
     <ClInclude Include="..\..\..\rnd.h" />
-    <ClInclude Include="..\..\..\segarray.h" />
     <ClInclude Include="..\..\..\singleton.h" />
     <ClInclude Include="..\..\..\str.h" />
     <ClInclude Include="..\..\..\strgen.h" />
@@ -348,6 +347,9 @@
     <ClInclude Include="..\..\..\range.h" />
     <ClInclude Include="..\..\..\bitrange.h" />
     <ClInclude Include="..\..\..\taskmaster.h" />
+    <ClInclude Include="..\..\..\alloc\slotalloc_tracker.h">
+      <Filter>alloc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">

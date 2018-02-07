@@ -37,6 +37,7 @@
 
 #include "commassert.h"
 #include "ref_base.h"
+#include "sync/mutex.h"
 #include "hash/hashfunc.h"
 #include "binstream/binstreambuf.h"
 #include "metastream/metastream.h"
@@ -47,35 +48,36 @@ template<class T> class irefw;
 
 struct create_lock {};
 
-template<class T> 
+template<class T>
 class iref
 {
     friend class irefw<T>;
 
 private:
-	T* _p;
+    T* _p;
 
-	typedef iref<T> iref_t;
-	typedef coid::pool< coid::policy_pooled_i<T>* > pool_type_t;
+    typedef iref<T> iref_t;
+    typedef coid::pool< coid::policy_pooled_i<T>* > pool_type_t;
 
 public:
 
     typedef T base_t;
 
-	iref() : _p(0) {}
+    iref() : _p(0) {}
 
-    iref( nullptr_t ) : _p(0) {}
+    iref(nullptr_t) : _p(0) {}
 
-	iref( const iref_t& r ) : _p(r.add_refcount()) {}
+    iref(const iref_t& r) : _p(r.add_refcount()) {}
 
-    iref( iref_t&& r ) : _p(0) {
+    iref(iref_t&& r) : _p(0) {
         takeover(r);
     }
 
     ///Constructor from pointer, artificially removed priority to resolve ambiguity
     template<class K>
-    iref( K* p, typename std::remove_const<K>::type* = 0 ) : _p(p) {
-        add_refcount();
+    iref(K* p, typename std::remove_const<K>::type* = 0) : _p(p) {
+        if (_p)
+            _p->add_refcount();
     }
 
     ///Constructor from a convertible type
@@ -84,38 +86,50 @@ public:
 #else
     template<class T2>
 #endif
-    iref( const iref<T2>& r ) : _p(0) {
-        if(r.get()) create(r.get());
+    iref(const iref<T2>& r) {
+        _p = r.add_refcount();
     }
 
-    T* add_refcount() const { if(_p) _p->add_refcount(); return _p; }
+    T* add_refcount() const {
+        T* p = _p;
+        if (p && p->can_add_refcount())
+            return p;
+        return 0;
+    }
 
     //
-	explicit iref( const create_me& )
+    explicit iref(const create_me&)
         : _p(new T())
-    { add_refcount(); }
+    {
+        _p->add_refcount();
+    }
 
-	// special constructor from default policy
-	explicit iref( const create_pooled& ) 
-		: _p( coid::policy_pooled_i<T>::create() ) 
-	{}
+    // special constructor from default policy
+    explicit iref(const create_pooled&)
+        : _p(coid::policy_pooled_i<T>::create())
+    {}
 
-	~iref() { release(); }
+    ~iref() { release(); }
 
-	void release() { if(_p) _p->release_refcount(); _p=0;  }
+    void release() {
+        T* p = _p;
+        if (p)
+            p->release_refcount((void**)&_p);
+        _p = 0;
+    }
 
     T* create(T* const p)
-	{
-        DASSERT_RET(p!=_p, _p);
-		release();
-		_p = p;
-        _p->add_refcount();
-        return _p;
-	}
-
-	bool create_lock(T *p) {
+    {
+        DASSERT_RET(p != _p, _p);
+        p->add_refcount();
         release();
-        if(p && p->add_refcount_lock()) {
+        _p = p;
+        return _p;
+    }
+
+    bool create_lock(T *p) {
+        release();
+        if (p && p->add_refcount_lock()) {
             _p = p;
             return true;
         }
@@ -125,98 +139,117 @@ public:
 
     T* create_pooled() {
         T* p = coid::policy_pooled_i<T>::create();
-        DASSERT_RET(p!=_p, _p);
-		release();
-		_p = p;
-		return _p;
-	}
+        DASSERT_RET(p != _p, _p);
+        release();
+        _p = p;
+        return _p;
+    }
 
     T* create_pooled(pool_type_t *po) {
         T* p = coid::policy_pooled_i<T>::create(po);
-		DASSERT_RET(p!=_p, _p);
-		release();
-		_p = p;
-		return _p;
-	}
+        DASSERT_RET(p != _p, _p);
+        release();
+        _p = p;
+        return _p;
+    }
 
-	const iref_t& operator = (const iref_t& r) {
-		T* p = r.get();
-		r.add_refcount();
-		release();
-		_p = p;
-		return *this; 
-	}
+    ///Assign if empty
+    bool assign_safe(const iref_t& r) {
+        static coid::comm_mutex _mux(500, false);
 
-	T* get() const { return _p; }
+        _mux.lock();
+        //assign only if nobody assigned before us
+        bool succ = !_p;
+        if (succ)
+            _p = r.add_refcount();
+        _mux.unlock();
+        return succ;
+    }
 
-	T& operator*() const { DASSERT( _p!=0 ); return *_p; }
+    const iref_t& operator = (const iref_t& r) {
+        T* p = r.add_refcount();
+        release();
+        _p = p;
+        return *this;
+    }
 
-	T* operator->() const { DASSERT( _p!=0 ); return _p; }
+    const iref_t& operator = (iref_t&& r) {
+        takeover(r);
+        return *this;
+    }
 
-	void swap(iref_t& r) {
-		std::swap(_p, r._p);
-	}
+    T* get() const { return _p; }
 
-    friend void swap( iref_t& a, iref_t& b ) {
+    T& operator*() const { DASSERT(_p != 0); return *_p; }
+
+    T* operator->() const { DASSERT(_p != 0); return _p; }
+
+    void swap(iref_t& r) {
+        std::swap(_p, r._p);
+    }
+
+    friend void swap(iref_t& a, iref_t& b) {
         std::swap(a._p, b._p);
     }
 
-	bool is_empty() const { return (_p==0); }
+    bool is_empty() const { return (_p == 0); }
 
-	typedef T* iref<T>::*unspecified_bool_type;
+    typedef T* iref<T>::*unspecified_bool_type;
 
-	void forget() { _p=0; }
+    void forget() { _p = 0; }
 
-	template<class T2>
-	void takeover(iref<T2>& p) {
-		release();
-		_p = p.get();
-		p.forget();
-	}
+    template<class T2>
+    void takeover(iref<T2>& p) {
+        if (_p == static_cast<T*>(p.get()))
+            return;
+        release();
+        _p = p.get();
+        p.forget();
+    }
 
-	coid::int32 refcount() const { return _p?_p->refcount():0; }
+    coid::int32 refcount() const { return _p ? _p->refcount() : 0; }
 
-	///Automatic cast to unconvertible bool for checking via if
-	operator unspecified_bool_type () const {
-	    return _p ? &iref<T>::_p : 0;
-	}
+    ///Automatic cast to unconvertible bool for checking via if
+    operator unspecified_bool_type () const {
+        return _p ? &iref<T>::_p : 0;
+    }
 
-	friend bool operator == ( const iref<T>& a,const iref<T>& b ) {
-    	return a._p == b._p;
-	}
+    friend bool operator == (const iref<T>& a, const iref<T>& b) {
+        return a._p == b._p;
+    }
 
-	friend bool operator != ( const iref<T>& a,const iref<T>& b ) {
-		return !operator==(a,b);
-	}
+    friend bool operator != (const iref<T>& a, const iref<T>& b) {
+        return !operator==(a, b);
+    }
 
-	friend bool operator < ( const iref<T>& a,const iref<T>& b ) {
-    	return a._p < b._p;
-	}
+    friend bool operator < (const iref<T>& a, const iref<T>& b) {
+        return a._p < b._p;
+    }
 
-	friend coid::binstream& operator << (coid::binstream& bin,const iref_t& s) {
-		return bin<<*s.get(); 
-	}
+    friend coid::binstream& operator << (coid::binstream& bin, const iref_t& s) {
+        return bin << *s.get();
+    }
 
-	friend coid::binstream& operator >> (coid::binstream& bin,iref_t& s) { 
-		s.create(new T); return bin>>*s.get(); 
-	}
-/*
-	friend coid::metastream& operator << (coid::metastream& m,const iref_t& s) {
-		MSTRUCT_OPEN(m,"ref")
-		MMP(m,"ptr",s.get())
-		MSTRUCT_CLOSE(m)
-	}*/
+    friend coid::binstream& operator >> (coid::binstream& bin, iref_t& s) {
+        s.create(new T); return bin >> *s.get();
+    }
+    /*
+        friend coid::metastream& operator << (coid::metastream& m,const iref_t& s) {
+            MSTRUCT_OPEN(m,"ref")
+            MMP(m,"ptr",s.get())
+            MSTRUCT_CLOSE(m)
+        }*/
 
-	friend coid::metastream& operator || (coid::metastream& m, iref_t& s)
+    friend coid::metastream& operator || (coid::metastream& m, iref_t& s)
     {
-        if(m.stream_writing())
+        if (m.stream_writing())
             m.write_optional(s.get());
-        else if(m.stream_reading())
+        else if (m.stream_reading())
             s.create(m.read_optional<T>());
         else
             m || *(T*)0;
         return m;
-	}
+    }
 };
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -245,28 +278,28 @@ public:
     ~irefw() { release(); }
 
     void release() {
-        if(_p) {
+        if (_p) {
             const coid::uint32 weaks =
                 T::counter_t::dec(_weaks) & ~0x8000000;
 
-            if(weaks == 0)
+            if (weaks == 0)
                 delete _weaks;
 
             _p = 0;
             _weaks = 0;
-        }        
+        }
     }
 
     bool lock(iref<T> &newref) {
-        if(_p && newref._p != _p)
-            for(;;) {
-			    coid::int32 tmp = *_weaks;
-                if(tmp & 0x80000000) {
-                    if(tmp == T::counter_t::add(_weaks, 0))
+        if (_p && newref._p != _p)
+            for (;;) {
+                coid::int32 tmp = *_weaks;
+                if (tmp & 0x80000000) {
+                    if (tmp == T::counter_t::add(_weaks, 0))
                         return false;
                 }
                 else {
-                    if(!newref.create_lock(_p) || tmp != T::counter_t::add(_weaks, 0))
+                    if (!newref.create_lock(_p) || tmp != T::counter_t::add(_weaks, 0))
                         newref.forget();
                     else
                         return true;

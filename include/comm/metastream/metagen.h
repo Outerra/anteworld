@@ -1234,7 +1234,7 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
             //support for 'first' and 'after' attributes
             bool nonempty = buf.len() > oldbufsize;
 
-            int i;
+            ints i;
             token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
             if (prefix && nonempty)
                 buf.ins(0, prefix);
@@ -1335,7 +1335,7 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
     //support for 'first' and 'after' attributes
     bool nonempty = buf.len() > oldbufsize;
 
-    int i;
+    ints i;
     token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
     if (prefix && nonempty)
         buf.ins(0, prefix);

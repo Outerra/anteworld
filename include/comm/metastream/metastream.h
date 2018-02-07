@@ -69,7 +69,7 @@ struct waypoint
 
     friend metastream& operator || (metastream& m, waypoint& w)
     {
-        m.compound("waypoint", [&]()
+        m.compound_type(w, [&]()
         {
             m.member("pos", w.pos);
             m.member("rot", w.rot);
@@ -164,8 +164,8 @@ public:
         return *this;
     }
 
-    ///Define struct streaming scheme
-    //@param name struct type name
+    ///Define struct streaming scheme [OBSOLETE - use compound_type instead]
+    //@param name unique struct type name
     //@param fn functor with member functions defining the struct layout
     template<typename Fn>
     metastream& compound( const token& name, Fn fn )
@@ -771,10 +771,8 @@ protected:
     ////////////////////////////////////////////////////////////////////////////////
     //@{ methods to physically stream the data utilizing the metastream
 
-    bool prepare_type_common( bool cache, bool read )
+    bool prepare_type_common( bool read )
     {
-        stream_reset(0,cache);
-
         _root.desc = 0;
         _current_var = 0;
 
@@ -811,7 +809,10 @@ protected:
     template<class T>
     opcd prepare_type( T&, const token& name, bool cache, bool read )
     {
-        if( !prepare_type_common(cache, read) )  return 0;
+        //reset on unnamed properties - assumed root property streaming
+        stream_reset(name.is_empty(), cache);
+
+        if( !prepare_type_common(read) )  return 0;
 
         *this || *(typename resolve_enum<T>::type*)0;     // build description
 
@@ -820,7 +821,10 @@ protected:
 
     opcd prepare_named_type( const token& type, const token& name, bool cache, bool read )
     {
-        if( !prepare_type_common(cache, read) )  return 0;
+        //reset on unnamed properties - assumed root property streaming
+        stream_reset(name.is_empty(), cache);
+
+        if( !prepare_type_common(read) )  return 0;
 
         if( !meta_find(type) )
             return ersNOT_FOUND;
@@ -831,7 +835,10 @@ protected:
     template<class T>
     opcd prepare_type_array( T&, uints n, const token& name, bool cache, bool read )
     {
-        if( !prepare_type_common(cache, read) )  return 0;
+        //reset on unnamed properties - assumed root property streaming
+        stream_reset(name.is_empty(), cache);
+
+        if( !prepare_type_common(read) )  return 0;
 
         meta_decl_array(n);
         *this || *(typename resolve_enum<T>::type*)0;     // build description
@@ -1869,7 +1876,7 @@ private:
 
     ////////////////////////////////////////////////////////////////////////////////
     MetaDesc::Var* last_var() const     { return _stack.last()->var; }
-    void pop_var()                      { EASSERT( _stack.pop(_curvar) ); }
+    void pop_var()                      { DASSERT_RUN( _stack.pop(_curvar) ); }
 
     void push_var( bool read ) {
         _stack.push(_curvar);

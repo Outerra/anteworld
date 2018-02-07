@@ -137,7 +137,7 @@ namespace coid {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    sysDynamicLibrary::sysDynamicLibrary(const char* libname)
+    dynamic_library::dynamic_library(const char* libname)
     {
         _handle = 0;
         if(libname)
@@ -145,20 +145,34 @@ namespace coid {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
+    charstr& dynamic_library::module_name(charstr& dst, bool append)
+    {
+        uint pos = append ? uint(dst.len()) : 0;
+        
+        module_path(dst, append);
+        token dir = token(dst.ptr()+pos, dst.ptre()).cut_left_group_back("\\/", token::cut_trait_return_with_sep_default_empty());
+
+        if (dir)
+            dst.del(pos, dir.len());
+
+        return dst;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
 #ifdef SYSTYPE_WIN
 
-    sysDynamicLibrary::handle sysDynamicLibrary::load_library(const char* libname)
+    dynamic_library::handle dynamic_library::load_library(const char* libname)
     {
         return (ints)LoadLibrary(libname);
     }
 
-    bool sysDynamicLibrary::open(const char* libname)
+    bool dynamic_library::open(const char* libname)
     {
         _handle = (ints)LoadLibrary(libname);
         return _handle != 0;
     }
 
-    bool sysDynamicLibrary::close()
+    bool dynamic_library::close()
     {
         bool r = 0 != FreeLibrary((HMODULE)_handle);
         if(r)
@@ -166,17 +180,37 @@ namespace coid {
         return r;
     }
 
-    const char* sysDynamicLibrary::error() const
+    const char* dynamic_library::error() const
     {
         return "Unknown error";
     }
 
-    void *sysDynamicLibrary::getFuncAddress(const char *funcname)
+    void *dynamic_library::getFuncAddress(const char *funcname)
     {
         return (void *)GetProcAddress((HMODULE)_handle, funcname); //lint !e611
     }
 
-    sysDynamicLibrary::~sysDynamicLibrary()
+    void *dynamic_library::getFuncAddress(handle lib_handle, const char *funcname) {
+        return (void *)GetProcAddress((HMODULE)lib_handle, funcname);
+    }
+
+    charstr& dynamic_library::module_path(charstr& dst, bool append)
+    {
+        HMODULE hm = NULL;
+
+        if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCSTR)&module_path,
+            &hm))
+            return dst;
+        
+        GetModuleFileNameA(hm,
+            append ? dst.get_append_buf(MAX_PATH) : dst.get_buf(MAX_PATH),
+            MAX_PATH);
+        return dst.correct_size();
+    }
+
+    dynamic_library::~dynamic_library()
     {
         if(_handle != 0)
             FreeLibrary((HMODULE)_handle);
@@ -184,12 +218,12 @@ namespace coid {
 
 #else //////////////////////////////////////////////////////////////////////////
 
-    sysDynamicLibrary::handle sysDynamicLibrary::load_library( const char* libname )
+    dynamic_library::handle dynamic_library::load_library( const char* libname )
     {
         return (void *) dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
     }
 
-    bool sysDynamicLibrary::open( const char* libname )
+    bool dynamic_library::open( const char* libname )
     {
         _handle = (void *) dlopen(libname, RTLD_NOW | RTLD_GLOBAL);
         /*if( ! handle ) {
@@ -200,7 +234,7 @@ namespace coid {
         return _handle != 0;
     }
 
-    bool sysDynamicLibrary::close()
+    bool dynamic_library::close()
     {
         bool r = 0 == dlclose(_handle);
         if(r)
@@ -208,17 +242,22 @@ namespace coid {
         return r;
     }
 
-    const char* sysDynamicLibrary::error() const
+    const char* dynamic_library::error() const
     {
         return dlerror();
     }
 
-    void *sysDynamicLibrary::getFuncAddress ( const char *funcname )
+    void *dynamic_library::getFuncAddress ( const char *funcname )
     {
         return (_handle==NULL) ? NULL : dlsym(_handle, funcname);
     }
 
-    sysDynamicLibrary::~sysDynamicLibrary()
+    charstr& module_path(charstr& dst, bool append)
+    {
+#error TODO dladdr
+    }
+
+    dynamic_library::~dynamic_library()
     {
         if(_handle != NULL)
             dlclose(_handle) ;

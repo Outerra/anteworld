@@ -84,7 +84,7 @@
   </Target>
   
   <Target
-    Name = "Clean"
+    Name = "Clean_hpp"
     Condition="'@(hpp)' != ''">
       <ItemGroup>
           <FilesToDelete Include="%(hpp.RootDir)%(hpp.Directory)%(hpp.Filename).intergen."/>
@@ -94,6 +94,10 @@
       <Exec Command="del /F /Q &quot;@(FilesToDelete,'cpp&quot; &quot;')cpp&quot;"/>
       <Exec Command="del /F /Q &quot;@(FilesToDelete,'js.cpp&quot; &quot;')js.cpp&quot;"/>
       <Exec Command="del /F /Q &quot;@(FilesToDelete,'lua.cpp&quot; &quot;')lua.cpp&quot;"/>
-      <!--<Exec Command="echo &quot;@(FilesToDelete,'*cpp&quot; &quot;')&quot;"/>-->
-  </Target>   
+      <Exec Command="echo &quot;@(FilesToDelete,'cpp&quot; &quot;')cpp&quot;"/>
+  </Target>
+  <Target
+    Name = "Clean"
+    DependsOnTargets = "Clean_hpp">
+  </Target>
 </Project>

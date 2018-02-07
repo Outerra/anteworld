@@ -24,7 +24,7 @@ public:
     {
         typedef iref<ifc1::ifc2::thingface> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
-        static const coid::token ifckey = "ifc1::ifc2::js::thingface.get@creator";
+        static const coid::token ifckey = "ifc1::ifc2::thingface.get@creator.js";
 
         if (!binder)
             binder = reinterpret_cast<fn_bind>(

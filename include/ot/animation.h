@@ -26,6 +26,8 @@ public:
 
     bool is_ready() const;
 
+    bool is_failed() const;
+
     int get_state() const;
 
     uint get_frame_count() const;
@@ -49,7 +51,7 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 2457669606;
+    static const int HASHID = 779038302;
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -101,6 +103,26 @@ public:
         return intergen_default_creator_static(bck);
     }
 
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<animation, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ot::animation";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
+    }
+
 protected:
 
     typedef void (*cleanup_fn)(animation*, intergen_interface*);
@@ -117,7 +139,7 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
     typedef iref<T> (*fn_creator)(animation*, const coid::token&, const coid::token&, unsigned int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation.get@2457669606";
+    static const coid::token ifckey = "ot::animation.get@779038302";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -135,17 +157,20 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
 inline bool animation::is_ready() const
 { return VT_CALL(bool,() const,0)(); }
 
+inline bool animation::is_failed() const
+{ return VT_CALL(bool,() const,1)(); }
+
 inline int animation::get_state() const
-{ return VT_CALL(int,() const,1)(); }
+{ return VT_CALL(int,() const,2)(); }
 
 inline uint animation::get_frame_count() const
-{ return VT_CALL(uint,() const,2)(); }
-
-inline uint animation::get_fps() const
 { return VT_CALL(uint,() const,3)(); }
 
+inline uint animation::get_fps() const
+{ return VT_CALL(uint,() const,4)(); }
+
 inline int animation::get_frame_offset() const
-{ return VT_CALL(int,() const,4)(); }
+{ return VT_CALL(int,() const,5)(); }
 
 #pragma warning(pop)
 

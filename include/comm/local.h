@@ -42,6 +42,7 @@
 
 #include "commtypes.h"
 #include "binstream/binstream.h"
+#include "sync/mutex.h"
 //#include "alloc.h"
 
 
@@ -113,33 +114,48 @@ class clean_ptr
 
 public:
     clean_ptr() : _p(0) {}
-    clean_ptr(const T* p) {_p = p;}
+    clean_ptr(const T* p) { _p = p; }
 
     typedef T* clean_ptr<T>::*unspecified_bool_type;
 
     ///Automatic cast to unconvertible bool for checking via if
     operator unspecified_bool_type () const {
-	    return _p ? &clean_ptr<T>::_p : 0;
-	}
-
-    int operator==(const T* ptr) const  { return ptr==_p; }
-
-    T& operator*(void) const    { return *_p; }
-    T* operator->(void) const   { return _p; }
-    T** operator&(void) const   { return (T**)&_p; }
-
-    clean_ptr& operator=(const str_ptr<T> &p) {
-        _p= p._p;
-        return *this;
-    }
-    clean_ptr& operator=(const T* p) {
-        _p= (T*)p;
-        return *this;
+        return _p ? &clean_ptr<T>::_p : 0;
     }
 
-	bool is_set() const		    { return _p != 0; }
+    int operator==(const T* ptr) const { return ptr == _p; }
 
-    T* get() const              { return _p; }
+    T& operator*(void) const { return *_p; }
+    T* operator->(void) const { return _p; }
+    T** operator&(void) const { return (T**)&_p; }
+
+    clean_ptr& operator = (const str_ptr<T> &p) {
+        _p = p._p;
+        return *this;
+    }
+    clean_ptr& operator = (const T* p) {
+        _p = (T*)p;
+        return *this;
+    }
+
+    ///Assign if empty
+    bool assign_safe(const T* p) {
+        static coid::comm_mutex _mux(500, false);
+        if (_p == p)
+            return true;
+
+        _mux.lock();
+        //assign only if nobody assigned before us
+        bool succ = !_p || !p;
+        if (succ)
+            _p = (T*)p;
+        _mux.unlock();
+        return succ;
+    }
+
+    bool is_set() const { return _p != 0; }
+
+    T* get() const { return _p; }
 };
 
 

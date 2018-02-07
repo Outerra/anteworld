@@ -29,6 +29,14 @@ typedef glm::bvec2 bool2;
 typedef glm::bvec3 bool3;
 typedef glm::bvec4 bool4;
 
+typedef glm::detail::tvec4<int64> i64vec4;
+typedef glm::detail::tvec3<int64> i64vec3;
+typedef glm::detail::tvec2<int64> i64vec2;
+
+typedef glm::detail::tvec4<uint64> u64vec4;
+typedef glm::detail::tvec3<uint64> u64vec3;
+typedef glm::detail::tvec2<uint64> u64vec2;
+
 typedef glm::detail::tvec4<int16> short4;
 typedef glm::detail::tvec3<int16> short3;
 typedef glm::detail::tvec2<int16> short2;

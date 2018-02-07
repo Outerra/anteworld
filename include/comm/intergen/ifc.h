@@ -182,7 +182,7 @@ public:
     //@param fmt format @see charstr.print
     //@param vs variadic parameters 
     template<class ...Vs>
-    void ifclog( coid::ELogType type, const coid::token& fmt, Vs&& ...vs ) {
+    void ifclog( coid::log::type type, const coid::token& fmt, Vs&& ...vs ) {
         ref<coid::logmsg> msgr = coid::interface_register::canlog(type, intergen_interface_name(), this);
         if(!msgr)
             return;
@@ -195,7 +195,7 @@ public:
     //@param vs variadic parameters 
     template<class ...Vs>
     void ifclog( const coid::token& fmt, Vs&& ...vs ) {
-        ref<coid::logmsg> msgr = coid::interface_register::canlog(coid::ELogType::None, intergen_interface_name(), this);
+        ref<coid::logmsg> msgr = coid::interface_register::canlog(coid::log::none, intergen_interface_name(), this);
         if(!msgr)
             return;
 
@@ -206,7 +206,7 @@ public:
 
 protected:
 
-    static void ifclog_ext( coid::ELogType type, const coid::tokenhash& hash, const void* inst, const coid::token& txt ) {
+    static void ifclog_ext( coid::log::type type, const coid::tokenhash& hash, const void* inst, const coid::token& txt ) {
         ref<coid::logmsg> msgr = coid::interface_register::canlog(type, hash, inst);
         if(!msgr)
             return;
@@ -297,6 +297,9 @@ private:
 ///Force registration of a script binder in a statically-linked library
 #define FORCE_REGISTER_BINDER_INTERFACE(ns,ifc,script) \
     namespace ns { namespace script { void* force_register_##ifc(); static void* autoregger_##ifc = force_register_##ifc(); }}
-    
+
+///Register a derived client interface class
+#define IFC_REGISTER_CLIENT(client) \
+    static int _autoregger = client::register_client<client>();
 
 #endif //__INTERGEN_IFC_H__

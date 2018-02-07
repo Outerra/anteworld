@@ -54,7 +54,7 @@ struct atmospheric_params
             m.member("exposure", d.exposure, 3.5f);
             m.member("shadow_light", d.shadow_light, 1.0f);
             m.member("scattering", d.scattering, 0.5f);
-            m.member("min_ambient", d.min_ambient_intensity, 5e-5f);
+            m.member("min_ambient", d.min_ambient_intensity, 5e-8f);
         });
     }
 };

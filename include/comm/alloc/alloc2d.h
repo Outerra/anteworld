@@ -34,7 +34,7 @@ private:
         handle_t new_node(const type_t &pos, const type_t &size, const handle_t parent)
         {
             node * const n = new (_nodes.add_uninit()) node(pos, size, parent);
-            const handle_t id = _nodes.get_item_id(n);
+            const handle_t id = (handle_t)_nodes.get_item_id(n);
             return id;
         }
 	

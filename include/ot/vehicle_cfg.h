@@ -111,6 +111,8 @@ struct wheel_data
     float saxle, caxle;                 //< sine/cosine of the axle angle
     float rotation;                     //< rotation angle
     float rpm;                          //< revolutions per minute
+    float skid;                         //< friction_force / skid_force
+    uint8 material;
     bool contact;                       //< in contact with ground
     bool blocked;                       //< blocked by brakes
 };
@@ -127,7 +129,7 @@ struct vehicle_params
     //float steering_speed;               //< wheel steering speed when using keyboard [half range per sec]
     float steering_threshold;           //< speed [km/h] at which the steering speed is reduced by 60%
     //float centering_speed;              //< wheel centering speed when using keyboard [half range per sec]
-    //float centering_threshold;          //< speed [km/h] when the centering acts at 60% already
+    float centering_threshold;          //< speed [km/h] when the centering acts at 60% already
 
     float4 Cx;                          //< drag coefficients for model-space directions and angular damping mod coef
     float hydro_offset;                 //< distance from center of mass along z where hydrostatic force acts
@@ -144,11 +146,9 @@ struct vehicle_params
     
     vehicle_params()
     : mass(1000.0f)
-    //, steering_speed(1.2f)
-    , steering_threshold(50.0f)
     , clearance(0)
-    //, centering_speed(0.9f)
-    //, centering_threshold(40.0f)
+    , steering_threshold(50.0f)
+    , centering_threshold(20.0f)
     , Cx(0)
     , hydro_offset(1.0f)
     , hydro_uplift(0.0f)
@@ -339,6 +339,8 @@ inline metastream& operator || (metastream& m, ot::wheel_data& w)
         m.member("csteer", w.csteer);
         m.member("rotation", w.rotation);
         m.member("rpm", w.rpm);
+        m.member("skid", w.skid);
+        m.member("material", w.material);
         m.member("contact", w.contact);
         m.member("blocked", w.blocked);
     });
@@ -352,6 +354,7 @@ inline metastream& operator || (metastream& m, ot::vehicle_params& w)
         m.member("mass", w.mass, 1000.0f);
         m.member("com", w.com_offset, float3(0));
         m.member("steering_ecf", w.steering_threshold, 50.0f);
+        m.member("centering_ecf", w.centering_threshold, 20.0f);
         m.member("clearance", w.clearance, 0.0f);
         m.member("Cx", w.Cx, float4(0));
         m.member("hydro_offset", w.hydro_offset, 1.0f);

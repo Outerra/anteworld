@@ -45,7 +45,7 @@ public:
     virtual void* get_pkg_geomob() const = 0;
 
     //@return object path (package url)
-    virtual const coid::charstr& get_objurl() const = 0;
+    virtual coid::token get_objurl() const = 0;
 
     
     virtual bool get_objdef_info( ifc_out ot::pkginfo::objdef& info ) const = 0;
@@ -165,10 +165,9 @@ public:
 
     // --- creators ---
 
-
     // --- internal helpers ---
 
-    static const int HASHID = 753485362;
+    static const int HASHID = 3082897523;
 
     int intergen_hash_id() const override { return HASHID; }
 
@@ -218,6 +217,26 @@ public:
 
     const coid::token& intergen_default_creator( EBackend bck ) const override {
         return intergen_default_creator_static(bck);
+    }
+
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<object, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ot::object";
+        tmp << "@client" << '.' << type;
+        
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
     }
 
 protected:

@@ -142,26 +142,37 @@ $-(if varname?)$
     ///Cleanup routine called from ~$name$()
     static void _cleaner_callback( $name$* m, intergen_interface* ifc ) {
         $..ns default=" "$::$..class$* host = m->host<$..ns$::$..class$>();
-        if (host) host->$varname$ = ifc;
+        if (host) host->$varname$.assign_safe(ifc);
     }
 $-(/if)$
 $-(if virtual!)$
 
     static iref<$name$> _generic_interface_creator($..ns default=" "$::$..class$* host, $name$* __here__)
     {
-        //cast to dispatch to sidestep protected access restrictions
-        $name$_dispatcher* __disp__ = static_cast<$name$_dispatcher*>(__here__);
-        if (!__disp__)
-            __disp__ = new $name$_dispatcher;
-
-        __disp__->_host.create(host);
-        __disp__->_vtable = _capture ? get_vtable_intercept() : get_vtable();
-
+        iref<$name$> rval;
+    
         $--(if varname?)$
-        if (!host->$varname$) {
-            __disp__->_cleaner = &_cleaner_callback;
-            host->$varname$ = __disp__;
+        if (host->$varname$ && !__here__)
+            rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
+            
+        if (rval.is_empty()) {
+            $name$_dispatcher* dispatcher = __here__ ? static_cast<$name$_dispatcher*>(__here__) : new $name$_dispatcher;
+            rval.create(dispatcher);
+            
+            dispatcher->_host.create(host);
+            dispatcher->_vtable = _capture ? get_vtable_intercept() : get_vtable();
         }
+
+        if (!host->$varname$.assign_safe(rval.get()))
+            rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
+        else
+            static_cast<$name$_dispatcher*>(rval.get())->_cleaner = &_cleaner_callback;
+        $-(elif)$
+        $name$_dispatcher* dispatcher = __here__ ? static_cast<$name$_dispatcher*>(__here__) : new $name$_dispatcher;
+        rval.create(dispatcher);
+
+        dispatcher->_host.create(host);
+        dispatcher->_vtable = _capture ? get_vtable_intercept() : get_vtable();
         $-(/if)$
 
         $-(if onconnect?)$
@@ -169,10 +180,10 @@ $-(if virtual!)$
 
         $-(/if)$
         $-(if onconnectev?)$
-        __disp__->$onconnectev$();
+        rval->$onconnectev$();
 
         $-(/if)$
-        return __disp__;
+        return rval;
     }
 $-(/if)$
 

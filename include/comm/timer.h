@@ -65,10 +65,15 @@ public:
     //@return current time in nanoseconds
     static uint64 current_time_ns();
 
+    //@return time since local day start
+    static uint64 day_time_ns();
+
     ///Adjust returned time
     void adjust_time_ns( int64 dtns ) {
         _dtns += dtns;
     }
+
+    int64 adjustment_ns() const { return _dtns; }
 
     ///Reset timer (sets current time as the base for elapsed time methods)
 	void reset();

@@ -36,65 +36,147 @@
  * ***** END LICENSE BLOCK ***** */
 
 #include "commassert.h"
-#include "sync/mutex.h"
-#include "binstream/filestream.h"
-#include "binstream/txtstream.h"
-#include "binstream/nullstream.h"
+#include "log/logger.h"
 
 COID_NAMESPACE_BEGIN
-
-
-struct coid_assert_log
-{
-    COIDNEWDELETE_NOTRACK
-
-    bofstream _file;
-    txtstream _text;
-    comm_mutex _mutex;
-
-
-    binstream& get_file()
-    {
-        if(!_file.is_open())
-        {
-            _file.filestream::open("assert.log","wct");
-            _text.bind(_file);
-        }
-
-        if( _file.is_open() )
-            return _text;
-        return nullstream;
-    }
-
-    bool is_open() const {
-        return _file.is_open();
-    }
-
-    coid_assert_log() : _mutex(10, false)
-    {}
-};
-
-static binstream& bin = SINGLETON(coid_assert_log)._text;
 
 static int __assert_throws = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd __rassert( const char* txt, opcd exc, const char* file, int line, const char* expr )
+opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, const char* function, const char* expr )
 {
-    coid_assert_log& asl = SINGLETON(coid_assert_log);
-    {
-        comm_mutex_guard<comm_mutex> _guard( asl._mutex );
-        asl.get_file();
+    zstring* z = txt.get();
 
-        if(&bin)
-            bin << "Assertion failed in " << file << ":" << line << " expression:\n    "
-		    << expr << "\n    " << (txt ? txt : "") << "\n\n"
-            << BINSTREAM_FLUSH;
-    }
+    coidlog_error("", "Assertion failed in " << file << '(' << line
+        << "), function " << function << ":\n\""
+        << expr << (z ? "\": " : "\"") << (z ? z->get_token() : token())
+        << '\r' //forces log flush
+    );
 
     opcd e = __assert_throws ? exc : opcd(0);
     return e;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+opt_string::~opt_string()
+{
+    if (_zstr)
+        delete _zstr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+opt_string & opt_string::operator << (const char * sz)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+    
+    *_zstr << sz;
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+opt_string & opt_string::operator << (const token& tok)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    *_zstr << tok;
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+opt_string & opt_string::operator << (char c)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << c;
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+#ifdef SYSTYPE_WIN
+# ifdef SYSTYPE_32
+
+opt_string & opt_string::operator << (ints v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+opt_string & opt_string::operator << (uints v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+# else //SYSTYPE_64
+
+opt_string & opt_string::operator << (int v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+opt_string & opt_string::operator << (uint v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+# endif
+#elif defined(SYSTYPE_32)
+
+opt_string & opt_string::operator << (long v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+opt_string & opt_string::operator << (ulong v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+#endif //SYSTYPE_WIN
+
+////////////////////////////////////////////////////////////////////////////////
+opt_string & opt_string::operator << (float v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+opt_string & opt_string::operator << (double v)
+{
+    if (!_zstr)
+        _zstr = new zstring;
+
+    _zstr->get_str() << v;
+    return *this;
+}
 
 COID_NAMESPACE_END

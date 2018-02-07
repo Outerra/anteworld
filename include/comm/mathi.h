@@ -41,10 +41,59 @@
 
 #include "commtypes.h"
 
-COID_NAMESPACE_BEGIN
+template<class T, class U>
+inline T stdmin( const T& a, const U& b ) {
+    T bt = static_cast<T>(b);
+    return a<bt ? a : bt;
+}
 
+template<class T, class U>
+inline T stdmax( const T& a, const U& b ) {
+    T bt = static_cast<T>(b);
+    return a>bt ? a : bt;
+}
+
+
+template<class T, class U, class V>
+inline T stdmin3( const T& a, const U& b, const V& c ) {
+    T bt = static_cast<T>(b);
+    T ct = static_cast<T>(c);
+    T x = a<bt ? a : bt;
+    return x<ct ? x : ct;
+}
+
+template<class T, class U, class V>
+inline T stdmax3( const T& a, const U& b, const V& c ) {
+    T bt = static_cast<T>(b);
+    T ct = static_cast<T>(c);
+    T x = a>bt ? a : bt;
+    return x>ct ? x : ct;
+}
+
+
+template<class T, class U, class V, class W>
+inline T stdmin4( const T& a, const U& b, const V& c, const W& d ) {
+    T bt = static_cast<T>(b);
+    T ct = static_cast<T>(c);
+    T dt = static_cast<T>(d);
+    T x = a<bt ? a : bt;
+    T y = ct<dt ? ct : dt;
+    return x<y ? x : y;
+}
+
+template<class T, class U, class V, class W>
+inline T stdmax4( const T& a, const U& b, const V& c, const W& d ) {
+    T bt = static_cast<T>(b);
+    T ct = static_cast<T>(c);
+    T dt = static_cast<T>(d);
+    T x = a>bt ? a : bt;
+    T y = ct>dt ? ct : dt;
+    return x>y ? x : y;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
+
+COID_NAMESPACE_BEGIN
 
 /// Align value to the nearest greater multiplier of specified chunk size
 template<class T, class Tsize>
@@ -65,29 +114,29 @@ inline T* align_ptr(T * ptr, const uints align = 0x10)
 }
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline uints align_to_chunks( uints uval, uints usize )
+inline coid_constexpr uints align_to_chunks( uints uval, uints usize )
 { return uints((uval+usize-1)/usize); }
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline uint64 align_to_chunks64( uint64 uval, uint64 usize )
+inline coid_constexpr uint64 align_to_chunks64( uint64 uval, uint64 usize )
 { return (uval+usize-1)/usize; }
 
 
 /// Aligns value to nearest multiplier of 2 pow rsize chunk size
-inline uints align_value_to_power2( uints uval, uchar rsize )
+inline coid_constexpr uints align_value_to_power2( uints uval, uchar rsize )
 { return uints((uval+(uints(1)<<rsize)-1) &~ ((uints(1)<<rsize)-1)); }
 
 /// Aligns value to nearest multiplier of 2 pow rsize chunk size
-inline uint64 align_value_to_power2_64( uint64 uval, uchar rsize )
+inline coid_constexpr uint64 align_value_to_power2_64( uint64 uval, uchar rsize )
 { return (uval+(uint64(1)<<rsize)-1) &~ ((uint64(1)<<rsize)-1); }
 
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline uints align_to_chunks_pow2( uints uval, uchar rsize )
+inline coid_constexpr uints align_to_chunks_pow2( uints uval, uchar rsize )
 { return uints((uval+((uints(1)<<rsize)-1))>>rsize); }
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline uint64 align_to_chunks_pow2_64( uint64 uval, uchar rsize )
+inline coid_constexpr uint64 align_to_chunks_pow2_64( uint64 uval, uchar rsize )
 { return (uval+((uint64(1)<<rsize)-1))>>rsize; }
 
 

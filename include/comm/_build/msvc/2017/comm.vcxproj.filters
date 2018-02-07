@@ -349,7 +349,6 @@
     <ClInclude Include="..\..\..\regex.h" />
     <ClInclude Include="..\..\..\retcodes.h" />
     <ClInclude Include="..\..\..\rnd.h" />
-    <ClInclude Include="..\..\..\segarray.h" />
     <ClInclude Include="..\..\..\singleton.h" />
     <ClInclude Include="..\..\..\atomic\stack.h" />
     <ClInclude Include="..\..\..\str.h" />
@@ -399,5 +398,9 @@
       <Filter>log</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\bitrange.h" />
+    <ClInclude Include="..\..\..\alloc\slotalloc_tracker.h">
+      <Filter>alloc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\taskmaster.h" />
   </ItemGroup>
 </Project>

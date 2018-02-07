@@ -21,45 +21,6 @@
 
 #define simd_align __declspec(align(16))
 
-template<class T>
-inline T stdmin( const T& a, const T& b ) {
-    return a<b ? a : b;
-}
-
-template<class T>
-inline T stdmax( const T& a, const T& b ) {
-    return a>b ? a : b;
-}
-
-
-template<class T>
-inline T stdmin3( const T& a, const T& b, const T& c ) {
-    T x = a<b ? a : b;
-    return x<c ? x : c;
-}
-
-template<class T>
-inline T stdmax3( const T& a, const T& b, const T& c ) {
-    T x = a>b ? a : b;
-    return x>c ? x : c;
-}
-
-
-template<class T>
-inline T stdmin4( const T& a, const T& b, const T& c, const T& d ) {
-    T x = a<b ? a : b;
-    T y = c<d ? c : d;
-    return x<y ? x : y;
-}
-
-template<class T>
-inline T stdmax4( const T& a, const T& b, const T& c, const T& d ) {
-    T x = a>b ? a : b;
-    T y = c>d ? c : d;
-    return x>y ? x : y;
-}
-
-
 namespace glm {
 
 /// clamped sqrt returning 0 on negative values
@@ -166,6 +127,25 @@ typedef detail::tvec3<uchar> uchar3;
 typedef detail::tvec2<uchar> uchar2;
 */
 
+inline float saturate(float v) {
+    return clamp(v, 0.0f, 1.0f);
+}
+
+template <typename T>
+inline float saturate(const detail::tvec2<T>& v) {
+    return clamp(v, 0.0f, 1.0f);
+}
+
+template <typename T>
+inline float saturate(const detail::tvec3<T>& v) {
+    return clamp(v, 0.0f, 1.0f);
+}
+
+template <typename T>
+inline float saturate(const detail::tvec4<T>& v) {
+    return clamp(v, 0.0f, 1.0f);
+}
+
 const float TWO_PI=6.28318530717958647692f;
 const float PI=3.14159265358979323846f; //3.14159265358979323846264338327950288419716939937510;
 const float PI_OVER_2=1.57079632679489661923f;
@@ -242,6 +222,29 @@ template<class T>
 inline bool is_equal(const T& a, const T& b, const T& tolerance)
 {
 	return bool(abs(a - b) <= tolerance);
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+template<typename T>
+inline bool finite(const detail::tvec2<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y);
+}
+
+template<typename T>
+inline bool finite(const detail::tvec3<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y) && ::_finite(v.z);
+}
+
+template<typename T>
+inline bool finite(const detail::tvec4<T>& v) {
+    return ::_finite(v.x) && ::_finite(v.y) && ::_finite(v.z) && ::_finite(v.w);
+}
+
+
+template<typename T>
+inline bool finite(const detail::tquat<T>& q) {
+    return ::_finite(q.x) && ::_finite(q.y) && ::_finite(q.z) && ::_finite(q.w);
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -855,7 +858,7 @@ bool sphere_intersects_aabb(
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
-bool aabb_intersects_aabb(
+int aabb_intersects_aabb(
     const detail::tvec3<T>& aabb1_center,
     const detail::tvec3<T>& aabb1_half,
     const detail::tvec3<T>& aabb2_half,
@@ -867,10 +870,16 @@ bool aabb_intersects_aabb(
         if (dist)
             *dist = -max(d.x,max(d.y,d.z));
 
-        return true;
+        return 1;
     }
 
-    return false;
+    if (dist) {
+        if (abs(aabb1_center.x) < aabb2_half.x && abs(aabb1_center.y) < aabb2_half.y) {
+            return -1;
+        }
+    }
+    
+    return 0;
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

@@ -47,7 +47,6 @@
     ersEXCEPTION afterwards.
 
     DASSERT*    debug-build only assertions
-    EASSERT*    debug-build only assertion, but the expression alone gets evaluated in release build too
     RASSERT*    release and debug assertions
 
     *ASSERTX    provide additional text that will be logged upon failed assertion
@@ -67,43 +66,41 @@
 #define XASSERTE(expr)              do{ if(expr) break;  coid::opcd __assert_e =
 
 //@{ Runtime assertions
-#define RASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-#define RASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(txt,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define RASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define RASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 
-#define RASSERTE(expr,exc)          XASSERTE(expr) coid::__rassert(0,exc,__FILE__,__LINE__,#expr); if(__assert_e) throw exc #expr; } while(0)
-#define RASSERTEX(expr,exc,txt)     XASSERTE(expr) coid::__rassert(txt,exc,__FILE__,__LINE__,#expr); if(__assert_e) throw exc #expr; } while(0)
+//Throw exception on assert
+#define RASSERTE(expr,exc)          XASSERTE(expr) coid::__rassert(0,exc,__FILE__,__LINE__,__FUNCTION__,#expr); if(__assert_e) throw exc #expr; } while(0)
+#define RASSERTEX(expr,exc,txt)     XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,exc,__FILE__,__LINE__,__FUNCTION__,#expr); if(__assert_e) throw exc #expr; } while(0)
 #define RASSERTXE(expr,exc,txt)     RASSERTEX(expr,exc,txt)
 
-#define RASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-#define RASSERTLX(expr,txt)         XASSERTE(expr) coid::__rassert(txt,0,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-#define RASSERTXL(expr,txt)         RASSERTLX(expr,txt)
+//Log only on assert
+#define RASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define RASSERTLX(expr,txt)         XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 //@}
 
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef _DEBUG
 
 //@{ Debug-only assertions, release build doesn't see anything from it
-#define DASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-#define DASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(txt,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define DASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define DASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 
-#define DASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,#expr); } while(0)
-#define DASSERTLX(expr,txt)         XASSERTE(expr) coid::__rassert(txt,0,__FILE__,__LINE__,#expr); } while(0)
+///Log-only
+#define DASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,__FUNCTION__,#expr); } while(0)
+#define DASSERTLX(expr,txt)         XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,0,__FILE__,__LINE__,__FUNCTION__,#expr); } while(0)
 //@}
 
-//@{ Debug assertion, but in release build the expression \a expr is still evaluated
-#define EASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-#define EASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(txt,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
-
-#define EASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,#expr); } while(0)
-#define EASSERTLX(expr,txt)         XASSERTE(expr) coid::__rassert(txt,0,__FILE__,__LINE__,#expr); } while(0)
+//@{ Assert in debug, log in release, return \a ret on failed assertion (also in release)
+#define ASSERT_RET(expr,ret,txt)    XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); return ret; } while(0)
+#define ASSERT_RETVOID(expr,txt)    XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); return; } while(0)
+#define ASSERT_LOG(expr,txt)        XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 //@}
 
-//@{ Assert in debug, log in release, return \a ret on failed assertion
-#define ASSERT_RET(expr,ret)        XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); return ret; } while(0)
-#define ASSERT_RETVOID(expr)        XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,#expr); XASSERT(ersEXCEPTION #expr); return; } while(0)
-
-#define DASSERT_RET(expr,ret)       ASSERT_RET(expr,ret)
-#define DASSERT_RETVOID(expr)       ASSERT_RETVOID(expr)
+//@{ Assert in debug, no log in release, return \a ret on failed assertion (also in release)
+#define DASSERT_RET(expr,ret)       XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); return ret; } while(0)
+#define DASSERT_RETVOID(expr)       XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); return; } while(0)
+#define DASSERT_RUN(expr)           XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 //@}
 
 #else
@@ -118,21 +115,13 @@
 #define DASSERTNX(expr,txt)
 
 
-#define EASSERT(expr)               expr
-#define EASSERTX(expr,txt)          expr
+#define ASSERT_RET(expr,ret,txt)    XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,0,__FILE__,__LINE__,__FUNCTION__,#expr); return ret; } while(0)
+#define ASSERT_RETVOID(expr,txt)    XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,0,__FILE__,__LINE__,__FUNCTION__,#expr); return; } while(0)
+#define ASSERT_LOG(expr,txt)        XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,0,__FILE__,__LINE__,__FUNCTION__,#expr); } while(0)
 
-#define EASSERTE(expr,exc)          expr
-#define EASSERTEX(expr,exc,txt)     expr
-
-#define EASSERTN(expr)              expr
-#define EASSERTNX(expr,txt)         expr
-
-
-#define ASSERT_RET(expr,ret)        XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,#expr); return ret; } while(0)
-#define ASSERT_RETVOID(expr)        XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,#expr); return; } while(0)
-
-#define DASSERT_RET(expr,ret)
-#define DASSERT_RETVOID(expr)
+#define DASSERT_RET(expr,ret)       do{ if(expr) break; return ret; } while(0)
+#define DASSERT_RETVOID(expr)       do{ if(expr) break; return; } while(0)
+#define DASSERT_RUN(expr)           do{ if(expr) break; } while(0)
 
 #endif //_DEBUG
 
@@ -141,7 +130,58 @@
 COID_NAMESPACE_BEGIN
 
 struct opcd;
-opcd __rassert( const char* txt, opcd exc, const char* file, int line, const char* expr );
+struct token;
+class zstring;
+
+///Optional log string
+class opt_string
+{
+public:
+
+    opt_string() : _zstr(0)
+    {}
+
+    opt_string(nullptr_t) : _zstr(0)
+    {}
+
+    ~opt_string();
+
+    opt_string& operator << (const char* sz);
+    
+    opt_string& operator << (const token& tok);
+    opt_string& operator << (char c);
+
+    template<class Enum>
+    opt_string& operator << (typename std::enable_if<std::is_enum<Enum>::value>::type v) {
+        return (*this << (typename resolve_enum<Enum>::type)v);
+    }
+
+#ifdef SYSTYPE_WIN
+# ifdef SYSTYPE_32
+    opt_string& operator << (ints i);
+    opt_string& operator << (uints i);
+# else //SYSTYPE_64
+    opt_string& operator << (int i);
+    opt_string& operator << (uint i);
+# endif
+#elif defined(SYSTYPE_32)
+    opt_string& operator << (long i);
+    opt_string& operator << (ulong i);
+#endif //SYSTYPE_WIN
+
+    opt_string& operator << (float d);
+    opt_string& operator << (double d);
+
+    zstring* get() const {
+        return _zstr;
+    }
+
+private:
+
+    zstring* _zstr;
+};
+
+opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, const char* function, const char* expr );
 
 COID_NAMESPACE_END
 

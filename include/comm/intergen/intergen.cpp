@@ -45,6 +45,8 @@ struct File
     charstr hdrname;
     charstr fname;
 
+    timet mtime;
+
     dynarray<Class> classes;
 
     dynarray<paste_block> pasters;
@@ -71,18 +73,21 @@ struct File
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
-int generate( const T& t, const token& patfile, const token& outfile )
+int generate( const T& t, const token& patfile, const token& outfile, __time64_t mtime )
 {
-    directory::mkdir_tree(outfile, true);
+    directory::xstat st;
+    bifstream bit;
 
-    directory::set_writable(outfile, true);
-
-    bifstream bit(patfile);
-
-    if( !bit.is_open() ) {
+    if (!directory::stat(patfile, &st) || bit.open(patfile) != 0) {
         out << "error: can't open template file '" << patfile << "'\n";
         return -5;
     }
+
+    if (st.st_mtime > mtime)
+        mtime = st.st_mtime;
+
+    directory::mkdir_tree(outfile, true);
+    directory::set_writable(outfile, true);
 
     metagen mtg;
     mtg.set_source_path(patfile);
@@ -107,6 +112,7 @@ int generate( const T& t, const token& patfile, const token& outfile )
     bof.close();
 
     directory::set_writable(outfile, false);
+    directory::set_file_times(outfile, mtime+2, mtime+2);
 
     return 0;
 }
@@ -154,11 +160,14 @@ int generate_rl( const File& cgf, charstr& patfile, const token& outfile )
     else
         out << "no rl_cmd's found\n";
 
+    __time64_t mtime = cgf.mtime + 2;
+    directory::set_file_times(outfile, mtime, mtime);
+
     return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void generate_ig( File& file, charstr& tdir, charstr& fdir  )
+void generate_ig(File& file, charstr& tdir, charstr& fdir)
 {
     directory::treat_trailing_separator(tdir, true);
     uint tlen = tdir.len();
@@ -166,16 +175,16 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
     directory::treat_trailing_separator(fdir, true);
     uint flen = fdir.len();
 
-    int nifc=0;
+    int nifc = 0;
 
     uints nc = file.classes.size();
-    for(uints c=0; c<nc; ++c)
+    for (uints c = 0; c < nc; ++c)
     {
         Class& cls = file.classes[c];
 
         //ig
         uints ni = cls.iface.size();
-        for(uint i=0; i<ni; ++i)
+        for (uint i = 0; i < ni; ++i)
         {
             Interface& ifc = cls.iface[i];
 
@@ -187,16 +196,16 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
             //interface.h
             token end;
 
-            if(ifc.relpath.ends_with_icase(end=".hpp") || ifc.relpath.ends_with_icase(end=".hxx") || ifc.relpath.ends_with_icase(end=".h"))
+            if (ifc.relpath.ends_with_icase(end = ".hpp") || ifc.relpath.ends_with_icase(end = ".hxx") || ifc.relpath.ends_with_icase(end = ".h"))
                 fdir << ifc.relpath;    //contains the file name already
-            else if(ifc.relpath.last_char() == '/' || ifc.relpath.last_char() == '\\')
+            else if (ifc.relpath.last_char() == '/' || ifc.relpath.last_char() == '\\')
                 fdir << ifc.relpath << ifc.name << ".h";
-            else if(ifc.relpath)
+            else if (ifc.relpath)
                 fdir << ifc.relpath << '/' << ifc.name << ".h";
             else
                 fdir << ifc.name << ".h";
 
-            ifc.relpath.set_from_range(fdir.ptr()+flen, fdir.ptre());
+            ifc.relpath.set_from_range(fdir.ptr() + flen, fdir.ptre());
             directory::compact_path(ifc.relpath);
             ifc.relpath.replace('\\', '/');
 
@@ -214,14 +223,14 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
             ifc.srcnamespc = &cls.namespaces;
 
             uints nm = ifc.method.size();
-            for(uints m=0; m<nm; ++m) {
-                if(ifc.method[m].bstatic)
+            for (uints m = 0; m < nm; ++m) {
+                if (ifc.method[m].bstatic)
                     ifc.storage = ifc.method[m].storage;
             }
 
             tdir << "interface.h.mtg";
 
-            if( generate(ifc, tdir, fdir) < 0 )
+            if (generate(ifc, tdir, fdir, file.mtime) < 0)
                 return;
 
             //interface.js.h
@@ -231,7 +240,7 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
             tdir.resize(tlen);
             tdir << "interface.js.h.mtg";
 
-            if( generate(ifc, tdir, fdir) < 0 )
+            if (generate(ifc, tdir, fdir, file.mtime) < 0)
                 return;
 
             //iterface.lua.h
@@ -241,8 +250,8 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
             fdir.resize(flen);
             fdir << ifc.relpathlua;
 
-            if (generate(ifc, tdir, fdir) < 0)
-                return;            
+            if (generate(ifc, tdir, fdir, file.mtime) < 0)
+                return;
 
             // class interface docs
             tdir.resize(tlen);
@@ -254,7 +263,7 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
 
             fdir << '/' << ifc.name << ".html";
 
-            generate(ifc, tdir, fdir);
+            generate(ifc, tdir, fdir, file.mtime);
 
             ++nifc;
         }
@@ -267,8 +276,8 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
     tdir.resize(tlen);
     tdir << "file.intergen.cpp.mtg";
 
-    if(nifc>0)
-        generate(file, tdir, fdir);
+    if (nifc > 0)
+        generate(file, tdir, fdir, file.mtime);
     else
         bofstream bof(fdir);    //create zero file
 
@@ -276,8 +285,8 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
     fdir.ins(-4, ".js");
     tdir.ins(-8, ".js");
 
-    if(nifc>0)
-        generate(file, tdir, fdir);
+    if (nifc > 0)
+        generate(file, tdir, fdir, file.mtime);
     else
         bofstream bof(fdir);
 
@@ -288,8 +297,8 @@ void generate_ig( File& file, charstr& tdir, charstr& fdir  )
     tdir.resize(tlen);
     tdir << "file.intergen.lua.cpp.mtg";
 
-    if (nifc>0)
-        generate(file, tdir, fdir);
+    if (nifc > 0)
+        generate(file, tdir, fdir, file.mtime);
     else
         bofstream bof(fdir);    //create zero file
 
@@ -407,11 +416,15 @@ bool File::find_class( iglexer& lex, dynarray<charstr>& namespc, charstr& templa
 ///Parse file
 int File::parse( token path )
 {
-    bifstream bif(path);
-    if(!bif.is_open()) {
+    directory::xstat st;
+
+    bifstream bif;
+    if (!directory::stat(path, &st) || bif.open(path) != 0) {
         out << "error: can't open the file " << path << "\n";
         return -2;
     }
+
+    mtime = st.st_mtime;
 
     iglexer lex;
     lex.bind(bif);

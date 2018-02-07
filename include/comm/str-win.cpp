@@ -303,6 +303,50 @@ zstring& zstring::operator = (const zstring& s)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+zstring& zstring::operator << (const char* sz)
+{
+    if (!_zptr && !_buf)
+        new(this) zstring(sz);
+    else
+        get_str() << sz;
+
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+zstring& zstring::operator << (const token& tok)
+{
+    if (!_zptr && !_buf)
+        new(this) zstring(tok);
+    else
+        get_str() << tok;
+
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+zstring& zstring::operator << (const charstr& str)
+{
+    if (!_zptr && !_buf)
+        new(this) zstring(str);
+    else
+        get_str() << str;
+
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+zstring& zstring::operator << (const zstring& s)
+{
+    if (!_zptr && !_buf)
+        new(this) zstring(s);
+    else
+        get_str() << s.get_token();
+
+    return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 zstring::operator zstring::unspecified_bool_type () const {
     bool empty = _buf
         ? _buf->is_empty()
