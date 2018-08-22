@@ -64,6 +64,7 @@ class hash_set
 {
     typedef _Select_Itself<VAL>                         _SEL;
     typedef hashtable<VAL,HASHFUNC,EQFUNC,_SEL,ALLOC>   _HT;
+    typedef hash_set<VAL,HASHFUNC,EQFUNC,ALLOC>         _ThisType;
 
 public:
 
@@ -166,14 +167,6 @@ public:
     {
         insert_unique( f, l );
     }
-
-
-    static metastream& stream_meta( metastream& m )
-    {
-        m.meta_decl_array();
-        m << *(const VAL*)0;
-        return m;
-    }
 };
 
 
@@ -195,6 +188,7 @@ class hash_multiset
 {
     typedef _Select_Itself<VAL>                         _SEL;
     typedef hashtable<VAL,HASHFUNC,EQFUNC,_SEL,ALLOC>   _HT;
+    typedef hash_multiset<VAL,HASHFUNC,EQFUNC,ALLOC>    _ThisType;
 
 public:
 
@@ -292,46 +286,7 @@ public:
     {
         insert_equal( f, l );
     }
-
-    static metastream& stream_meta( metastream& m )
-    {
-        m.meta_decl_array();
-        m << *(const VAL*)0;
-        return m;
-    }
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_set<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_out(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_set<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_in(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_multiset<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_out(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_multiset<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_in(bin);    }
-
-
-////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator << ( metastream& bin, const hash_set<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_meta(bin);    }
-
-template <class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator << ( metastream& bin, const hash_multiset<VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_meta(bin);    }
-
 
 COID_NAMESPACE_END
 

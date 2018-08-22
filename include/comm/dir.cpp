@@ -72,19 +72,6 @@ bool directory::stat(zstring name, xstat* dst)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::is_valid(zstring dir)
-{
-    xstat st;
-    return xstat64(no_trail_sep(dir), &st) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-static bool _is_valid_directory(const char* arg)
-{
-    directory::xstat st;
-    return xstat64(arg, &st) == 0 && directory::is_directory(st.st_mode);
-}
-
 bool directory::is_valid_directory(zstring arg)
 {
     token tok = arg.get_token();
@@ -100,17 +87,7 @@ bool directory::is_valid_directory(zstring arg)
         arg.get_str() << separator();
     }
 
-    return _is_valid_directory(arg.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool directory::is_valid_file(zstring arg)
-{
-    if(!arg)
-        return false;
-
-    xstat st;
-    return xstat64(no_trail_sep(arg), &st) == 0 && is_regular(st.st_mode);
+    return is_valid_dir(arg.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,14 +326,6 @@ opcd directory::move_current_file_to(zstring dst)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::move_file(zstring src, zstring dst)
-{
-    if(0 == ::rename(src.c_str(), dst.c_str()))
-        return 0;
-    return ersIO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 opcd directory::delete_file(zstring src)
 {
 #ifdef SYSTYPE_MSVC
@@ -369,28 +338,97 @@ opcd directory::delete_file(zstring src)
 ////////////////////////////////////////////////////////////////////////////////
 opcd directory::delete_directory(zstring src, bool recursive)
 {
-    opcd firstError = NULL;
+    opcd was_err;
 
-    list_file_paths(src, "*", true, [&firstError](const charstr& path, bool isDirectory) {
-        opcd result;
+    if (recursive) {
+        list_file_paths(src, "*", true, [&was_err](const charstr& path, int isdir) {
+            opcd err = isdir
+                ? delete_directory(path, true)
+                : delete_file(path);
 
-        if(isDirectory) {
-            result = delete_directory(path);
-        }
-        else {
-            result = delete_file(path);
-        }
+            if (!was_err && !err)
+                was_err = err;
+        });
 
-        if((firstError == NULL) && (result != opcd(0))) {
-            firstError = result;
-        }
-    });
-
-    if(firstError != NULL) {
-        return firstError;
+        if (was_err)
+            return was_err;
     }
 
     return 0 == ::rmdir(no_trail_sep(src)) ? opcd(0) : ersIO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+opcd directory::copymove_directory(zstring src, zstring dst, bool move)
+{
+    opcd was_err, err;
+    uints slen = src.len();
+
+    bool sdir = directory::is_separator(src.get_token().last_char());
+    if (!sdir)
+        ++slen;
+
+    bool ddir = directory::is_separator(dst.get_token().last_char());
+
+    // src/ to dst or dst/ - copy content of src into dst/
+    // src to dst/ - move src dir into dst/src
+    // src to dst  - rename src to dst
+
+    charstr& dsts = dst.get_str();
+
+    if (directory::is_valid_file(src)) {
+        if (ddir) {
+            //copy to dst/
+            token file = src.get_token().cut_right_group_back("\\/");
+            dsts << file;
+            err = move ? move_file(src, dsts) : copy_file(src, dsts);
+        }
+        else
+            err = move ? move_file(src, dst) : copy_file(src, dst);
+
+        return err;
+    }
+
+    if (!sdir) {
+        if (ddir) {
+            token folder = src.get_token().cut_right_group_back("\\/");
+            dsts << folder;
+        }
+        else if (!is_valid(dsts))
+            mkdir(dsts);
+
+        dsts << '/';
+    }
+    else if (!ddir)
+        dsts << '/';
+
+    uint dlen = dsts.len();
+
+    list_file_paths(src, "*", 3, [&](const charstr& path, int isdir) {
+        token newpath = token(path.ptr() + slen, path.ptre());
+        
+        dsts.resize(dlen);
+        dsts << newpath;
+
+        if (isdir == 2) {
+            err = mkdir(dsts);
+        }
+        else if (isdir == 1) {
+            if (move)
+                err = delete_directory(path, false);
+        }
+        else if (move)
+            err = move_file(path, dsts);
+        else
+            err = copy_file(path, dsts);
+
+        if (!was_err && err)
+            was_err = err;
+    });
+
+    if (!was_err && !sdir && move)
+        was_err = delete_directory(src, false);
+
+    return was_err;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,9 +450,13 @@ opcd directory::delete_files(token path_and_pattern)
     opcd e = dir.open(path_and_pattern);
     if(e) return e;
 
-    while(dir.next()) {
+    while (dir.next()) {
+        if (dir.get_last_file_name_token() == ".."_T)
+            continue;
+
         opcd le = delete_file(dir.get_last_full_path());
-        if(le) e = le;
+        if(le)
+            e = le;
     }
 
     return e;
@@ -439,18 +481,18 @@ opcd directory::mkdir_tree(token name, bool last_is_file, uint mode)
             char c = pc[i];
             pc[i] = 0;
 
-            opcd e = mkdir(path.c_str(), mode);
+            opcd e = mkdir(pc, mode);
             pc[i] = c;
 
             if(e)  return e;
         }
     }
 
-    return last_is_file && !dirend ? ersNOERR : mkdir(path, mode);
+    return last_is_file && !dirend ? ersNOERR : mkdir(pc, mode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::get_relative_path(token src, token dst, charstr& relout)
+bool directory::get_relative_path(token src, token dst, charstr& relout, bool last_src_is_file)
 {
 #ifdef SYSTYPE_WIN
     bool sf = src.nth_char(1) == ':';
@@ -460,42 +502,64 @@ bool directory::get_relative_path(token src, token dst, charstr& relout)
     bool df = dst.first_char() == '/';
 #endif
 
-    if(sf != df) return false;
+    if (sf != df) return false;
 
-    if(sf) {
+    if (sf) {
 #ifndef SYSTYPE_WIN
         src.shift_start(1);
         dst.shift_start(1);
 #endif
     }
 
-    if(directory::is_separator(src.last_char()))
+    if (directory::is_separator(src.last_char()))
         src.shift_end(-1);
 
-    while(1)
+    const char* ps = src.ptr();
+    const char* pe = 0;
+
+    while (1)
     {
         token st = src.cut_left_group(DIR_SEPARATORS);
         token dt = dst.cut_left_group(DIR_SEPARATORS);
 
 #ifdef SYSTYPE_WIN
-        if(!st.cmpeqi(dt)) {
+        if (!st.cmpeqi(dt)) {
 #else
-        if(st != dt) {
+        if (st != dt) {
 #endif
             src.set(st.ptr(), src.ptre());
             dst.set(dt.ptr(), dst.ptre());
             break;
         }
+
+        pe = st.ptre();
     }
 
+    token presrc = token(ps, pe);
     relout.reset();
-    while(src) {
-        src.cut_left_group(DIR_SEPARATORS);
-#ifdef SYSTYPE_WIN
-        relout << "..\\";
-#else
-        relout << "../";
-#endif
+
+    while (src) {
+        token rt = src.cut_left_group(DIR_SEPARATORS);
+
+        if (rt == ".."_T) {
+            if (relout) {
+                token r2 = relout;
+                r2--;
+                r2.cut_right_back(separator());
+                relout.resize(r2.len());
+            }
+            else if (presrc) {
+                token r2 = presrc.cut_right_group_back(DIR_SEPARATORS);
+                relout << r2;
+                relout << separator();
+            }
+            else
+                return false;
+        }
+        else if (src || !last_src_is_file) {
+            relout << ".."_T;
+            relout << separator();
+        }
     }
 
     return append_path(relout, dst);
@@ -507,14 +571,21 @@ bool directory::compact_path(charstr& dst, char tosep)
     token dtok = dst;
 
 #ifdef SYSTYPE_WIN
-    bool absp = dtok.nth_char(1) == ':';
-    if(absp) {
+    bool absp = false;
+
+    if (dtok.begins_with("\\\\")) {
+        absp = true;
+        dtok.shift_start(2);
+    }
+    else if (dtok.nth_char(1) == ':') {
+        absp = true;
         char c2 = dtok.nth_char(2);
-        if(c2 != '/' && c2 != '\\' && c2 != 0)
+
+        if (c2 != '/' && c2 != '\\' && c2 != 0)
             return false;
-        if(!c2)
+        if (!c2)
             return true;
-        if(tosep)
+        if (tosep)
             dst[2] = tosep;
         dtok.shift_start(3);
     }

@@ -40,6 +40,7 @@
 #define __COID_COMM_MATHI__HEADER_FILE__
 
 #include "commtypes.h"
+#include "trait.h"
 
 template<class T, class U>
 inline T stdmin( const T& a, const U& b ) {

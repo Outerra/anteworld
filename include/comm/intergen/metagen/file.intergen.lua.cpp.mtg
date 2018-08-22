@@ -102,7 +102,7 @@ $(/if)-$
 
     // --- creators ---
 
-$-[method static?]$
+$-[method static? !ifccr?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
@@ -845,7 +845,7 @@ $[/event]-$
 
 // --- creators ---
 
-$-[method static?]$
+$-[method static? !ifccr?]$
 ////////////////////////////////////////////////////////////////////////////////
 iref<$..name$_lua_dispatcher> $..name$_lua_dispatcher::$name$(lua_State * L, const ::lua::script_handle& script
         $-[args]$, $type$ $name$$size$$[/args]$, const coid::token& bindname, iref<::lua::registry_handle>* ctx )
@@ -1068,7 +1068,7 @@ static void register_binders_for_$name$( bool on )
         on ? (void*)&$name$_lua_dispatcher::register_to_context_$name$
         : nullptr);
 
-$-[method static?]$
+$-[method static? !ifccr?]$
     //c++ creator of Lua interface object
     interface_register::register_interface_creator(
         "$..ns rest="::" after="::"$$..name$.$name$@creator.lua",

@@ -14,7 +14,7 @@ namespace pkg {
 
 enum EPkgConstants {
     MaxBoneCount = 0xffff,
-    MaxInstanceCount = 0xffff,
+    MaxInstanceCount = 0x1ffff,
 
     InvalidInstanceId = MaxInstanceCount,
     InvalidBoneId = MaxBoneCount,
@@ -23,6 +23,13 @@ enum EPkgConstants {
 enum EGeomAnimateMode {
     AnimImplicit = 0,
     AnimExplicit = 1,
+};
+
+enum EGeomAnimMixMode {
+    AnimMixAnimationOnly = 0,  //< use only animation
+    AnimMixBlend = 1,          //< blend animation with current skeleton
+    AnimMixAdd = 2,            //< add animation to current skeleton 
+    AnimMixCount
 };
 
 enum EGeomHierarchyUpdateMode {
@@ -67,7 +74,7 @@ struct entity_data {
     quat _rot;				//< entity rotation (if entity has parent the rotation is relative to parent)
     float3 _scale;			//< entity scale coeficient
 
-    uint _res;              //< reserved
+    float _water_level;     //< 
 
     entity_data(
         const double3 &pos,
@@ -79,7 +86,7 @@ struct entity_data {
         , _rot(rot)
         , _scale(scale)
 
-        , _res(0)
+        , _water_level(0)
     {}
 
     entity_data()
@@ -89,7 +96,7 @@ struct entity_data {
         , _rot()
         , _scale(1)
 
-        , _res(0)
+        , _water_level(0)
     {}
 
     ~entity_data()
@@ -100,7 +107,7 @@ struct entity_data {
         _bone_id = InvalidBoneId;
         _rot = quat();
         _scale = float3(0);
-        _res = 0;
+        _water_level = 0;
 #endif
     }
 
@@ -213,29 +220,67 @@ struct mesh_desc
 {
     coid::token _name;          //< mesh name
     coid::token _material;      //< material name
+    uint8 _lod_group;
+    uint8 _mat_group;
+    uint8 _base_name_len;
 
     mesh_desc(
         const coid::token &name,
         const coid::token &material)
         : _name(name)
         , _material(material)
-    {}
+    {
+        _base_name_len = uint8(_name.len());
+        coid::token tmp = name;
+        tmp.cut_left_back('@');
+        _mat_group = tmp.touint();
+        
+        if (!tmp.is_empty()) {
+            _base_name_len = uint8(tmp.ptr() - _name.ptr() - 1);
+        }
+
+        tmp = name;
+        tmp.cut_left_back('#');
+        
+        if (tmp.is_empty()) {
+            _lod_group = 0xff;
+        }
+        else {
+            _lod_group = tmp.touint();
+            _base_name_len = uint8(tmp.ptr() - _name.ptr() - 1);
+        }
+    }
 
     mesh_desc()
         : _name()
         , _material()
+        , _lod_group(0xff)
+        , _mat_group(0xff)
+        , _base_name_len(0xff)
     {}
 
     mesh_desc(const mesh_desc &md)
         : _name(md._name)
         , _material(md._material)
+        , _lod_group(md._lod_group)
+        , _mat_group(md._mat_group)
+        , _base_name_len(md._base_name_len)
     {}
+
+    coid::token base_name() const {
+        return coid::token(_name.ptr(), _name.ptr() + _base_name_len);
+    }
 
     friend coid::metastream& operator || (coid::metastream& m, mesh_desc& md)
     {
         return m.compound("mesh_desc", [&]() {
-            m.member("name", md._name);
+            m.member_type<coid::token>("name",
+                [](const coid::token& param) {},
+                [&]() {return coid::token(md._name._ptr, md._name._ptr + md._base_name_len); }
+            );
             m.member("material", md._material);
+            m.member("lod_group", md._lod_group);
+            m.member("material_group", md._mat_group);
         });
     }
 };

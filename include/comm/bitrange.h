@@ -112,6 +112,9 @@ COID_NAMESPACE_BEGIN
 
 inline bool valid_int_range( int64 v, uint bytes )
 {
+    if (bytes >= 8)
+        return true;
+    
     int64 vmax = ((uint64)1<<(8*bytes-1)) - 1;
     int64 vmin = ~vmax;
     return v >= vmin  &&  v <= vmax;
@@ -119,8 +122,9 @@ inline bool valid_int_range( int64 v, uint bytes )
 
 inline bool valid_uint_range( uint64 v, uint bytes )
 {
-    uint64 vmax = ((uint64)1<<(8*bytes)) - 1;
-    return v <= vmax;
+    return bytes >= 8
+        ? true
+        : v <= (1ULL << (8*bytes)) - 1;
 }
 
 //@return 2's exponent of nearest higher power of two number
@@ -147,8 +151,8 @@ inline coid_constexpr uints constexpr_int_low_pow2(uints x) {
 }
 
 
-//@return exponent of nearest lower power of two number
-inline uchar int_lower_pow2( uints x ) {
+//@return exponent of nearest equal or lower power of two number
+inline uchar int_low_pow2( uints x ) {
     return x
         ? msb_bit_set(x)
         : 0;

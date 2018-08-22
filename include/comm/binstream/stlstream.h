@@ -218,8 +218,8 @@ template<class T, class A> inline metastream& operator || (metastream& m, CONT<T
         m.write_container(c);\
     }\
     else {\
-        m.meta_decl_array();\
-        m || *(typename CONT<T,A>::value_type*)0;\
+        if (m.meta_decl_array(typeid(v).name(), -1, sizeof(v), false, 0, 0, 0, 0))\
+            m || *(typename CONT<T,A>::value_type*)0;\
     }\
     return m;\
 }\
@@ -248,8 +248,8 @@ template<class T, class A> inline metastream& operator || (metastream& m, CONT<T
         m.write_container(c);\
     }\
     else {\
-        m.meta_decl_array();\
-        m || *(typename CONT<T,A>::value_type*)0;\
+        if(m.meta_decl_array(typeid(v).name(), -1, sizeof(v), false, 0, 0, 0, 0))\
+            m || *(typename CONT<T,A>::value_type*)0;\
     }\
     return m;\
 }\
@@ -330,6 +330,8 @@ template<class T, class A> inline binstream& operator >> (binstream& in, std::ve
 template<class T, class A>
 inline metastream& operator || (metastream& m, std::vector<T,A>& v )
 {
+    typedef std::vector<T, A> CT;
+
     if(m.stream_reading()) {
         std_vector_binstream_container<T,A> c(v);
         m.read_container(c);
@@ -339,8 +341,17 @@ inline metastream& operator || (metastream& m, std::vector<T,A>& v )
         m.write_container(c);
     }
     else {
-        m.meta_decl_array();
-        m || *(T*)0;
+        if (m.meta_decl_array(
+            typeid(v).name(),
+            -1,
+            sizeof(v),
+            false,
+            [](const void* p) -> const void* { return static_cast<const CT*>(p)->data(); },
+            [](const void* p) -> uints { return static_cast<const CT*>(p)->size(); },
+            [](void* p, uints&) -> void* { static_cast<CT*>(p)->emplace_back(); return &static_cast<CT*>(p)->back(); },
+            [](const void* p, uints& i) -> const void* { return static_cast<const CT*>(p)->data() + i++; }
+        ))
+            m || *(T*)0;
     }
     return m;
 }
@@ -376,8 +387,17 @@ inline metastream& operator || (metastream& meta, std::string& p)
         meta.write_token(token(p.c_str(), p.size()));
     }
     else {
-        meta.meta_decl_array();
-        meta.meta_def_primitive<char>("char");
+        if (meta.meta_decl_array(
+            typeid(p).name(),
+            -1,
+            sizeof(p),
+            false,
+            [](const void* a) -> const void* { return static_cast<const std::string*>(a)->c_str(); },
+            [](const void* a) -> uints { return static_cast<const std::string*>(a)->size(); },
+            [](void* a, uints&) -> void* { return &static_cast<std::string*>(a)->append(1, '\0').back(); },
+            [](const void* a, uints& i) -> const void* { return &(*static_cast<const std::string*>(a))[i++]; }
+        ))
+            meta.meta_def_primitive<char>("char");
     }
     return meta;
 }
@@ -402,7 +422,7 @@ template <class F, class S> inline binstream& operator >> (binstream& in, std::p
 template <class F, class S>
 inline metastream& operator || (metastream& m, std::pair<F,S>& p)
 {
-    return m.compound_templated<std::pair<F,S>>("std::pair", [&]()
+    return m.compound_type(p, [&]()
     {
         m.member("key", p.first);
         m.member("value", p.second);

@@ -69,7 +69,7 @@ $-[/event]$
 public:
 $-(/if)$
     // --- creators ---
-$-[method static?]$
+$-[method static? !ifccr?]$
 
 $(if !comments.empty?)$$[comments]-$
     $@value$
@@ -82,6 +82,14 @@ $[/comments]$$(/if)-$
     template<class T>
     static iref<T> $name$( T* _subclass_$[args]$, $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$ );
 $-[/method]$
+$-[method static? ifccr?]$
+
+$(if !comments.empty?)$$[comments]-$
+    $@value$
+$[/comments]$$(/if)-$
+    static iref<$..name$> $name$(
+        $-[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$);
+$-[/method]$
 
     // --- internal helpers ---
 $-(if varname? destroy.name.empty?)$
@@ -91,7 +99,14 @@ $-(if varname? destroy.name.empty?)$
     }
 $-(/if)$
 
+    ///Interface revision hash
     static const int HASHID = $hash$;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "$ns rest="::" after="::"$$name$";
+        return _name;
+    }
 
     int intergen_hash_id() const override $-(if !virtual?)$ final$(/if)$ { return HASHID; }
 
@@ -100,8 +115,7 @@ $-(/if)$
     }
 
     const coid::tokenhash& intergen_interface_name() const override $-(if !virtual?)$ final$(/if)$ {
-        static const coid::tokenhash _name = "$ns rest="::" after="::"$$name$";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
@@ -111,12 +125,14 @@ $-(elif)$
         static const coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$");
 $-(/if)$
         static const coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js");
+        static const coid::token _djsc("$ns rest="::" after="::"$$name$@wrapper.jsc");
         static const coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -136,6 +152,7 @@ $-(/if)$
     void* intergen_wrapper( EBackend bck ) const override $-(if !virtual?)$ final$(/if)$ {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -161,8 +178,8 @@ $-(/if)$
         type.consume("struct ");
 
         coid::charstr tmp = "$ns rest="::" after="::"$$name$";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-$hash$" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -187,8 +204,7 @@ $-(/if)$
     {}
 };
 
-$-(if !virtual?)$
-$-[method static?]$
+$-[method static? !ifccr?]$
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 inline iref<T> $..name$::$name$( T* _subclass_
@@ -203,13 +219,38 @@ inline iref<T> $..name$::$name$( T* _subclass_
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("$name$", "$..ns rest="::" after="::"$$..name$.$name$", "@$..hash$");
+        return 0;
+    }
 
     return create(_subclass_$[args]$, $name$$[/args]$);
 }
-$-[/method]$
 
+$-[/method]$
+$-[method static? ifccr?]$
+////////////////////////////////////////////////////////////////////////////////
+inline iref<$..name$> $..name$::$name$($-[args rest=", "]$$type$ $name$$size$$[/args]$)
+{
+    typedef iref<$..name$> (*fn_creator)($[args rest=", "]$$type$$[/args]$);
+
+    static fn_creator create = 0;
+    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc";
+
+    if (!create)
+        create = reinterpret_cast<fn_creator>(
+            coid::interface_register::get_interface_creator(ifckey));
+
+    if (!create) {
+        log_mismatch("$name$", "$..ns rest="::" after="::"$$..name$.$name$", "@$..hash$");
+        return 0;
+    }
+
+    return create($[args rest=", "]$$name$$[/args]$);
+}
+
+$-[/method]$
+$-(if !virtual?)$
 #pragma warning(push)
 #pragma warning(disable : 4191)
 

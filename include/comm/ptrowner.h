@@ -66,7 +66,7 @@ class ptrowner
     ptrowner<T>* unregister_me( ptrowner<T>* p )
     {
         RASSERTX( _parent == 0, "this is not a parent" );
-        int i = _holders.contains(p);
+        int i = _holders.index_of(p);
         RASSERTX( i >= 0, "holder not found" );
         _holders.del(i);
         return this;
@@ -205,8 +205,9 @@ public:
     // rebase
     ptr_ring& operator = (ptr_ring<T>* oldp)
     {
-        uints k = _holders.contains(oldp);
-        _holders[k] = this;
+        ints k = _holders.index_of(oldp);
+        if (k >= 0)
+            _holders[k] = this;
         return *this;
     }
 
@@ -240,8 +241,9 @@ public:
         }
         else
         {
-            uints k = _holders.contains(this);
-            _holders.del(k);
+            ints k = _holders.contains(this);
+            if (k >= 0)
+                _holders.del(k);
             _holders.unshare();
             _p = 0;
         }

@@ -150,6 +150,35 @@ bool directory::is_regular( ushort mode )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+int directory::is_valid(zstring arg)
+{
+    uint v = GetFileAttributes(no_trail_sep(arg));
+    return v != INVALID_FILE_ATTRIBUTES
+        ? ((v & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE)) == 0 ? 1 : 2)
+        : 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool directory::is_valid_file(zstring arg)
+{
+    uint v = GetFileAttributes(arg.c_str());
+    if (v == INVALID_FILE_ATTRIBUTES)
+        return false;
+
+    return (v & (FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_DEVICE)) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool directory::is_valid_dir(const char* arg)
+{
+    uint v = GetFileAttributes(arg);
+    if (v == INVALID_FILE_ATTRIBUTES)
+        return false;
+
+    return (v & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 opcd directory::mkdir( zstring name, uint mode )
 {
     const char* p = no_trail_sep(name);
@@ -165,9 +194,16 @@ opcd directory::mkdir( zstring name, uint mode )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_cwd( charstr& buf )
+opcd directory::move_file(zstring src, zstring dst)
 {
-    uint size = 64;
+    return MoveFileEx(src.c_str(), dst.c_str(), MOVEFILE_COPY_ALLOWED) ? ersNOERR : ersIO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+charstr directory::get_cwd()
+{
+    charstr buf;
+    uint size = MAX_PATH;
 
     while( size < 1024  &&  !::_getcwd( buf.get_buf(size-1), size) )
     {
@@ -176,13 +212,15 @@ charstr& directory::get_cwd( charstr& buf )
     }
     buf.correct_size();
     
-    return treat_trailing_separator(buf, true);
+    treat_trailing_separator(buf, true);
+    return buf;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_program_path( charstr& buf )
+charstr directory::get_program_path()
 {
-    uint size = 64, asize;
+    charstr buf;
+    uint size = MAX_PATH, asize;
 
     while( size < 1024  &&  size == (asize = GetModuleFileNameA(0, buf.get_buf(size-1), size)) )
     {
@@ -197,20 +235,25 @@ charstr& directory::get_program_path( charstr& buf )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_ped( charstr& buf )
+charstr& directory::get_module_path_func(const void* fn, charstr& dst, bool append)
 {
-    get_program_path(buf);
+    charstr buf;
+    HMODULE hm = NULL;
 
-    token t = buf;
-    t.cut_right_back('\\', token::cut_trait_keep_sep_with_source());
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)fn, &hm))
+        GetModuleFileNameA(hm, append ? dst.get_append_buf(MAX_PATH) : dst.get_buf(MAX_PATH), MAX_PATH);
 
-    return buf.resize( t.len() );
+    dst.correct_size();
+    return dst;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_tmp( charstr& buf )
+charstr directory::get_tmp_dir()
 {
-    GetTempPathA(244, buf.get_buf(244));
+    charstr buf;
+    GetTempPathA(MAX_PATH, buf.get_buf(MAX_PATH));
+
+    buf.correct_size();
     return buf;
 }
 
@@ -224,42 +267,43 @@ int directory::chdir( zstring name )
 const directory::xstat* directory::next()
 {
     _finddata_t dir;
-    
-    if( _handle == -1 )
+
+    if (_handle == -1)
     {
-        _handle = _findfirst( _pattern.ptr(), &dir );
-        if( _handle == -1 )
+        _handle = _findfirst(_pattern.ptr(), &dir);
+        if (_handle == -1)
             return 0;
     }
     else
     {
-        if( 0 != _findnext( _handle, &dir ) )
+        if (0 != _findnext(_handle, &dir))
             return 0;
     }
 
-    _curpath.resize( _baselen );
+    _curpath.resize(_baselen);
     _curpath << &*dir.name;
-    if(_stat64(_curpath.ptr(), &_st) == 0)
+    if (_stat64(_curpath.ptr(), &_st) == 0)
         return &_st;
 
     return next();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_home_dir( charstr& path )
+charstr directory::get_home_dir()
 {
-    ulong psize = 260;
+    charstr path;
+    ulong psize = MAX_PATH;
     path.get_buf(psize);
-   
+
     void* hToken = 0;
-    if(!OpenProcessToken( GetCurrentProcess(), 0x0008/*TOKEN_QUERY*/, &hToken ))
+    if (!OpenProcessToken(GetCurrentProcess(), 0x0008/*TOKEN_QUERY*/, &hToken))
         return path;
-   
-    if(!GetUserProfileDirectoryA(hToken, (char*)path.ptr(), &psize))
+
+    if (!GetUserProfileDirectoryA(hToken, (char*)path.ptr(), &psize))
         return path;
-   
+
     CloseHandle(hToken);
-    
+
     path.correct_size();
     treat_trailing_separator(path, true);
     return path;
@@ -269,9 +313,10 @@ charstr& directory::get_home_dir( charstr& path )
 opcd directory::truncate( zstring fname, uint64 size )
 {
     void* handle = CreateFile(no_trail_sep(fname), GENERIC_WRITE, FILE_SHARE_READ, 0,
-        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+        OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
-    if(!handle) return ersNOT_FOUND;
+    if(handle == INVALID_HANDLE_VALUE)
+        return ersIO_ERROR;
 
     LARGE_INTEGER fs;
     fs.QuadPart = size;
@@ -308,6 +353,18 @@ static void timet_to_filetime( timet t, FILETIME* ft )
     SystemTimeToFileTime(&systime, ft);*/
 }
 
+////////////////////////////////////////////////////////////////////////////////
+static void filetime_to_timet(const FILETIME& ft, time_t* t)
+{
+    //it is not safe to just make reinterpret cast because FILETIME struct is 32bit aligned
+    ULARGE_INTEGER uint64_union;
+    uint64_union.LowPart = ft.dwLowDateTime;
+    uint64_union.HighPart = ft.dwHighDateTime;
+
+    *t = (uint64_union.QuadPart / 10000000ULL - 11644473600ULL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 opcd directory::set_file_times(zstring fname, timet actime, timet modtime)
 {
     FILETIME ftacc, ftmod;
@@ -316,7 +373,7 @@ opcd directory::set_file_times(zstring fname, timet actime, timet modtime)
     timet_to_filetime(modtime, &ftmod);
 
     HANDLE h = CreateFile(fname.c_str(), GENERIC_WRITE, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    if(!h)
+    if(h == INVALID_HANDLE_VALUE)
         return ersIO_ERROR;
 
     BOOL r = SetFileTime(h, NULL, &ftacc, &ftmod);
@@ -324,6 +381,68 @@ opcd directory::set_file_times(zstring fname, timet actime, timet modtime)
     CloseHandle(h);
     
     return r ? ersNOERR : ersFAILED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void directory::find_files(
+    const token& path,
+    const token& extension,
+    bool recursive,
+    bool return_also_folders,
+    const coid::function<void(const find_result& file_info)>& fn)
+{
+    //*** constant that needs to be constructed just once
+    static const coid::token dotdot("..");
+
+    //*** allocate memory that will be reused
+    WIN32_FIND_DATA win32_file;
+    find_result result;
+    coid::charstr buffer = path;
+
+    //*** init search using wildcard
+    append_path(buffer, "*");
+    HANDLE hFind = FindFirstFileExA(buffer.ptr(), FindExInfoBasic, &win32_file, FindExSearchNameMatch, NULL, 0);
+
+    if (hFind == INVALID_HANDLE_VALUE)
+        return;
+
+    do
+    {
+        const coid::token name(win32_file.cFileName);
+
+        if (name == '.' || name == dotdot)
+            continue;
+
+        const bool this_is_folder = (win32_file.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+        if ((!this_is_folder && name.ends_with(extension)) || (return_also_folders && this_is_folder))
+        {
+            buffer.resize(path.len());
+            append_path(buffer, name);
+
+            result._path = buffer;
+            result._flags = win32_file.dwFileAttributes;
+            result._size = uint64(win32_file.nFileSizeHigh) << 32 | win32_file.nFileSizeLow;
+            filetime_to_timet(win32_file.ftLastWriteTime, &result._last_modified);
+            fn(result);
+        }
+
+        if (recursive && this_is_folder)
+        {
+            if (!return_also_folders)
+            {
+                //*** the append hasn`t been done yet in this case
+                buffer.resize(path.len());
+                append_path(buffer, name);
+            }
+
+            find_files(buffer, extension, recursive, return_also_folders, fn);
+        }
+
+    } while (FindNextFileA(hFind, &win32_file) != 0);
+
+    //the reason that FindNextFile returned 0 must be that there are no more files
+    DASSERT(GetLastError() == ERROR_NO_MORE_FILES);
 }
 
 

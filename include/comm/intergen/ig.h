@@ -35,6 +35,8 @@ public:
     static const token IFC_FNX;
     static const token IFC_EVENT;
     static const token IFC_EVENTX;
+    static const token IFC_DEFAULT_BODY;
+    static const token IFC_DEFAULT_EMPTY;
     static const token IFC_EVBODY;
     static const token IFC_INOUT;
     static const token IFC_IN;
@@ -247,6 +249,7 @@ struct MethodIG
     bool bstatic;                       //< a static (creator) method
     bool bptr;                          //< ptr instead of ref
     bool biref;                         //< iref instead of ref
+    bool bifccr;                        //< ifc returning creator (not host)
     bool bconst;                        //< const method
     bool boperator;
     bool binternal;                     //< internal method, invisible to scripts (starts with an underscore)
@@ -274,7 +277,7 @@ struct MethodIG
         , bimplicit(false), ninargs(0), ninargs_nondef(0), index(-1), noutargs(0)
     {}
 
-    bool parse( iglexer& lex, const charstr& host, const charstr& ns, dynarray<Arg>& irefargs, bool isevent );
+    bool parse( iglexer& lex, const charstr& host, const charstr& ns, const charstr& nsifc, dynarray<Arg>& irefargs, bool isevent );
 
     void parse_docs();
 
@@ -317,6 +320,7 @@ struct MethodIG
             m.member("static",p.bstatic);
             m.member("ptr",p.bptr);
             m.member("iref",p.biref);
+            m.member("ifccr",p.bifccr);
             m.member("const",p.bconst);
             m.member("implicit",p.bimplicit);
             m.member("destroy",p.bdestroy);
@@ -341,7 +345,8 @@ struct Interface
 {
     dynarray<charstr> nss;
     charstr name;
-    charstr relpath, relpathjs, relpathlua;
+    charstr nsname;
+    charstr relpath, relpathjs, relpathjsc, relpathlua;
     charstr hdrfile;
     charstr storage;
     charstr varname;
@@ -415,6 +420,7 @@ struct Interface
             m.member("name",p.name);
             m.member("relpath",p.relpath);
             m.member("relpathjs",p.relpathjs);
+            m.member("relpathjsc",p.relpathjsc);
             m.member("relpathlua", p.relpathlua);
             m.member("hdrfile",p.hdrfile);
             m.member("storage",p.storage);
@@ -432,9 +438,9 @@ struct Interface
             m.member("comments",p.comments);
             m.member("docs",p.docs);
             m.member("pasters",p.pasters);
-            m.member("srcfile",p.srcfile);
-            m.member("class",p.srcclass);
-            m.member("classnsx",p.srcnamespc);
+            m.member_indirect("srcfile",p.srcfile);
+            m.member_indirect("class",p.srcclass);
+            m.member_indirect("classnsx",p.srcnamespc);
             m.member("base",p.base);
             m.member("baseclass",p.baseclass);
             m.member("basepath",p.basepath);

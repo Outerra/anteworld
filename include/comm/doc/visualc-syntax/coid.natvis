@@ -3,6 +3,7 @@
 
 <Type Name="coid::charstr">
     <DisplayString Condition="_tstr._ptr == 0">size = 0 "" (null)</DisplayString>
+    <DisplayString Condition="((size_t*)_tstr._ptr)[-1] == 0">size = 0 ""</DisplayString>
     <DisplayString>size = {((size_t*)_tstr._ptr)[-1] - 1} {_tstr._ptr,s8}</DisplayString>
     <StringView>_tstr._ptr,s8</StringView>
 </Type>

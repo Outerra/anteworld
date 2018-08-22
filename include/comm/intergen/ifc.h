@@ -85,8 +85,10 @@ namespace coid {
 
 ///Statement to fill in as the default implementation of an event, in case the client doesn't implement the event handling.
 ///Optionally, should be specified after an ifc_event method declaration:
-/// ifc_event bool event() const ifc_evbody(return false;);
-#define ifc_evbody(x)
+/// ifc_event bool event() const ifc_default_body(return false;);
+#define ifc_default_body(x)
+#define ifc_default_empty
+#define ifc_evbody(x)       //obsolete
 
 ///Interface functon argument decoration keywords
 #define ifc_in
@@ -100,6 +102,22 @@ namespace coid {
 ///Parameter hint that the storage for the type (usually array) may be external and valid only for the duration
 /// of the call or limited
 #define ifc_volatile
+
+/* @note
+    Use the following style comments to include the enclosed code in generated interface client header file:
+
+    //ifc{
+        ... code ...
+    //}ifc
+    
+    Or /*ifc{ ... code ... }ifc* / to push a code block into client header.
+
+    With multiple interfaces it's also possible to list which interface header files:
+
+    //ifc{ ot::ifca ot::ifcb
+    ...
+    //}ifc
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +140,7 @@ protected:
 
 public:
 
-    static const int VERSION = 6;
+    static const int VERSION = 7;
 
     //@return host class pointer
     //@note T derived from policy_intrusive_base
@@ -151,6 +169,7 @@ public:
     enum EBackend {
         IFC_BACKEND_CXX,
         IFC_BACKEND_JS,
+        IFC_BACKEND_JSC,
         IFC_BACKEND_LUA
     };
 
@@ -212,6 +231,19 @@ protected:
             return;
 
         msgr->str() << txt;
+    }
+
+    static void log_mismatch(const coid::token& clsname, const coid::token& ifckey, const coid::token& hash)
+    {
+        //check if interface missing or different version
+        coid::dynarray<coid::interface_register::creator> tmp;
+        coid::interface_register::get_interface_creators(ifckey, "", tmp);
+
+        ref<coid::logmsg> msg = coid::interface_register::canlog(coid::log::warning, clsname, 0);
+        if (tmp.size() > 0)
+            msg->str() << "interface creator version mismatch (" << ifckey << hash << ')';
+        else
+            msg->str() << "interface creator not found (" << ifckey << hash << ')';
     }
 };
 

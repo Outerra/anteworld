@@ -74,6 +74,7 @@ class hash_map
     typedef typename HASHFUNC::key_type                                 _LOOKUP;
     typedef _Select_pair1st<std::pair<KEY,VAL>,KEY>                     _SEL;
     typedef hashtable<std::pair<KEY,VAL>,HASHFUNC,EQFUNC,_SEL,ALLOC>    _HT;
+    typedef hash_map<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>                     _ThisType;
 
 public:
 
@@ -191,13 +192,6 @@ public:
     {
         insert_unique( f, l );
     }
-
-    static metastream& stream_meta( metastream& m )
-    {
-        m.meta_decl_array();
-        m << *(const value_type*)0;
-        return m;
-    }
 };
 
 
@@ -228,6 +222,7 @@ class hash_multimap
     typedef typename HASHFUNC::key_type                                 _LOOKUP;
     typedef _Select_pair1st<std::pair<KEY,VAL>,KEY>                     _SEL;
     typedef hashtable<std::pair<KEY,VAL>,HASHFUNC,EQFUNC,_SEL,ALLOC>    _HT;
+    typedef hash_multimap<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>                _ThisType;
 
 public:
 
@@ -339,45 +334,7 @@ public:
     {
         insert_equal( f, l );
     }
-
-    static metastream& stream_meta( metastream& m )
-    {
-        m.meta_decl_array();
-        m << *(const value_type*)0;
-        return m;
-    }
 };
-
-////////////////////////////////////////////////////////////////////////////////
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_map<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_out(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_map<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_in(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_multimap<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_out(bin);    }
-
-////////////////////////////////////////////////////////////////////////////////
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_multimap<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_in(bin);    }
-
-
-////////////////////////////////////////////////////////////////////////////////
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator << ( metastream& bin, const hash_map<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_meta(bin);    }
-
-template <class KEY, class VAL, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator << ( metastream& bin, const hash_multimap<KEY,VAL,HASHFUNC,EQFUNC,ALLOC>& a )
-{   return a.stream_meta(bin);    }
-
 
 COID_NAMESPACE_END
 

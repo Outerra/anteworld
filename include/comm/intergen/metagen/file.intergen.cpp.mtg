@@ -150,25 +150,35 @@ $-(if virtual!)$
     static iref<$name$> _generic_interface_creator($..ns default=" "$::$..class$* host, $name$* __here__)
     {
         iref<$name$> rval;
-    
+
         $--(if varname?)$
+        //an active interface (with events)
         if (host->$varname$ && !__here__)
             rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
-            
+
         if (rval.is_empty()) {
-            $name$_dispatcher* dispatcher = __here__ ? static_cast<$name$_dispatcher*>(__here__) : new $name$_dispatcher;
+            //interface not taken from host
+            $name$_dispatcher* dispatcher = __here__
+                ? static_cast<$name$_dispatcher*>(__here__)
+                : new $name$_dispatcher;
             rval.create(dispatcher);
-            
+
             dispatcher->_host.create(host);
             dispatcher->_vtable = _capture ? get_vtable_intercept() : get_vtable();
+
+            //try assigning to the host (MT guard)
+            // if that fails, the interface will be passive (no events)
+            if (host->$varname$.assign_safe(rval.get()))
+                static_cast<$name$_dispatcher*>(rval.get())->_cleaner = &_cleaner_callback;
+            else if (!__here__)
+                rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
         }
 
-        if (!host->$varname$.assign_safe(rval.get()))
-            rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
-        else
-            static_cast<$name$_dispatcher*>(rval.get())->_cleaner = &_cleaner_callback;
         $-(elif)$
-        $name$_dispatcher* dispatcher = __here__ ? static_cast<$name$_dispatcher*>(__here__) : new $name$_dispatcher;
+        //a passive interface (no events)
+        $name$_dispatcher* dispatcher = __here__
+            ? static_cast<$name$_dispatcher*>(__here__)
+            : new $name$_dispatcher;
         rval.create(dispatcher);
 
         dispatcher->_host.create(host);
@@ -191,7 +201,7 @@ public:
 
     // creator methods
 
-$-[method static?]$
+$-[method static? !ifccr?]$
     static iref<$..name$> $name$( $..name$* __here__$[args]$, $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$ )
     {
         iref<$....ns default=" "$::$....class$> __host__ = $....ns$::$....class$::$intname$($[args rest=", "]$$name$$[/args]$);
@@ -210,10 +220,15 @@ $-(if virtual!)$
             on ? (void*)&_generic_interface_creator : nullptr);
 
 $-(/if)$
-$-[method static?]$
+$-[method static? !ifccr?]$
         interface_register::register_interface_creator(
             "$..ns rest="::" after="::"$$..name$.$name$@$..hash$",
             on ? (void*)&$name$ : nullptr);
+$-[/method]$
+$-[method static? ifccr?]$
+        interface_register::register_interface_creator(
+            "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc",
+            on ? (void*)&$....ns$::$....class$::$name$ : nullptr);
 $-[/method]$
     }
 };

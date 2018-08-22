@@ -14,6 +14,8 @@
 #include <ot/glm/glm_types.h>
 #include <ot/glm/glm_meta.h>
 
+class btCollisionObject;
+
 class object;
 
 
@@ -105,8 +107,9 @@ public:
 
     ///Fetch input controls data captured when vehicle was entered with ot::BindCapture
     //@param buf captured input controls data
+    //@param append true if data should be appended into the buffer, false for swap/set
     //@note performs a buffer swap with internal controls buffer, keep using the same buffer to avoid unnecessary allocations
-    virtual void fetch_controls( ifc_out coid::dynarray<int32>& buf ) = 0;
+    virtual void fetch_controls( ifc_out coid::dynarray<int32>& buf, bool append ) = 0;
 
     ///Apply input controls data
     //@param cmd input command array pointer returned from fetch_controls
@@ -160,14 +163,23 @@ public:
     //@return current offset from model pivot to center of mass
     virtual float3 com_offset() const = 0;
 
-    //@return the underlying physics rigid body object, if any (cast to btRigidBody*)
-    virtual void* rigid_body() const = 0;
+    //@return the underlying physics collision object, if any
+    virtual btCollisionObject* collision_object() const = 0;
 
     // --- creators ---
 
+    static iref<object> get( const btCollisionObject* co );
+
     // --- internal helpers ---
 
-    static const int HASHID = 3082897523;
+    ///Interface revision hash
+    static const int HASHID = 140146015;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ot::object";
+        return _name;
+    }
 
     int intergen_hash_id() const override { return HASHID; }
 
@@ -176,19 +188,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override {
-        static const coid::tokenhash _name = "ot::object";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
         static const coid::token _djs("ot::object@wrapper.js");
+        static const coid::token _djsc("ot::object@wrapper.jsc");
         static const coid::token _dlua("ot::object@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -208,6 +221,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -233,8 +247,8 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::object";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-140146015" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -244,6 +258,26 @@ protected:
     object()
     {}
 };
+
+////////////////////////////////////////////////////////////////////////////////
+inline iref<object> object::get(const btCollisionObject* co)
+{
+    typedef iref<object> (*fn_creator)(const btCollisionObject*);
+
+    static fn_creator create = 0;
+    static const coid::token ifckey = "ot::object.get@140146015.ifc";
+
+    if (!create)
+        create = reinterpret_cast<fn_creator>(
+            coid::interface_register::get_interface_creator(ifckey));
+
+    if (!create) {
+        log_mismatch("get", "ot::object.get", "@140146015");
+        return 0;
+    }
+
+    return create(co);
+}
 
 } //namespace
 

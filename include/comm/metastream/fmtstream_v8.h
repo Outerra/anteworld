@@ -56,7 +56,7 @@ namespace v8 {
 
 #ifdef V8_MAJOR_VERSION
 
-    #define V8_UNDEFINED            v8::Local<v8::Value>()
+    #define V8_UNDEFINED(iso)       v8::Undefined(iso)
     #define V8_NULL(iso)            v8::Null(iso)
 
     #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs(iso)
@@ -74,13 +74,15 @@ namespace v8 {
     #define V8_RESET(o)             (o).Reset()
     #define V8_LOCAL(iso,o)         (o).Get(iso)
     #define V8_CUR_CONTEXT(iso)     iso->GetCurrentContext()
+
+    #define V8_TRYCATCH(iso,t)      v8::TryCatch t(iso)
    
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
-        return String::NewFromOneByte(Isolate::GetCurrent(), (const uint8*)tok.ptr(), String::kInternalizedString, tok.len());
+        return String::NewFromOneByte(Isolate::GetCurrent(), (const uint8*)tok.ptr(), NewStringType::kInternalized, tok.len()).ToLocalChecked();
     }
 
     inline v8::Local<v8::String> string_utf8( const coid::token& tok ) {
-        return String::NewFromUtf8(Isolate::GetCurrent(), tok.ptr(), String::kNormalString, tok.len());
+        return String::NewFromUtf8(Isolate::GetCurrent(), tok.ptr(), NewStringType::kNormal, tok.len()).ToLocalChecked();
     }
 
     template<class T>
@@ -99,7 +101,7 @@ namespace v8 {
 
 #else
 
-    #define V8_UNDEFINED            v8::Undefined()
+    #define V8_UNDEFINED(iso)       v8::Undefined()
     #define V8_NULL(iso)            v8::Null()
 
     #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs
@@ -118,6 +120,7 @@ namespace v8 {
     #define V8_LOCAL(iso,o)         o
     #define V8_CUR_CONTEXT(iso)     v8::Context::GetCurrent()
 
+    #define V8_TRYCATCH(iso,t)      v8::TryCatch t
     
     inline v8::Local<v8::String> symbol( const coid::token& tok ) {
         return String::NewSymbol(tok.ptr(), tok.len());
@@ -173,7 +176,7 @@ public:
 #define V8_FAST_STREAMER(T,V8T,CT) \
 template<> class to_v8<T> { public: \
     static v8::Handle<v8::Value> read(const T& v) { return v8::new_object<v8::V8T>(CT(v)); } \
-    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return V8_UNDEFINED; } \
+    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return V8_UNDEFINED(v8::Isolate::GetCurrent()); } \
 }; \
 template<> class from_v8<T> { public: \
     static bool write( v8::Handle<v8::Value> src, T& res ) { res = (T)src->V8T##Value(); return true; } \
@@ -680,8 +683,9 @@ public:
     ///Return formatting stream error (if any) and current line and column for error reporting purposes
     //@param err [in] error text
     //@param err [out] final (formatted) error text with line info etc.
-    virtual void fmtstream_err( charstr& err )
+    virtual void fmtstream_err( charstr& err, bool add_context = true )
     {
+        err.ins(0, "[js] ");
     }
 
     void acknowledge( bool eat=false )
@@ -1177,6 +1181,7 @@ struct v8_streamer_context
 
     v8_streamer_context() {
         meta.bind_formatting_stream(fmtv8);
+        meta.set_file_name("[js]");
     }
 
     ~v8_streamer_context() {

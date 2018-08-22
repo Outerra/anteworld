@@ -36,7 +36,7 @@ bool token::codepage_to_wstring_append( uint cp, std::wstring& dst ) const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-bool token::utf8_to_wchar_buf( wchar_t* dst, uints maxlen ) const
+uints token::utf8_to_wchar_buf( wchar_t* dst, uints maxlen ) const
 {
     if(maxlen) --maxlen;
     const char* p = ptr();
@@ -63,7 +63,7 @@ bool token::utf8_to_wchar_buf( wchar_t* dst, uints maxlen ) const
     }
 
     dst[i] = 0;
-    return succ;
+    return succ ? i : 0;
 }
 
 COID_NAMESPACE_END

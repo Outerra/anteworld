@@ -217,7 +217,7 @@ class metagen //: public binstream
 
         uint array_size() const
         {
-            DASSERT(var->is_array());
+            DASSERT(var->stream_desc()->is_array());
             return *(uint*)data;
         }
 
@@ -233,12 +233,13 @@ class metagen //: public binstream
 
         bool is_nonzero() const
         {
-            if (var->is_array())  return array_size() > 0;
-            if (var->is_compound())  return true;
-            return var->desc->btype.value_int(data) != 0;
+            MetaDesc* md = var->stream_desc();
+            if (md->is_array())  return array_size() > 0;
+            if (md->is_compound())  return true;
+            return md->btype.value_int(data) != 0;
         }
 
-        bool is_array() const { return var->is_array(); }
+        bool is_array() const { return var->stream_desc()->is_array(); }
         bool is_array_element() const { return index >= 0; }
     };
 
@@ -251,13 +252,15 @@ class metagen //: public binstream
         ///First array element, return count
         uints first(const Varx& ary)
         {
-            DASSERT(ary.var->is_array());
-            var = ary.var->element();
+            MetaDesc* md = ary.var->stream_desc();
+            DASSERT(md->is_array());
+            var = ary.var->stream_element();
+
             data = ary.data + sizeof(uints);
             varparent = const_cast<Varx*>(&ary);
 
-            if (var->is_primitive() && var->is_array_element())
-                size = var->get_size();
+            if (md->is_primitive() && var->is_array_element())
+                size = md->get_size();
             else
                 prepare();
             return *(uints*)ary.data;
@@ -265,7 +268,9 @@ class metagen //: public binstream
 
         VarxElement& next()
         {
-            if (var->is_primitive() && var->is_array_element())
+            MetaDesc* md = var->stream_desc();
+
+            if (md->is_primitive() && var->is_array_element())
                 data += size;
             else {
                 data += size - sizeof(uints);
@@ -277,7 +282,7 @@ class metagen //: public binstream
     private:
         void prepare()
         {
-            DASSERT(!var->is_primitive());
+            DASSERT(!var->stream_desc()->is_primitive());
 
             size = *(const uints*)data;
             data += sizeof(uints);
@@ -944,7 +949,7 @@ class metagen //: public binstream
             Varx v;
             if (find_var(var, v, attrib))
             {
-                if (!v.var->is_array())
+                if (!v.var->stream_desc()->is_array())
                     return;
 
                 VarxElement ve;
@@ -1221,8 +1226,10 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
     static const token rest = "rest";
     static const token after = "after";
 
-    if (var->is_array()) {
-        if (var->desc->children[0].desc->btype.type == type::T_CHAR) {
+    MetaDesc* md = var->stream_desc();
+
+    if (md->is_array()) {
+        if (md->children[0].desc->btype.type == type::T_CHAR) {
             token t = token((const char*)p + sizeof(uints), *(const uints*)p);
             if (!t) return t;
 
@@ -1234,12 +1241,12 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
             //support for 'first' and 'after' attributes
             bool nonempty = buf.len() > oldbufsize;
 
-            ints i;
-            token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
+            const Attribute* pa;
+            token prefix = attr && (pa = attr->contains(first)) ? pa->value.value : token();
             if (prefix && nonempty)
                 buf.ins(0, prefix);
 
-            token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+            token suffix = attr && (pa = attr->contains(after)) ? pa->value.value : token();
             if (suffix && nonempty)
                 buf << suffix;
         }
@@ -1248,10 +1255,10 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
             uints n = element.first(*this);
             if (!n) return token();
 
-            ints i;
-            token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
-            token infix = attr && (i = attr->contains(rest)) >= 0 ? (*attr)[i].value.value : token();
-            token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+            const Attribute* pa;
+            token prefix = attr && (pa = attr->contains(first)) ? pa->value.value : token();
+            token infix = attr && (pa = attr->contains(rest)) ? pa->value.value : token();
+            token suffix = attr && (pa = attr->contains(after)) ? pa->value.value : token();
 
             if (escape) buf.append_escaped(prefix, escape); else buf << prefix;
 
@@ -1335,12 +1342,12 @@ inline token metagen::Varx::write_buf(metagen& mg, const dynarray<Attribute>* at
     //support for 'first' and 'after' attributes
     bool nonempty = buf.len() > oldbufsize;
 
-    ints i;
-    token prefix = attr && (i = attr->contains(first)) >= 0 ? (*attr)[i].value.value : token();
+    const Attribute* pa;
+    token prefix = attr && (pa = attr->contains(first)) ? pa->value.value : token();
     if (prefix && nonempty)
         buf.ins(0, prefix);
 
-    token suffix = attr && (i = attr->contains(after)) >= 0 ? (*attr)[i].value.value : token();
+    token suffix = attr && (pa = attr->contains(after)) ? pa->value.value : token();
     if (suffix && nonempty)
         buf << suffix;
 

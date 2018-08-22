@@ -70,7 +70,8 @@ public:
     ///
     void set_pitch( uint id, float pitch );
 
-    ///
+    /// Open AL distance attenuation model
+    /// https://www.desmos.com/calculator/f20nyvlupa
     void set_ref_distance( uint id, float ref_dist );
 
     ///
@@ -97,7 +98,14 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 1679981906;
+    ///Interface revision hash
+    static const int HASHID = 1696759525;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ot::sndgrp";
+        return _name;
+    }
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -106,19 +114,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override final {
-        static const coid::tokenhash _name = "ot::sndgrp";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::sndgrp.create@1679981906");
+        static const coid::token _dc("ot::sndgrp.create@1696759525");
         static const coid::token _djs("ot::sndgrp@wrapper.js");
+        static const coid::token _djsc("ot::sndgrp@wrapper.jsc");
         static const coid::token _dlua("ot::sndgrp@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -138,6 +147,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -163,8 +173,8 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::sndgrp";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-1696759525" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -182,17 +192,20 @@ inline iref<T> sndgrp::_get_sndgrp( T* _subclass_, snd::group* p )
     typedef iref<T> (*fn_creator)(sndgrp*, snd::group*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@1679981906";
+    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@1696759525";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("_get_sndgrp", "ot::sndgrp._get_sndgrp", "@1696759525");
+        return 0;
+    }
 
     return create(_subclass_, p);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 inline iref<T> sndgrp::create( T* _subclass_ )
@@ -200,14 +213,16 @@ inline iref<T> sndgrp::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(sndgrp*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp.create@1679981906";
+    static const coid::token ifckey = "ot::sndgrp.create@1696759525";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("create", "ot::sndgrp.create", "@1696759525");
+        return 0;
+    }
 
     return create(_subclass_);
 }

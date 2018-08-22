@@ -71,7 +71,14 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 2873419405;
+    ///Interface revision hash
+    static const int HASHID = 2856641786;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ot::tracker_arm";
+        return _name;
+    }
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -80,19 +87,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override final {
-        static const coid::tokenhash _name = "ot::tracker_arm";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
         static const coid::token _djs("ot::tracker_arm@wrapper.js");
+        static const coid::token _djsc("ot::tracker_arm@wrapper.jsc");
         static const coid::token _dlua("ot::tracker_arm@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -112,6 +120,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -137,8 +146,8 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::tracker_arm";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-2856641786" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -159,14 +168,16 @@ inline iref<T> tracker_arm::create( T* _subclass_, const char* name )
     typedef iref<T> (*fn_creator)(tracker_arm*, const char*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::tracker_arm.create@2873419405";
+    static const coid::token ifckey = "ot::tracker_arm.create@2856641786";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("create", "ot::tracker_arm.create", "@2856641786");
+        return 0;
+    }
 
     return create(_subclass_, name);
 }

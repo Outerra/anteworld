@@ -115,51 +115,55 @@ struct wheel_data
     uint8 material;
     bool contact;                       //< in contact with ground
     bool blocked;                       //< blocked by brakes
+    bool axle_inverted;                 //< axle rotation inverted
 };
 
 //
 struct vehicle_params
 {
-    float mass;                         //< vehicle mass [kg]
+    float mass = 1000.0f;               //< vehicle mass [kg]
     float3 com_offset;                  //< center of mass offset
 
-    float clearance;                    //< clearance from ground, default wheel radius
+    float clearance = 0.0f;             //< clearance from ground, default wheel radius
 
     // obsolete - now handled by ext controls and configured from script
     //float steering_speed;               //< wheel steering speed when using keyboard [half range per sec]
-    float steering_threshold;           //< speed [km/h] at which the steering speed is reduced by 60%
+    //float steering_threshold = 50.f;    //< speed [km/h] at which the steering speed is reduced by 60%
     //float centering_speed;              //< wheel centering speed when using keyboard [half range per sec]
-    float centering_threshold;          //< speed [km/h] when the centering acts at 60% already
+    //float centering_threshold = 20.f;   //< speed [km/h] when the centering acts at 60% already
+
+    ///Steering parameters
+    struct steering_cfg
+    {
+        coid::charstr bone_ovr;         //< steering wheel bone name override, default "steering_wheel"
+        float radius = 0;               //< steering wheel radius, if 0 disabled
+        float grip_angle = 0.15f;       //< grip angular offset in degrees
+
+        float steering_thr = 50.f;      //< speed [km/h] at which the steering speed is reduced by 60%
+        float centering_thr = 20.f;     //< speed [km/h] when the centering acts at 60% already
+
+        const coid::token bone() const {
+            return bone_ovr ? coid::token(bone_ovr) : "steering_wheel"_T;
+        }
+    };
+
+    struct steering_cfg steering;
 
     float4 Cx;                          //< drag coefficients for model-space directions and angular damping mod coef
-    float hydro_offset;                 //< distance from center of mass along z where hydrostatic force acts
-    float hydro_uplift;                 //< front uplift coefficient, N per m/s when submerged up to h1
-    float hydro_w, hydro_l;             //< width and length of hydro volume (0 - use bbox, <0 shrink bbox values)
-    float hydro_h1;                     //< height of the triangular prism part of the boat underwater
-    float hydro_h2;                     //< height of the box part of the boat
-    float hydro_volcoef;                //< closed volume coefficient (0..1), how much of the volume is hollow
+    float hydro_offset = 1.0f;          //< distance from center of mass along z where hydrostatic force acts
+    float hydro_uplift = 0.0f;          //< front uplift coefficient, N per m/s when submerged up to h1
+    float hydro_w = 0;                  //< width of hydro volume (0 - use bbox, <0 shrink bbox values)
+    float hydro_wake_wmul = 1;          //< wake width multiplier
+    float hydro_l = 0;                  //< length of hydro volume (0 - use bbox, <0 shrink bbox values)
+    float hydro_h1 = 0;                 //< height of the triangular prism part of the boat underwater
+    float hydro_h2 = 0;                 //< height of the box part of the boat
+    float hydro_volcoef = 0;            //< closed volume coefficient (0..1), how much of the volume is hollow
     
     float3 hdamp_rec;
-    float h1_rec;
+    float h1_rec = 1;
 
     coid::charstr config;
     
-    vehicle_params()
-    : mass(1000.0f)
-    , clearance(0)
-    , steering_threshold(50.0f)
-    , centering_threshold(20.0f)
-    , Cx(0)
-    , hydro_offset(1.0f)
-    , hydro_uplift(0.0f)
-    , hydro_w(0.0f)
-    , hydro_l(0.0f)
-    , hydro_h1(0.0f)
-    , hydro_h2(0.0f)
-    , hydro_volcoef(0.0f)
-    , h1_rec(0.0f)
-    , hdamp_rec(1.0f)
-    {}
 
     void init( float l, float w, bool boat )
     {
@@ -288,7 +292,7 @@ inline metastream& operator || (metastream& m, ot::hud_config& w)
     static ot::ESpeedUnits su[] = {ot::SPEED_UNIT_MS, ot::SPEED_UNIT_KMH, ot::SPEED_UNIT_MPH, ot::SPEED_UNIT_FTS, ot::SPEED_UNIT_KNOTS};
     static const char* sn[] = {"m/s", "km/h", "mph", "ft/s", "knots", 0};
 
-    return m.compound("ot::vehicle_desc", [&]()
+    return m.compound_type(w, [&]()
     {
         m.member_enum("speed", w.speed_unit, su, sn, ot::SPEED_UNIT_KMH);
         m.member_enum("dist", w.dist_unit, du, dn, ot::DIST_UNIT_M);
@@ -300,7 +304,7 @@ inline metastream& operator || (metastream& m, ot::hud_config& w)
 
 inline metastream& operator || (metastream& m, ot::vehicle_desc& w)
 {
-    return m.compound("ot::vehicle_desc", [&]()
+    return m.compound_type(w, [&]()
     {
         m.member("path", w.path);
         m.member("desc", w.desc);
@@ -311,7 +315,7 @@ inline metastream& operator || (metastream& m, ot::vehicle_desc& w)
 
 inline metastream& operator || (metastream& m, ot::wheel& w)
 {
-    return m.compound("ot::wheel", [&]()
+    return m.compound_type(w, [&]()
     {
         m.member("radius", w.radius1, 1.0f);
         m.member("width", w.width, 0.2f);
@@ -331,7 +335,7 @@ inline metastream& operator || (metastream& m, ot::wheel& w)
 
 inline metastream& operator || (metastream& m, ot::wheel_data& w)
 {
-    return m.compound("ot::wheel_data", [&]()
+    return m.compound_type(w, [&]()
     {
         m.member("saxle", w.saxle);
         m.member("caxle", w.caxle);
@@ -343,18 +347,31 @@ inline metastream& operator || (metastream& m, ot::wheel_data& w)
         m.member("material", w.material);
         m.member("contact", w.contact);
         m.member("blocked", w.blocked);
+        m.member("axle_inverted", w.axle_inverted);
     });
 }
 
 
 inline metastream& operator || (metastream& m, ot::vehicle_params& w)
 {
-    return m.compound("ot::vehicle_params", [&]()
+    return m.compound_type(w, [&]()
     {
+        float steering_ecf, centering_ecf;
+
         m.member("mass", w.mass, 1000.0f);
         m.member("com", w.com_offset, float3(0));
-        m.member("steering_ecf", w.steering_threshold, 50.0f);
-        m.member("centering_ecf", w.centering_threshold, 20.0f);
+        m.member_obsolete<float>("steering");
+        m.member_obsolete<float>("centering");
+
+        bool wsteer = m.member_obsolete("steering_ecf", &steering_ecf);
+        bool wcentr = m.member_obsolete("centering_ecf", &centering_ecf);
+
+        //use obsolete values for defaults
+        ot::vehicle_params::steering_cfg defcfg;
+        if (wsteer) defcfg.steering_thr = steering_ecf;
+        if (wcentr) defcfg.centering_thr = centering_ecf;
+
+        m.member("steering_params", w.steering, defcfg);
         m.member("clearance", w.clearance, 0.0f);
         m.member("Cx", w.Cx, float4(0));
         m.member("hydro_offset", w.hydro_offset, 1.0f);
@@ -364,14 +381,27 @@ inline metastream& operator || (metastream& m, ot::vehicle_params& w)
         m.member("hydro_l", w.hydro_l, 0.0f);
         m.member("hydro_h1", w.hydro_h1, 0.0f);
         m.member("hydro_h2", w.hydro_h2, 0.0f);
+        m.member("hydro_wake", w.hydro_wake_wmul, 1.0f);
         m.member("config", w.config, "");
     });
 }
 
+inline metastream& operator || (metastream& m, struct ot::vehicle_params::steering_cfg& w)
+{
+    return m.compound_type(w, [&]()
+    {
+        m.member("bone", w.bone_ovr, "");
+        m.member("radius", w.radius, 0);
+        m.member("grip_angle", w.grip_angle, 8.0f);
+
+        m.member("steering_ecf", w.steering_thr, 50.0f);
+        m.member("centering_ecf", w.centering_thr, 20.0f);
+    });
+}
 
 inline metastream& operator || (metastream& m, ot::aircraft_config& w)
 {
-    return m.compound("ot::aircraft_config", [&]()
+    return m.compound_type(w, [&]()
     {
         m.member("config", w.config, "");
     });

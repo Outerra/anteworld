@@ -131,6 +131,8 @@ public:
                 switch( t.get_size() )
                 {
                 case 4:
+                    tok.set(buf, charstrconv::append_float(buf, buf + 256, *(const float*)p, _precision));
+                    break;
                 case 8:
                     tok.set(buf, charstrconv::append_float(buf, buf+256, *(const double*)p, _precision));
                     break;

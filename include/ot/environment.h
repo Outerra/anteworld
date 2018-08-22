@@ -43,6 +43,8 @@ public:
 
     void get_cloud_params( ifc_out ot::cloud_params& dst, bool def = false ) const;
 
+    void get_water_state_params( ifc_out ot::water_state_params& dst, bool def = false ) const;
+
     void set_atmospheric_params( const ot::atmospheric_params& src );
 
     void set_water_params( const ot::water_params& src );
@@ -56,6 +58,10 @@ public:
     void set_weather_params( const ot::weather_params& src );
 
     void set_cloud_params( const ot::cloud_params& src );
+
+    void set_water_state_params( const ot::water_state_params& src );
+
+    void set_rain_min_cam_dist( float dist );
 
     //@return wind speed at given height above the ground
     float wind_speed_at_height( float h ) const;
@@ -72,10 +78,10 @@ public:
     void set_time( int64 dyear, double tday, float flowm = 1.0f );
 
     ///Set ocean wave amplitude and surf wave amplitude
-    void set_sea_params( float wave_amp, float surf_amp, float wave_len );
+    void set_sea_params( float wave_amp, float surf_amp, float wave_len, float foam );
 
     ///Get ocean wave params
-    void get_sea_params( ifc_out float& wave_amp, ifc_out float& surf_amp, ifc_out float& wave_len ) const;
+    void get_sea_params( ifc_out float& wave_amp, ifc_out float& surf_amp, ifc_out float& wave_len, ifc_out float& foam ) const;
 
     // --- creators ---
 
@@ -88,7 +94,14 @@ public:
 
     // --- internal helpers ---
 
-    static const int HASHID = 3635061359;
+    ///Interface revision hash
+    static const int HASHID = 3141059180;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ot::environment";
+        return _name;
+    }
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -97,19 +110,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override final {
-        static const coid::tokenhash _name = "ot::environment";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::environment.get@3635061359");
+        static const coid::token _dc("ot::environment.get@3141059180");
         static const coid::token _djs("ot::environment@wrapper.js");
+        static const coid::token _djsc("ot::environment@wrapper.jsc");
         static const coid::token _dlua("ot::environment@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -129,6 +143,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -154,8 +169,8 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::environment";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-3141059180" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -173,14 +188,16 @@ inline iref<T> environment::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(environment*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::environment.get@3635061359";
+    static const coid::token ifckey = "ot::environment.get@3141059180";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("get", "ot::environment.get", "@3141059180");
+        return 0;
+    }
 
     return create(_subclass_);
 }
@@ -212,47 +229,56 @@ inline void environment::get_weather_params( ot::weather_params& dst, bool def )
 inline void environment::get_cloud_params( ot::cloud_params& dst, bool def ) const
 { return VT_CALL(void,(ot::cloud_params&,bool) const,7)(dst,def); }
 
+inline void environment::get_water_state_params( ot::water_state_params& dst, bool def ) const
+{ return VT_CALL(void,(ot::water_state_params&,bool) const,8)(dst,def); }
+
 inline void environment::set_atmospheric_params( const ot::atmospheric_params& src )
-{ return VT_CALL(void,(const ot::atmospheric_params&),8)(src); }
+{ return VT_CALL(void,(const ot::atmospheric_params&),9)(src); }
 
 inline void environment::set_water_params( const ot::water_params& src )
-{ return VT_CALL(void,(const ot::water_params&),9)(src); }
+{ return VT_CALL(void,(const ot::water_params&),10)(src); }
 
 inline void environment::set_fog_params( const ot::fog_params& src )
-{ return VT_CALL(void,(const ot::fog_params&),10)(src); }
+{ return VT_CALL(void,(const ot::fog_params&),11)(src); }
 
 inline void environment::set_forest_params( const ot::forest_params& src )
-{ return VT_CALL(void,(const ot::forest_params&),11)(src); }
+{ return VT_CALL(void,(const ot::forest_params&),12)(src); }
 
 inline void environment::set_snow_params( const ot::snow_params& src )
-{ return VT_CALL(void,(const ot::snow_params&),12)(src); }
+{ return VT_CALL(void,(const ot::snow_params&),13)(src); }
 
 inline void environment::set_weather_params( const ot::weather_params& src )
-{ return VT_CALL(void,(const ot::weather_params&),13)(src); }
+{ return VT_CALL(void,(const ot::weather_params&),14)(src); }
 
 inline void environment::set_cloud_params( const ot::cloud_params& src )
-{ return VT_CALL(void,(const ot::cloud_params&),14)(src); }
+{ return VT_CALL(void,(const ot::cloud_params&),15)(src); }
+
+inline void environment::set_water_state_params( const ot::water_state_params& src )
+{ return VT_CALL(void,(const ot::water_state_params&),16)(src); }
+
+inline void environment::set_rain_min_cam_dist( float dist )
+{ return VT_CALL(void,(float),17)(dist); }
 
 inline float environment::wind_speed_at_height( float h ) const
-{ return VT_CALL(float,(float) const,15)(h); }
+{ return VT_CALL(float,(float) const,18)(h); }
 
 inline int64 environment::get_day_of_year() const
-{ return VT_CALL(int64,() const,16)(); }
+{ return VT_CALL(int64,() const,19)(); }
 
 inline double environment::get_time_of_day() const
-{ return VT_CALL(double,() const,17)(); }
+{ return VT_CALL(double,() const,20)(); }
 
 inline float environment::get_timeflow_multiplier() const
-{ return VT_CALL(float,() const,18)(); }
+{ return VT_CALL(float,() const,21)(); }
 
 inline void environment::set_time( int64 dyear, double tday, float flowm )
-{ return VT_CALL(void,(int64,double,float),19)(dyear,tday,flowm); }
+{ return VT_CALL(void,(int64,double,float),22)(dyear,tday,flowm); }
 
-inline void environment::set_sea_params( float wave_amp, float surf_amp, float wave_len )
-{ return VT_CALL(void,(float,float,float),20)(wave_amp,surf_amp,wave_len); }
+inline void environment::set_sea_params( float wave_amp, float surf_amp, float wave_len, float foam )
+{ return VT_CALL(void,(float,float,float,float),23)(wave_amp,surf_amp,wave_len,foam); }
 
-inline void environment::get_sea_params( float& wave_amp, float& surf_amp, float& wave_len ) const
-{ return VT_CALL(void,(float&,float&,float&) const,21)(wave_amp,surf_amp,wave_len); }
+inline void environment::get_sea_params( float& wave_amp, float& surf_amp, float& wave_len, float& foam ) const
+{ return VT_CALL(void,(float&,float&,float&,float&) const,24)(wave_amp,surf_amp,wave_len,foam); }
 
 #pragma warning(pop)
 

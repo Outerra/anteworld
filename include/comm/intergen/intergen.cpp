@@ -32,6 +32,8 @@ const token iglexer::IFC_FNX = "ifc_fnx";
 const token iglexer::IFC_EVENT = "ifc_event";
 const token iglexer::IFC_EVENTX = "ifc_eventx";
 const token iglexer::IFC_EVBODY = "ifc_evbody";
+const token iglexer::IFC_DEFAULT_BODY = "ifc_default_body";
+const token iglexer::IFC_DEFAULT_EMPTY = "ifc_default_empty";
 const token iglexer::IFC_INOUT = "ifc_inout";
 const token iglexer::IFC_IN = "ifc_in";
 const token iglexer::IFC_OUT = "ifc_out";
@@ -73,7 +75,7 @@ struct File
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
-int generate( const T& t, const token& patfile, const token& outfile, __time64_t mtime )
+static int generate( int nifc, const T& t, const charstr& patfile, const charstr& outfile, __time64_t mtime )
 {
     directory::xstat st;
     bifstream bit;
@@ -85,6 +87,15 @@ int generate( const T& t, const token& patfile, const token& outfile, __time64_t
 
     if (st.st_mtime > mtime)
         mtime = st.st_mtime;
+
+    if (nifc == 0) {
+        //create an empty file to satisfy dependency checker
+        directory::set_writable(outfile, true);
+        directory::truncate(outfile, 0);
+        directory::set_file_times(outfile, mtime + 2, mtime + 2);
+        directory::set_writable(outfile, false);
+        return 0;
+    }
 
     directory::mkdir_tree(outfile, true);
     directory::set_writable(outfile, true);
@@ -175,6 +186,16 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
     directory::treat_trailing_separator(fdir, true);
     uint flen = fdir.len();
 
+    //find the date of the oldest mtg file
+    timet mtime = file.mtime;
+
+    directory::list_file_paths(tdir, "mtg", false, [&](const charstr& name, int dir) {
+        directory::xstat st;
+        if (directory::stat(name, &st))
+            if (st.st_mtime > mtime)
+                mtime = st.st_mtime;
+    });
+
     int nifc = 0;
 
     uints nc = file.classes.size();
@@ -212,7 +233,10 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
             ifc.relpathjs = ifc.relpath;
             ifc.relpathjs.ins(-(int)end.len(), ".js");
 
-            ifc.relpathlua = ifc.relpath;
+            ifc.relpathjsc = ifc.relpath;
+            ifc.relpathjsc.ins(-(int)end.len(), ".jsc");
+
+			ifc.relpathlua = ifc.relpath;
             ifc.relpathlua.ins(-(int)end.len(), ".lua");
 
             ifc.basepath = ifc.relpath;
@@ -230,7 +254,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
 
             tdir << "interface.h.mtg";
 
-            if (generate(ifc, tdir, fdir, file.mtime) < 0)
+            if (generate(ni, ifc, tdir, fdir, mtime) < 0)
                 return;
 
             //interface.js.h
@@ -240,17 +264,27 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
             tdir.resize(tlen);
             tdir << "interface.js.h.mtg";
 
-            if (generate(ifc, tdir, fdir, file.mtime) < 0)
+            if (generate(ni, ifc, tdir, fdir, mtime) < 0)
                 return;
 
-            //iterface.lua.h
+            //interface.jsc.h
+            fdir.resize(flen);
+            fdir << ifc.relpathjsc;
+
+            tdir.resize(tlen);
+            tdir << "interface.jsc.h.mtg";
+
+            if (generate(ni, ifc, tdir, fdir, file.mtime) < 0)
+                return;
+
+			//iterface.lua.h
             tdir.resize(tlen);
             tdir << "interface.lua.h.mtg";
 
             fdir.resize(flen);
             fdir << ifc.relpathlua;
 
-            if (generate(ifc, tdir, fdir, file.mtime) < 0)
+            if (generate(ni, ifc, tdir, fdir, mtime) < 0)
                 return;
 
             // class interface docs
@@ -263,7 +297,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
 
             fdir << '/' << ifc.name << ".html";
 
-            generate(ifc, tdir, fdir, file.mtime);
+            generate(ni, ifc, tdir, fdir, mtime);
 
             ++nifc;
         }
@@ -276,19 +310,22 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
     tdir.resize(tlen);
     tdir << "file.intergen.cpp.mtg";
 
-    if (nifc > 0)
-        generate(file, tdir, fdir, file.mtime);
-    else
-        bofstream bof(fdir);    //create zero file
+    generate(nifc, file, tdir, fdir, mtime);
 
     //file.intergen.js.cpp
     fdir.ins(-4, ".js");
     tdir.ins(-8, ".js");
 
-    if (nifc > 0)
-        generate(file, tdir, fdir, file.mtime);
-    else
-        bofstream bof(fdir);
+    generate(nifc, file, tdir, fdir, mtime);
+
+	//file.intergen.js.cpp
+	fdir.resize(flen);
+    fdir << file.fname << ".intergen.jsc.cpp";
+
+    tdir.resize(tlen);
+    tdir << "file.intergen.jsc.cpp.mtg";
+
+    generate(nifc, file, tdir, fdir, mtime);
 
     //file.intergen.lua.cpp
     fdir.resize(flen);
@@ -297,10 +334,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
     tdir.resize(tlen);
     tdir << "file.intergen.lua.cpp.mtg";
 
-    if (nifc > 0)
-        generate(file, tdir, fdir, file.mtime);
-    else
-        bofstream bof(fdir);    //create zero file
+    generate(nifc, file, tdir, fdir, mtime);
 
     tdir.resize(tlen);
     fdir.resize(flen);
@@ -335,7 +369,7 @@ int main( int argc, char* argv[] )
     //parse
     int rv = cgf.parse(argv[1]);
     if(rv)
-        return 0;
+        return rv;
 
 
     //generate

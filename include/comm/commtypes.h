@@ -1,3 +1,4 @@
+#pragma once
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -35,12 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef __COID_COMM_COMMTYPES__HEADER_FILE__
-#define __COID_COMM_COMMTYPES__HEADER_FILE__
-
 #include "namespace.h"
-#include <type_traits>
-#include <limits>
 
 #if defined(__MINGW32__)
 
@@ -159,7 +155,6 @@
 //#define _USE_32BIT_TIME_T
 #include <sys/types.h>
 #include <stddef.h>
-#include "trait.h"
 
 /// Operator new for preallocated storage
 inline void * operator new (size_t, const void *p) { return (void*)p; }
@@ -218,30 +213,6 @@ typedef uint32              uints_sized;
 typedef int32               ints_sized;
 #endif
 
-#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
-
-///Selection of int type by minimum bit count
-template <class INT> struct int_bits_base {
-    typedef INT type;
-};
-
-template<int NBITS> struct int_bits {
-    static_assert(NBITS <= 64, "number of bits must be less or equal to 64");
-    typedef
-        std::conditional_t<(NBITS <= 8), int8,
-        std::conditional_t<(NBITS > 8 && NBITS <= 16), int16,
-        std::conditional_t<(NBITS > 16 && NBITS <= 32), int32,
-        std::conditional_t<(NBITS > 32 && NBITS <= 64), int64, int>>>> type;
-};
-
-template<int NBITS>
-using int_bits_t = typename int_bits<NBITS>::type;
-
-template<int NBITS>
-using uint_bits_t = typename std::make_unsigned<typename int_bits<NBITS>::type>::type;
-
-#endif
-
 } //namespace coid
 
 #ifndef COID_COMMTYPES_IN_NAMESPACE
@@ -279,53 +250,8 @@ struct versionid
     versionid(uint id, uint8 version) : id(id), version(version)
     {}
 
-    bool valid() const { return ((id << 8) | version) != UINT_MAX; }
+    bool valid() const { return ((id << 8) | version) != 0xffffffffU; }
 };
-
-////////////////////////////////////////////////////////////////////////////////
-template<class INT, class INTFROM>
-inline INT saturate_cast(INTFROM a) {
-    static_assert(std::is_integral<INT>::value, "integral type required");
-    INT minv = std::numeric_limits<INT>::min();
-    INT maxv = std::numeric_limits<INT>::max();
-    return a > maxv ? maxv : (a < minv ? minv : INT(a));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-template<class INT>
-struct SIGNEDNESS
-{
-    //typedef int     SIGNED;
-    //typedef uint    UNSIGNED;
-};
-
-#define SIGNEDNESS_MACRO(T,S,U,B) \
-template<> struct SIGNEDNESS<T> { typedef S SIGNED; typedef U UNSIGNED; static const int isSigned=B; };
-
-
-SIGNEDNESS_MACRO(int8,int8,uint8,1);
-SIGNEDNESS_MACRO(uint8,int8,uint8,0);
-SIGNEDNESS_MACRO(int16,int16,uint16,1);
-SIGNEDNESS_MACRO(uint16,int16,uint16,0);
-SIGNEDNESS_MACRO(int32,int32,uint32,1);
-SIGNEDNESS_MACRO(uint32,int32,uint32,0);
-SIGNEDNESS_MACRO(int64,int64,uint64,1);
-SIGNEDNESS_MACRO(uint64,int64,uint64,0);
-
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-SIGNEDNESS_MACRO(ints,ints,uints,1);
-SIGNEDNESS_MACRO(uints,ints,uints,0);
-# else
-SIGNEDNESS_MACRO(int,int,uint,1);
-SIGNEDNESS_MACRO(uint,int,int,0);
-# endif
-#elif defined(SYSTYPE_32)
-SIGNEDNESS_MACRO(long,long,ulong,1);
-SIGNEDNESS_MACRO(ulong,long,ulong,0);
-#endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef SYSTYPE_MSVC
@@ -368,14 +294,6 @@ void *_xmemcpy( void *dest, const void *src, size_t count );
 #define xmemcpy     ::memcpy
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-
-//used to detect char ptr types
-template<typename T, typename R> struct is_char_ptr {};
-template<typename R> struct is_char_ptr<const char *, R> { typedef R type; };
-template<typename R> struct is_char_ptr<char *, R>       { typedef R type; };
-
-
 COID_NAMESPACE_END
 
 
@@ -395,8 +313,3 @@ COID_NAMESPACE_END
 #define UMAX32      0xffffffffUL
 #define UMAX64      0xffffffffffffffffULL
 #define WMAX        0xffff
-
-#include "net_ul.h"
-
-
-#endif //__COID_COMM_COMMTYPES__HEADER_FILE__

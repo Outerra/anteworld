@@ -11,6 +11,7 @@
 
 
 #include <ot/blend_tree.h>
+#include <ot/geom_types.h>
 
 namespace ot {
     class animation_stack;
@@ -69,7 +70,14 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 2289787810;
+    ///Interface revision hash
+    static const int HASHID = 2306565429;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ot::animation_stack";
+        return _name;
+    }
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -78,19 +86,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override final {
-        static const coid::tokenhash _name = "ot::animation_stack";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
         static const coid::token _dc("");
         static const coid::token _djs("ot::animation_stack@wrapper.js");
+        static const coid::token _djsc("ot::animation_stack@wrapper.jsc");
         static const coid::token _dlua("ot::animation_stack@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -110,6 +119,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -135,8 +145,8 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::animation_stack";
-        tmp << "@client" << '.' << type;
-        
+        tmp << "@client-2306565429" << '.' << type;
+
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
     }
@@ -157,14 +167,16 @@ inline iref<T> animation_stack::get( T* _subclass_, const iref<pkg::animation_st
     typedef iref<T> (*fn_creator)(animation_stack*, const iref<pkg::animation_stack>&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation_stack.get@2289787810";
+    static const coid::token ifckey = "ot::animation_stack.get@2306565429";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("get", "ot::animation_stack.get", "@2306565429");
+        return 0;
+    }
 
     return create(_subclass_, as);
 }

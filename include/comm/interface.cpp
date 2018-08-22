@@ -17,11 +17,12 @@ struct entry
     token classname;
     token creatorname;
     token ns;
-    token script;
-    token hash;
+    token script;                       //< script ("js", "lua" ...) or client name
+    token hash;                         //< hash text value, or "wrapper", "maker", "creator", "client"
     token modulename;
 
-    void* creator_ptr;
+    void* creator_ptr = 0;
+    uint hashvalue = 0;
 
     //@return interface string without the module name
     operator token() const {
@@ -34,18 +35,16 @@ struct entry
 ////////////////////////////////////////////////////////////////////////////////
 class interface_register_impl
 {
-public:
-
-    COIDNEWDELETE("interface_register_impl");
-
-    hash_keyset<entry, _Select_Copy<entry,token> > _hash;
+    hash_keyset<entry, _Select_Copy<entry, token> > _hash;
     comm_mutex _mx;
 
     charstr _root_path;
     interface_register::fn_log_t _fn_log;
     interface_register::fn_acc_t _fn_acc;
 
-    const int _intergen_version;
+public:
+
+    COIDNEWDELETE("interface_register_impl");
 
     typedef interface_register::creator
         creator;
@@ -53,8 +52,7 @@ public:
     static interface_register_impl& get();
 
     interface_register_impl()
-        : _intergen_version(intergen_interface::VERSION)
-        , _mx(500, false)
+        : _mx(500, false)
         , _fn_log(0)
         , _fn_acc(0)
     {}
@@ -68,9 +66,10 @@ public:
             [ns1[::ns2[...]]]::classname@wrapper[.scriptname]               wrap existing interface object
             [ns1[::ns2[...]]]::classname@maker[.scriptname]                 create script interface object from host
             [ns1[::ns2[...]]]::classname.creatorname@hashvalue              c++ versioned creator
+            [ns1[::ns2[...]]]::classname.creatorname@hashvalue.ifc          c++ versioned creator direct ifc creator
             [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname     c++ creator of JS interface object
             [ns1[::ns2[...]]]::scriptname::classname.creatorname            creator from script
-            [ns1[::ns2[...]]]::classname@client.clientname                  client creator
+            [ns1[::ns2[...]]]::classname@client-hashvalue.clientname        client creator
 
             all can be followed by module name, [*modulename]
     **/
@@ -83,10 +82,26 @@ public:
 
         token ns = tmp;
         token modulename = ns.cut_right_back('*', token::cut_trait_remove_sep_default_empty());
-        token wrapper = ns.cut_right_group_back("::");
-        token classname = wrapper.cut_left('@');
-        token creatorname = classname.cut_right_back('.');
+        token wrapper = ns.cut_right_back('@', token::cut_trait_remove_sep_default_empty());
+        token classname = ns.cut_right_back("::", false);
+        token creatorname = classname.cut_right_back('.', token::cut_trait_remove_sep_default_empty());
         token script = wrapper.cut_right('.', token::cut_trait_remove_sep_default_empty());
+
+        uint hash = 0;
+        if (wrapper.char_is_number(0)) {
+            //keep the hash string in wrapper in this case
+            hash = wrapper.touint();
+        }
+        else if (wrapper.begins_with("client"_T)) {
+            token hstr = wrapper;
+            hstr.shift_start(6);
+
+            if (hstr.first_char() == '-') {
+                ++hstr;
+                hash = hstr.touint();
+                wrapper._pte = wrapper._ptr + 6;
+            }
+        }
 
         uints ml = modulename.len();
         if (ml)
@@ -95,18 +110,19 @@ public:
 
         GUARDTHIS(_mx);
 
-        if(!creator_ptr) {
+        if (!creator_ptr) {
             return _hash.erase_value(key, 0);
         }
         else {
             entry* en = _hash.insert_value_slot(key);
-            if(en) {
+            if (en) {
                 en->creator_ptr = creator_ptr;
                 en->ifcname.takeover(tmp);
                 en->ns = ns;
                 en->classname = classname;
                 en->creatorname = creatorname;
                 en->hash = wrapper;
+                en->hashvalue = hash;
                 en->script = script;
                 en->modulename = modulename;
                 return true;
@@ -116,7 +132,7 @@ public:
         return false;
     }
 
-    virtual dynarray<creator>& find_interface_creators( const regex& name, dynarray<creator>& dst )
+    virtual dynarray<creator>& find_interface_creators(const regex& name, dynarray<creator>& dst)
     {
         //interface creator names:
         // [ns1::[ns2:: ...]]::class.creator
@@ -125,11 +141,11 @@ public:
 
         auto i = _hash.begin();
         auto ie = _hash.end();
-        for(; i!=ie; ++i) {
-            if(i->script)
+        for (; i != ie; ++i) {
+            if (i->script)
                 continue;
 
-            if(name.match(token(*i))) {
+            if (name.match(token(*i))) {
                 creator* p = dst.add();
                 p->creator_ptr = i->creator_ptr;
                 p->name = token(*i);
@@ -139,18 +155,15 @@ public:
         return dst;
     }
 
-    virtual interface_register::wrapper_fn get_interface_wrapper( const token& name ) const
+    virtual interface_register::wrapper_fn get_interface_wrapper(const token& name) const
     {
         zstring str = name;
         str.get_str() << "@wrapper";
 
-        GUARDTHIS(_mx);
-
-        const entry* en = _hash.find_value(name);
-        return en ? (interface_register::wrapper_fn)en->creator_ptr : nullptr;
+        return find_wrapper(name);
     }
 
-    virtual dynarray<creator>& get_interface_creators( const token& name, const token& script, dynarray<creator>& dst )
+    virtual dynarray<creator>& get_interface_creators(const token& name, const token& script, dynarray<creator>& dst)
     {
         //interface creator names:
         // [ns1::[ns2:: ...]]::class.creator
@@ -163,17 +176,17 @@ public:
 
         auto i = _hash.begin();
         auto ie = _hash.end();
-        for(; i!=ie; ++i) {
-            if(script && script != i->script)
+        for (; i != ie; ++i) {
+            if (!script.is_null() && script != i->script)
                 continue;
 
-            if(i->classname != classname)
+            if (i->classname != classname)
                 continue;
 
-            if(creatorname && i->creatorname != creatorname)
+            if (creatorname && i->creatorname != creatorname)
                 continue;
 
-            if(ns && i->ns != ns)
+            if (ns && i->ns != ns)
                 continue;
 
             creator* p = dst.add();
@@ -184,7 +197,7 @@ public:
         return dst;
     }
 
-    virtual dynarray<creator>& get_script_interface_creators( const token& name, const token& script, dynarray<creator>& dst )
+    virtual dynarray<creator>& get_script_interface_creators(const token& name, const token& script, dynarray<creator>& dst)
     {
         //interface creator names:
         // [ns1::[ns2:: ...]]::class.creator
@@ -197,21 +210,21 @@ public:
 
         auto i = _hash.begin();
         auto ie = _hash.end();
-        for(; i!=ie; ++i) {
-            if(i->script)
+        for (; i != ie; ++i) {
+            if (i->script)
                 continue;
 
-            if(i->classname != classname)
+            if (i->classname != classname)
                 continue;
 
-            if(creatorname && i->creatorname != creatorname)
+            if (creatorname && i->creatorname != creatorname)
                 continue;
 
             token ins = i->ns;
-            if(script && (!ins.consume_end(script) || !ins.consume_end("::")))
+            if (!script.is_null() && (!ins.consume_end(script) || !ins.consume_end("::")))
                 continue;
 
-            if(ns && ins != ns)
+            if (ns && ins != ns)
                 continue;
 
             creator* p = dst.add();
@@ -222,7 +235,7 @@ public:
         return dst;
     }
 
-    virtual interface_register::wrapper_fn get_interface_client( const token& client, const token& iface, const token& module ) const
+    virtual interface_register::wrapper_fn get_interface_client(const token& client, const token& iface, uint hash, const token& module) const
     {
         zstring str = iface;
         str.get_str() << "@client" << '.' << client;
@@ -231,54 +244,105 @@ public:
 
         const entry* en = _hash.find_value(iface);
 
-        if (en && module && module != en->modulename)
-            return nullptr;
+        if (en) {
+            if (en->hashvalue != hash)
+                return 0;
 
-        return en ? (interface_register::wrapper_fn)en->creator_ptr : nullptr;
+            if (module && module != en->modulename)
+                return 0;
+
+            return (interface_register::wrapper_fn)en->creator_ptr;
+        }
+
+        return 0;
     }
 
-    virtual void* get_interface_maker( const token& name, const token& script ) const
+    virtual void* get_interface_maker(const token& name, const token& script) const
     {
         zstring str = name;
         str.get_str() << "@maker" << '.' << script;
 
-        GUARDTHIS(_mx);
-
-        const entry* en = _hash.find_value(name);
-        return en ? en->creator_ptr : nullptr;
+        return (void*)find_wrapper(name);
     }
 
-
-    bool current_dir( token curpath, charstr& dst )
+    virtual dynarray<interface_register::creator>& get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
     {
-        if(directory::is_absolute_path(curpath))
-            dst = curpath;
-        else {
-            curpath.consume_icase("file:///");
-            dst = _root_path;
-            
-            return directory::append_path(dst, curpath, true);
+        static token SEP = "::";
+        token ns = iface;
+        token classname = ns.cut_right_group_back(SEP);
+
+        GUARDTHIS(_mx);
+
+        auto i = _hash.begin();
+        auto ie = _hash.end();
+        for (; i != ie; ++i) {
+            if (i->hashvalue != hash)
+                continue;
+
+            if (i->hash != "client"_T)
+                continue;
+
+            if (i->classname != classname || i->ns != ns)
+                continue;
+
+            interface_register::creator* p = dst.add();
+            p->name = i->script;
+            p->creator_ptr = i->creator_ptr;
         }
 
-        return true;
+        return dst;
+    }
+
+    virtual const charstr& root_path() const final {
+        return _root_path;
+    }
+
+    virtual interface_register::fn_log_t fn_log() final { return _fn_log; }
+    virtual interface_register::fn_acc_t fn_acc() final { return _fn_acc; }
+
+    virtual interface_register::wrapper_fn find_wrapper(const token& ifcname) const final
+    {
+        GUARDTHIS(_mx);
+
+        const entry* en = _hash.find_value(ifcname);
+
+        return en ? (interface_register::wrapper_fn)en->creator_ptr : 0;
+    }
+
+    virtual void setup(const token& path, interface_register::fn_log_t logfn, interface_register::fn_acc_t access)
+    {
+        if (!_root_path) {
+            _root_path = path;
+            directory::treat_trailing_separator(_root_path, true);
+        }
+
+        if (logfn)
+            _fn_log = logfn;
+
+        if (access)
+            _fn_acc = access;
+    }
+
+    virtual bool check_version(int ver) const {
+        return intergen_interface::VERSION == ver;
     }
 
     //@param relpath [out] gets relative path from root. If null, relative incpath can only refer to a sub-path below curpath
-    bool include_path( const token& curpath, const token& incpath, charstr& dst, token* relpath )
+    virtual bool include_path(const token& curpath, const token& incpath, charstr& dst, token* relpath)
     {
         bool slash = incpath.first_char() == '/' || incpath.first_char() == '\\';
-        DASSERT( !_root_path.is_empty() );
+        DASSERT(!_root_path.is_empty());
 
         bool relative = !slash && !directory::is_absolute_path(incpath);
 
-        if(relative)
+        if (relative)
         {
             if (!current_dir(curpath, dst) || !directory::compact_path(dst, '/'))
                 return false;
 
             uint psize = dst.len();
 
-            if (!directory::append_path(dst, incpath, relpath==0))
+            if (!directory::append_path(dst, incpath, relpath == 0))
                 return false;
 
             //relative paths below curpath are always allowed, not checked
@@ -307,30 +371,40 @@ public:
         return _fn_acc ? _fn_acc(rpath) : true;
     }
 
-    bool check_version() const { return _intergen_version == intergen_interface::VERSION; }
+private:
+
+    bool current_dir(token curpath, charstr& dst)
+    {
+        if (directory::is_absolute_path(curpath))
+            dst = curpath;
+        else {
+            curpath.consume_icase("file:///");
+            dst = _root_path;
+
+            return directory::append_path(dst, curpath, true);
+        }
+
+        return true;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-void* interface_register::get_interface_creator( const token& ifcname )
+void* interface_register::get_interface_creator(const token& ifcname)
 {
     interface_register_impl& reg = interface_register_impl::get();
-    if(!reg.check_version()) {
+    if (!reg.check_version(intergen_interface::VERSION)) {
         ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
-        msg->str() << "mismatched intergen version for " << ifcname;
+        msg->str() << "mismatched intergen version for " << ifcname << "(v" << intergen_interface::VERSION << ')';
         //print requires VS2015
         //print(coid::log::error, "ifcreg", "mismatched intergen version for {}", ifcname);
         return 0;
     }
 
-    GUARDTHIS(reg._mx);
-
-    const entry* en = reg._hash.find_value(ifcname);
-
-    return en ? en->creator_ptr : 0;
+    return (void*)reg.find_wrapper(ifcname);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool interface_register::include_path( const token& curpath, const token& incpath, charstr& dst, token* relpath )
+bool interface_register::include_path(const token& curpath, const token& incpath, charstr& dst, token* relpath)
 {
     interface_register_impl& reg = interface_register_impl::get();
     return reg.include_path(curpath, incpath, dst, relpath);
@@ -339,16 +413,16 @@ bool interface_register::include_path( const token& curpath, const token& incpat
 ////////////////////////////////////////////////////////////////////////////////
 const charstr& interface_register::root_path()
 {
-    return interface_register_impl::get()._root_path;
+    return interface_register_impl::get().root_path();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> interface_register::canlog( log::type type, const tokenhash& hash, const void* inst )
+ref<logmsg> interface_register::canlog(log::type type, const tokenhash& hash, const void* inst)
 {
-    fn_log_t canlogfn = interface_register_impl::get()._fn_log;
+    fn_log_t canlogfn = interface_register_impl::get().fn_log();
     ref<logmsg> msg;
 
-    if(canlogfn)
+    if (canlogfn)
         msg = canlogfn(type, hash, inst);
     else
         msg = SINGLETON(stdoutlogger).create_msg(type, hash, inst);
@@ -357,23 +431,15 @@ ref<logmsg> interface_register::canlog( log::type type, const tokenhash& hash, c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void interface_register::setup( const token& path, fn_log_t log, fn_acc_t access )
+void interface_register::setup(const token& path, fn_log_t log, fn_acc_t access)
 {
     interface_register_impl& reg = interface_register_impl::get();
-    if(!reg._root_path) {
-        reg._root_path = path;
-        directory::treat_trailing_separator(reg._root_path, true);
-    }
 
-    if(log)
-        reg._fn_log = log;
-
-    if(access)
-        reg._fn_acc = access;
+    reg.setup(path, log, access);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-interface_register::wrapper_fn interface_register::get_interface_wrapper( const token& name )
+interface_register::wrapper_fn interface_register::get_interface_wrapper(const token& name)
 {
     //interface creator name:
     // [ns1::[ns2:: ...]]::class
@@ -382,7 +448,7 @@ interface_register::wrapper_fn interface_register::get_interface_wrapper( const 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void* interface_register::get_interface_maker( const token& name, const token& script )
+void* interface_register::get_interface_maker(const token& name, const token& script)
 {
     //interface name:
     // [ns1::[ns2:: ...]]::class
@@ -391,16 +457,23 @@ void* interface_register::get_interface_maker( const token& name, const token& s
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-interface_register::wrapper_fn interface_register::get_interface_client( const token& client, const token& iface, const token& module )
+interface_register::wrapper_fn interface_register::get_interface_client(const token& client, const token& iface, uint hash, const token& module)
 {
-    //interface creator name:
+    //interface name:
     // [ns1::[ns2:: ...]]::class
     interface_register_impl& reg = interface_register_impl::get();
-    return reg.get_interface_client(client, iface, module);
+    return reg.get_interface_client(client, iface, hash, module);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-dynarray<interface_register::creator>& interface_register::get_interface_creators( const token& name, const token& script, dynarray<interface_register::creator>& dst )
+dynarray<interface_register::creator>& interface_register::get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
+{
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.get_interface_clients(iface, hash, dst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+dynarray<interface_register::creator>& interface_register::get_interface_creators(const token& name, const token& script, dynarray<interface_register::creator>& dst)
 {
     //interface creator names:
     // [ns1::[ns2:: ...]]::class.creator
@@ -409,7 +482,7 @@ dynarray<interface_register::creator>& interface_register::get_interface_creator
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-dynarray<interface_register::creator>& interface_register::get_script_interface_creators( const token& name, const token& script, dynarray<interface_register::creator>& dst )
+dynarray<interface_register::creator>& interface_register::get_script_interface_creators(const token& name, const token& script, dynarray<interface_register::creator>& dst)
 {
     //interface creator names:
     // [ns1::[ns2:: ...]]::class.creator
@@ -418,7 +491,7 @@ dynarray<interface_register::creator>& interface_register::get_script_interface_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-dynarray<interface_register::creator>& interface_register::find_interface_creators( const regex& name, dynarray<interface_register::creator>& dst )
+dynarray<interface_register::creator>& interface_register::find_interface_creators(const regex& name, dynarray<interface_register::creator>& dst)
 {
     //interface creator names:
     // [ns1::[ns2:: ...]]::class.creator
@@ -428,22 +501,23 @@ dynarray<interface_register::creator>& interface_register::find_interface_creato
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool interface_register::register_interface_creator( const token& ifcname, void* creator_ptr )
+bool interface_register::register_interface_creator(const token& ifcname, void* creator_ptr)
 {
     interface_register_impl& reg = interface_register_impl::get();
 
-    if(!reg.check_version()) {
-        if(creator_ptr) {
-            //print(coid::log::error, "ifcreg", "declining interface registration for {}, mismatched intergen version", ifcname);
+    if (!reg.check_version(intergen_interface::VERSION)) {
+        if (creator_ptr) {
+            //print(coid::log::error, "ifcreg", "declined interface registration for {}, mismatched intergen version", ifcname);
             ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
-            msg->str() << "declining interface registration for " << ifcname << ", mismatched intergen version";
+            msg->str() << "declined interface registration for " << ifcname
+                << ", mismatched intergen version (v" << intergen_interface::VERSION << ')';
         }
         return false;
     }
 
     charstr tmp = ifcname;
     tmp << '*';
-    dynamic_library::module_name(tmp, true);
+    directory::get_module_path(tmp, true);
 
     return reg.register_interface_creator(tmp, creator_ptr);
 }
@@ -460,13 +534,13 @@ bool interface_register::register_interface_creator( const token& ifcname, void*
 
 #ifdef SYSTYPE_WIN
 
-typedef int (__stdcall *proc_t)();
+typedef int(__stdcall *proc_t)();
 
 extern "C"
-__declspec(dllimport) proc_t __stdcall GetProcAddress (
+__declspec(dllimport) proc_t __stdcall GetProcAddress(
     void* hmodule,
     const char* procname
-    );
+);
 
 typedef interface_register_impl* (*ireg_t)();
 
@@ -476,12 +550,12 @@ typedef interface_register_impl* (*ireg_t)();
 ////////////////////////////////////////////////////////////////////////////////
 interface_register_impl& interface_register_impl::get()
 {
-    static interface_register_impl* _this=0;
+    static interface_register_impl* _this = 0;
 
-    if(!_this) {
+    if (!_this) {
         const char* s = MAKESTR(INTERGEN_GLOBAL_REGISTRAR);
         ireg_t p = (ireg_t)GetProcAddress(0, s);
-        if(!p) throw exception() << "no intergen entry point found";
+        if (!p) throw exception() << "no intergen entry point found";
         _this = p();
     }
 

@@ -35,7 +35,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/** @file */
+ /** @file */
 
 
 #ifndef __COID_COMM_METASTREAM__HEADER_FILE__
@@ -104,7 +104,7 @@ class metastream
 {
 public:
 
-    bool streaming() const      { return _binw || _binr; }
+    bool streaming() const { return _binw || _binr; }
     bool stream_reading() const { return _binr; }
     bool stream_writing() const { return _binw; }
 
@@ -115,7 +115,7 @@ public:
         init();
     }
 
-    explicit metastream( fmtstream& bin )
+    explicit metastream(fmtstream& bin)
     {
         init();
         bind_formatting_stream(bin);
@@ -123,9 +123,9 @@ public:
 
     ~metastream()
     {
-        if(_sesopen > 0)
+        if (_sesopen > 0)
             stream_flush();
-        else if(_sesopen < 0)
+        else if (_sesopen < 0)
             stream_acknowledge(true);
     }
 
@@ -142,9 +142,9 @@ public:
     ///Define struct streaming scheme
     //@param fn functor with member functions defining the struct layout
     template<typename T, typename Fn>
-    metastream& compound_type( T&, Fn fn )
+    metastream& compound_type(T&, Fn fn)
     {
-        if(streaming()) {
+        if (streaming()) {
             _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
             _rvarname.reset();
 
@@ -152,11 +152,12 @@ public:
             fn();
             moveout_struct(_binr != 0);
         }
-        else if(!meta_insert(typeid(T).name(), false))
-        {
+        else if (!meta_insert(typeid(T).name(), sizeof(T), false)) {
             fn();
 
             _last_var = smap().pop();
+            _last_var->desc->streaming_type = _last_var->desc;
+
             _current_var = smap().last();
 
             meta_exit();
@@ -164,13 +165,104 @@ public:
         return *this;
     }
 
+    ///Define a compound type that streams as a different (possibly plain) type
+    //@param set void function(T&, Tstream&&) receiving object from stream
+    //@param get [const Tstream& | Tstream] function(T&) returning object to stream
+    template<typename Tstream, typename T, typename Fn, typename FnIn, typename FnOut>
+    metastream& compound_type_stream_as_type(T& v, Fn fn, FnIn set, FnOut get)
+    {
+        if (_binw) {
+            const Tstream& val = get(v);
+            *this || const_cast<Tstream&>(val);
+        }
+        else if (_binr) {
+            Tstream val;
+            *this || val;
+            set(v, std::forward<Tstream>(val));
+        }
+        else {
+            MetaDesc* md = meta_insert(typeid(T).name(), sizeof(T), false);
+            if (!md)
+            {
+                fn();
+
+                _last_var = smap().pop();
+                md = _last_var->desc;
+
+                _current_var = smap().last();
+
+                meta_exit();
+            }
+
+            //capture alias streaming type
+            MetaDesc::Var* oldvar = _current_var;
+            MetaDesc desc;
+            MetaDesc::Var var;
+            var.desc = &desc;
+            _current_var = &var;
+
+            *this || *(Tstream*)0;
+
+            md->streaming_type = desc.children[0].desc;
+            _current_var = oldvar;
+        }
+
+        return *this;
+    }
+
+    ///Define struct streaming scheme with separate structures for streaming and reflection
+    //@param fnrefl functor with member functions defining the struct layout for reflection
+    //@param fnstream functor with member functions defining the struct layout for streaming
+    template<typename T, typename FnRefl, typename FnStream>
+    metastream& compound_type_stream_as(T&, FnRefl fnrefl, FnStream fnstream)
+    {
+        if (streaming()) {
+            _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
+            _rvarname.reset();
+
+            movein_struct(_binr != 0);
+            fnstream();
+            moveout_struct(_binr != 0);
+        }
+        else {
+            MetaDesc* md = meta_insert(typeid(T).name(), sizeof(T), false);
+            if (!md)
+            {
+                fnrefl();
+
+                _last_var = smap().pop();
+                md = _last_var->desc;
+
+                _current_var = smap().last();
+
+                meta_exit();
+            }
+
+            //capture alias streaming type
+            MetaDesc::Var* oldvar = _current_var;
+            MetaDesc desc;
+            MetaDesc::Var var;
+            var.desc = &desc;
+            _current_var = &var;
+            
+            fnstream();
+
+            md->streaming_type = desc.children[0].desc;
+            _current_var = oldvar;
+        }
+
+        return *this;
+    }
+
+
+
     ///Define struct streaming scheme [OBSOLETE - use compound_type instead]
     //@param name unique struct type name
     //@param fn functor with member functions defining the struct layout
     template<typename Fn>
-    metastream& compound( const token& name, Fn fn )
+    metastream& compound(const token& name, Fn fn)
     {
-        if(streaming()) {
+        if (streaming()) {
             _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
             _rvarname.reset();
 
@@ -178,11 +270,13 @@ public:
             fn();
             moveout_struct(_binr != 0);
         }
-        else if(!meta_insert(name, false))
+        else if (!meta_insert(name, _curvar.var ? _curvar.var->desc->type_size : 0, false))
         {
             fn();
 
             _last_var = smap().pop();
+            _last_var->desc->streaming_type = _last_var->desc;
+
             _current_var = smap().last();
 
             meta_exit();
@@ -193,9 +287,9 @@ public:
     ///Define struct streaming scheme, where the members correspond to the physical layout
     //@param fn functor with member functions defining the struct layout
     template<typename T, typename Fn>
-    metastream& plain_type( T&, Fn fn )
+    metastream& plain_type(T&, Fn fn)
     {
-        if(streaming()) {
+        if (streaming()) {
             _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
             _rvarname.reset();
 
@@ -203,11 +297,13 @@ public:
             fn();
             moveout_struct(_binr != 0);
         }
-        else if(!meta_insert(typeid(T).name(), true))
+        else if (!meta_insert(typeid(T).name(), sizeof(T), true))
         {
             fn();
 
             _last_var = smap().pop();
+            _last_var->desc->streaming_type = _last_var->desc;
+
             _current_var = smap().last();
 
             meta_exit();
@@ -215,72 +311,43 @@ public:
         return *this;
     }
 
-    ///Define struct streaming scheme for templates
-    //@param name struct type name
-    //@param fn functor with member functions defining the struct layout
-    template<typename A, typename Fn>
-    metastream& compound_templated( const token& name, Fn fn )
-    {
-        if(streaming()) {
-            _xthrow(movein_process_key(_binr != 0 ? READ_MODE : WRITE_MODE));
-            _rvarname.reset();
-
-            movein_struct(_binr != 0);
-            fn();
-            moveout_struct(_binr != 0);
-        }
-        else {
-            charstr& k = *_templ_name_stack.add();
-            k.append('<');
-        
-            *this || *(A*)0;
-
-            k.append('>');
-
-            if(!handle_template_name_mode(name))
-            {
-                fn();
-
-                _last_var = smap().pop();
-                _current_var = smap().last();
-
-                meta_exit();
-            }
-        }
-        return *this;
-    }
-
     ///Define a member variable
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T>
-    metastream& member( const token& name, T& v )
+    bool member(const token& name, T& v)
     {
-        if(streaming())
+        if (streaming()) {
             *this || *(typename resolve_enum<T>::type*)&v;
-        else
-            meta_variable<T>(name, &v);
-        return *this;
+            return true;
+        }
+
+        meta_variable<T>(name, &v);
+        return true;
     }
 
     ///Define a member variable with default value to use if missing in stream
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T, typename D>
-    metastream& member( const token& name, T& v, const D& defval )
+    bool member(const token& name, T& v, const D& defval)
     {
-        if(_binw) {
+        bool used = true;
+
+        if (_binw) {
             *this || *(typename resolve_enum<T>::type*)&v;
         }
-        else if(_binr) {
-            if(!read_optional(v))
+        else if (_binr) {
+            used = read_optional(v);
+            if (!used)
                 v = T(defval);
         }
-        else {
-            meta_variable_optional<T>(name);
-        }
-        return *this;
+        else
+            meta_variable_optional<T>(name, &v);
+        return used;
     }
 
     ///Define a member variable with default value to use if missing in stream
@@ -288,34 +355,118 @@ public:
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
     //@param write_default if false, does not write value that equals the defval into output stream
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T, typename D>
-    metastream& member( const token& name, T& v, const D& defval, bool write_default )
+    bool member(const token& name, T& v, const D& defval, bool write_default)
     {
-        if(_binw) {
-            write_optional(!cache_prepared() && !write_default && v == defval
+        bool used = true;
+
+        if (_binw) {
+            used = write_optional(!cache_prepared() && !write_default && v == defval
                 ? 0 : (typename resolve_enum<T>::type*)&v);
         }
-        else if(_binr) {
-            if(!read_optional(v))
+        else if (_binr) {
+            used = read_optional(v);
+            if (!used)
                 v = T(defval);
         }
         else
-            meta_variable_optional<T>(name);
-        return *this;
+            meta_variable_optional<T>(name, &v);
+        return used;
     }
 
-    ///Define a member variable pointer
+    ///Define a fixed size array member variable 
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    template<typename T, size_t N>
+    bool member(const token& name, T(&v)[N])
+    {
+        member_array<N>(name, v);
+        return true;
+    }
+
+    ///Define a member variable referenced by a pointer (non-streamable) except const char*
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    //@param streamed false variable should not be streamed, just a part of meta description, can point to 1..N items (default)
+    //@param          true variable is indirectly referenced to by a pointer
+    //@note use member_optional or member_type for special handling when the pointer has to be allocated etc.
+    template<typename T, typename = std::enable_if_t<!std::is_same<const char*, T*>::value>>
+    bool member(const token& name, T*& v, bool streamed = false)
+    {
+        member_ptr(name, v, streamed);
+        return true;
+    }
+
+    ///Define a member variable referenced by a pointer, assumed to be already allocated when streaming to/from
     //@param name variable name, used as a key in output formats
     //@param v pointer to variable to read/write to
     template<typename T>
-    metastream& member( const token& name, T*& v )
+    metastream& member_indirect(const token& name, T*& v)
     {
         typedef typename std::remove_const<T>::type TNC;
 
-        if(streaming())
+        if (streaming()) {
+            if (!v)
+                throw exception() << "null pointer";
+
+            *this || *(typename resolve_enum<TNC>::type*)v;
+        }
+        else
+            meta_variable_indirect<TNC>(name, (ints)&v);
+        return *this;
+    }
+
+    ///Define a raw pointer member variable to 1..N objects
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    //@param streamed false if variable should not be streamed, just a part of meta description
+    template<typename T>
+    bool member_ptr(const token& name, T*& v, bool streamed)
+    {
+        typedef typename std::remove_const<T>::type TNC;
+
+        if (streaming())
             *this || *(typename resolve_enum<TNC>::type*)v;
         else
-            meta_variable<TNC>(name, (TNC*)0);
+            meta_variable_raw_ptr<TNC>(name, (ints)&v, streamed);
+
+        return true;
+    }
+
+    ///Define a raw pointer member variable to 1..N objects
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    //@param streamed false if variable should not be streamed, just a part of meta description
+    template<typename T, typename Telem>
+    metastream& member_container_type(
+        T& v,
+        Telem** raw_ptr,
+        bool streamed,
+        MetaDesc::fn_ptr fnptr,
+        MetaDesc::fn_count fncount,
+        MetaDesc::fn_push fnpush,
+        MetaDesc::fn_extract fnextract)
+    {
+        if (stream_reading()) {
+            meta_container mc(_curvar.var->desc, &v);
+            read_container(mc);
+        }
+        else if (stream_writing()) {
+            meta_container mc(_curvar.var->desc, &v);
+            write_container(mc);
+        }
+        else {
+            if (meta_decl_container(
+                typeid(T).name(),
+                sizeof(v),
+                streamed,
+                raw_ptr ? (ints)raw_ptr - (ints)&v : -1,
+                fnptr, fncount, fnpush, fnextract
+            ))
+                *this || *(typename resolve_enum<Telem>::type*)0;
+        }
+
         return *this;
     }
 
@@ -325,9 +476,9 @@ public:
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     template<typename T>
-    metastream& member_stream_default( const token& name, T& v )
+    metastream& member_stream_default(const token& name, T& v)
     {
-        if(streaming())
+        if (streaming())
             *this || (typename resolve_enum<T>::type&)v;
         else {
             meta_variable<T>(name, &v);
@@ -338,19 +489,19 @@ public:
 
     ///Define a variable of given type, with explicit set/get functors
     //@param name variable name, used as a key in output formats
-    //@param set void function(const T&) receiving object from stream
-    //@param get const T& function() returning object to stream
+    //@param set void function(T&&) receiving object from stream
+    //@param get [const T& | T] function() returning object to stream
     template<typename T, typename FnIn, typename FnOut>
-    metastream& member_type( const token& name, FnIn set, FnOut get )
+    metastream& member_type(const token& name, FnIn set, FnOut get)
     {
-        if(_binw) {
-            T tmp(get());
-            *this || tmp;
+        if (_binw) {
+            const T& val = get();
+            *this || const_cast<T&>(val);
         }
-        else if(_binr) {
+        else if (_binr) {
             T val;
             *this || val;
-            set(val);
+            set(std::forward<T>(val));
         }
         else
             meta_variable<T>(name, 0);
@@ -360,19 +511,19 @@ public:
     ///Define a variable of given type, with explicit set/get functors and a default value
     //@param name variable name, used as a key in output formats
     //@param defval value to use if the variable is missing from the stream, convertible to T
-    //@param set void function(const T&) receiving object from stream
-    //@param get const T& function() returning object to stream
+    //@param set void function(T&&) receiving object from stream
+    //@param get [const T& | T] function() returning object to stream
     template<typename T, typename D, typename FnIn, typename FnOut>
-    metastream& member_type( const token& name, const D& defval, FnIn set, FnOut get )
+    metastream& member_type(const token& name, const D& defval, FnIn set, FnOut get)
     {
-        if(_binw) {
-            T tmp(get());
-            *this || tmp;
+        if (_binw) {
+            const T& val = get();
+            *this || const_cast<T&>(val);
         }
-        else if(_binr) {
+        else if (_binr) {
             T val;
             *this || val;
-            set(val);
+            set(std::forward<T>(val));
         }
         else {
             meta_variable<T>(name, 0);
@@ -384,46 +535,55 @@ public:
     ///Define a variable of given type, with explicit set/get functors and a default value, with optional writing of default value
     //@param name variable name, used as a key in output formats
     //@param defval value to use if the variable is missing from the stream, convertible to T
-    //@param set void function(const T&) receiving object from stream
-    //@param get const T& function() returning object to stream
+    //@param set void function(T&&) receiving object from stream
+    //@param get [const T& | T] function() returning object to stream
     //@param write_default if false, does not write value that equals the defval into output stream
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T, typename D, typename FnIn, typename FnOut>
-    metastream& member_type( const token& name, const D& defval, FnIn set, FnOut get, bool write_default )
+    bool member_type(const token& name, const D& defval, FnIn set, FnOut get, bool write_default)
     {
-        if(_binw) {
-            T tmp(get());
-            write_optional(!cache_prepared() && !write_default && tmp == defval ? 0 : &tmp);
+        bool used = true;
+        if (_binw) {
+            const T& val = get();
+            used = write_optional(!cache_prepared() && !write_default && val == defval ? 0 : &val);
         }
-        else if(_binr) {
+        else if (_binr) {
             T val;
-            set(read_optional(val) ? val : defval);
+            used = read_optional(val);
+            if (used)
+                set(std::forward<T>(val));
+            else
+                set(defval);
         }
         else
-            meta_variable_optional<T>(name);
-        return *this;
+            meta_variable_optional<T>(name, (const T*)-1);
+        return used;
     }
 
     ///Define an optional variable, with explicit set/get functors
     //@param name variable name, used as a key in output formats
     //@param set void function(const T*) receiving streamed object, or nullptr if the object wasn't present in the stream
     //@param get const T* function() called to provide object to be streamed, or nullptr if nothing should go into the stream
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T, typename FnIn, typename FnOut>
-    metastream& member_optional( const token& name, FnIn set, FnOut get )
+    bool member_optional(const token& name, FnIn set, FnOut get)
     {
-        if(_binw) {
+        bool used = true;
+        if (_binw) {
             const T* p = get();
-            write_optional(p);
+            used = write_optional(p);
         }
-        else if(_binr) {
+        else if (_binr) {
             T val;
-            if(read_optional(val))
+            used = read_optional(val);
+            if (used)
                 set(&val);
             else
                 set(nullptr);
         }
         else
-            meta_variable_optional<T>(name);
-        return *this;
+            meta_variable_optional<T>(name, (const T*)-1);
+        return used;
     }
 
     ///Define a variable that can have a finite set of values, mapped to strings in output stream
@@ -435,25 +595,28 @@ public:
     //@param write_default if false, does not write value that equals the defval into output stream
     //@note if written value is not present in the list, nothing is written out
     //@note if read string doesn't match any string from the set, defval is set
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T>
-    metastream& member_enum( const token& name, T& v, const T values[], const char* names[], const T& defval, bool write_default=true )
+    bool member_enum(const token& name, T& v, const T values[], const char* names[], const T& defval, bool write_default = true)
     {
-        if(_binw) {
-            if(!cache_prepared() && !write_default && v == defval)
-                write_optional((const char**)0);
+        bool used = true;
+        if (_binw) {
+            if (!cache_prepared() && !write_default && v == defval)
+                used = write_optional((const char**)0);
             else {
-                int i=0;
-                while(names[i] != 0 && !(values[i] == v))
+                int i = 0;
+                while (names[i] != 0 && !(values[i] == v))
                     ++i;
-                write_optional(names[i] ? &names[i] : 0);
+                used = write_optional(names[i] ? &names[i] : 0);
             }
         }
-        else if(_binr) {
-            if(read_optional(_convbuf)) {
-                int i=0;
-                while(names[i] != 0 && _convbuf != names[i])
+        else if (_binr) {
+            used = read_optional(_convbuf);
+            if (used) {
+                int i = 0;
+                while (names[i] != 0 && _convbuf != names[i])
                     ++i;
-                if(names[i])
+                if (names[i])
                     v = values[i];
                 else
                     v = defval;
@@ -462,51 +625,61 @@ public:
                 v = defval;
         }
         else
-            meta_variable_optional<charstr>(name);
-        return *this;
+            meta_variable_optional<charstr>(name, (const charstr*)&v);
+        return used;
 
     }
 
     ///Define an obsolete member - not present in the object, ignored on output, but doesn't fail when present in the input stream
     //@param name variable name, used as a key in output formats
+    //@param v optional pointer to the read value
+    //@param was_read true if the value was read
+    //@return true if value was read or written and no default was used (also true in meta phase)
     template<typename T>
-    metastream& member_obsolete( const token& name )
+    bool member_obsolete(const token& name, T* v = nullptr)
     {
-        if(!streaming())
-            meta_variable_obsolete<T>(name, 0);
-        else if(stream_reading()) {
-            if(cache_prepared()) {
+        bool used = false;
+
+        if (!streaming()) {
+            meta_variable_obsolete<T>(name);
+            return true;
+        }
+        else if (stream_reading()) {
+            if (cache_prepared()) {
                 _current->offs += sizeof(uints);
                 moveto_expected_target(true);
             }
             else {
                 T temp;
-                read_optional(temp);
+                used = read_optional(v ? *v : temp);
+
+                if (used && !v)
+                    warn_obsolete(name);
             }
         }
-        else if(cache_prepared())
+        else if (cache_prepared())
             _current->offs += sizeof(uints);
 
-        return *this;
+        return used;
     }
 
     ///Define a fixed size array member
     //@param name variable name, used as a key in output formats
     //@param v pointer to the first array element
     //@param size element count
-    template<typename T>
-    metastream& member_array( const token& name, T* v, uints size )
+    template<size_t N, typename T>
+    metastream& member_array(const token& name, T* v)
     {
-        if(_binw) {
-            binstream_container_fixed_array<T,ints> bc(v, size);
+        if (_binw) {
+            binstream_container_fixed_array<T, ints> bc(v, N);
             write_container(bc);
         }
-        else if(_binr) {
-            binstream_container_fixed_array<T,ints> bc(v, size);
+        else if (_binr) {
+            binstream_container_fixed_array<T, ints> bc(v, N);
             read_container(bc);
         }
         else
-            meta_variable_array<T>(name, 0, size);
+            meta_variable_fixed_array<N>(name, v);
         return *this;
     }
 
@@ -514,34 +687,34 @@ public:
     ///Write value in stream_writing mode of metastream operator
     //@param p pointer to value, nullptr if the value should not be written
     template<class T>
-    metastream& write_optional( const T* p )
+    bool write_optional(const T* p)
     {
-        if(!p) {
+        if (!p) {
             moveto_expected_target(WRITE_MODE);
-            return *this;
+            return true;
         }
 
         *this || *const_cast<T*>(p);
-        return *this;
+        return false;
     }
 
     ///Read value in stream_reading mode of metastream operator
     //@return true if the value was in the stream
     //@param val receives the value
     template<class T>
-    bool read_optional( T& val )
+    bool read_optional(T& val)
     {
         opcd e = movein_process_key(READ_MODE);
-        if(!e) {
+        if (!e) {
             *this || *(typename resolve_enum<T>::type*)&val;
             return true;
         }
         else {
-            if(cache_prepared())
+            if (cache_prepared())
                 _current->offs += sizeof(uints);
             moveto_expected_target(READ_MODE);
         }
-        
+
         return false;
     }
 
@@ -551,14 +724,14 @@ public:
     T* read_optional()
     {
         opcd e = movein_process_key(READ_MODE);
-        if(!e) {
+        if (!e) {
             T* p = new T;
             *this || *p;
             return p;
         }
         else
             moveto_expected_target(READ_MODE);
-        
+
         return 0;
     }
 
@@ -584,28 +757,27 @@ public:
         _current_var = 0;
         _curvar.var = 0;
         _cur_variable_name.set_empty();
-
-        _templ_arg_rdy = false;
+        _cur_variable_offset = 0;
 
         _dometa = false;
         _fmtstreamwr = _fmtstreamrd = 0;
     }
 
     ///Bind the same stream to both input and output
-    void bind_formatting_stream( fmtstream& bin )
+    void bind_formatting_stream(fmtstream& bin)
     {
         _fmtstreamwr = _fmtstreamrd = &bin;
-        stream_reset( 0, cache_prepared() );
+        stream_reset(0, cache_prepared());
         _sesopen = 0;
         _beseparator = false;
     }
 
     ///Bind formatting streams for input and output
-    void bind_formatting_streams( fmtstream& brd, fmtstream& bwr )
+    void bind_formatting_streams(fmtstream& brd, fmtstream& bwr)
     {
         _fmtstreamwr = &bwr;
         _fmtstreamrd = &brd;
-        stream_reset( 0, cache_prepared() );
+        stream_reset(0, cache_prepared());
         _sesopen = 0;
         _beseparator = false;
     }
@@ -619,14 +791,14 @@ public:
     }
 
     ///Set current file name (for error reporting)
-    void set_file_name( const token& name ) {
-        if(_fmtstreamrd)
+    void set_file_name(const token& name) {
+        if (_fmtstreamrd)
             _fmtstreamrd->fmtstream_file_name(name);
-        if(_fmtstreamwr)
+        if (_fmtstreamwr)
             _fmtstreamwr->fmtstream_file_name(name);
     }
 
-    metastream& _xthrow(opcd e) { if(e) throw exception(e); return *this; }
+    metastream& _xthrow(opcd e) { if (e) throw exception(e); return *this; }
 
     ////////////////////////////////////////////////////////////////////////////////
     template<class T, class C>
@@ -638,7 +810,7 @@ public:
         C& _container;
         metastream& _m;
 
-        container( C& container, metastream& m )
+        container(C& container, metastream& m)
             : binstream_container<uints>(bstype::t_type<T>(), &stream, &stream)
             , _container(container)
             , _m(m)
@@ -648,8 +820,8 @@ public:
 
         ///Provide a pointer to next object that should be streamed
         //@param n number of objects to allocate the space for
-        virtual const void* extract( uints n ) { return _container.extract(n); }
-        virtual void* insert( uints n ) { return _container.insert(n); }
+        virtual const void* extract(uints n) { return _container.extract(n); }
+        virtual void* insert(uints n) { return _container.insert(n); }
 
         //@return true if the storage is continuous in memory
         virtual bool is_continuous() const { return _container.is_continuous(); }
@@ -658,23 +830,23 @@ public:
 
     protected:
 
-        static opcd stream( binstream& bin, void* p, binstream_container_base& bc )
+        static opcd stream(binstream& bin, void* p, binstream_container_base& bc)
         {
-            container<T,C>& me = static_cast<container<T,C>&>(bc);
+            container<T, C>& me = static_cast<container<T, C>&>(bc);
             try {
                 me._m || *(T*)p;
             }
-            catch(const exception&) {
+            catch (const exception&) {
                 return ersEXCEPTION;
             }
-            catch(opcd e) {
+            catch (opcd e) {
                 return e;
             }
             return 0;
         }
     };
 
-    metastream& read_container( binstream_container_base& c )
+    metastream& read_container(binstream_container_base& c)
     {
         _xthrow(movein_process_key(READ_MODE));
         _rvarname.reset();
@@ -682,7 +854,7 @@ public:
         return read_container_body(c);
     }
 
-    metastream& read_container_body( binstream_container_base& c )
+    metastream& read_container_body(binstream_container_base& c)
     {
         uints n = UMAXS;
         type t = c._type;
@@ -690,10 +862,10 @@ public:
         //read bgnarray
         _xthrow(data_value(&n, t.get_array_begin<uints>(), READ_MODE));
 
-        if( n == UMAXS )
+        if (n == UMAXS)
             t = c.set_array_needs_separators();
 
-        uints count=0;
+        uints count = 0;
         _xthrow(data_read_array_content(c, n, &count));
 
         //read endarray
@@ -703,18 +875,18 @@ public:
     }
 
 
-    metastream& write_token( const token& tok ) {
-        binstream_container_fixed_array<char,uint> c((char*)tok.ptr(), tok.len());
+    metastream& write_token(const token& tok) {
+        binstream_container_fixed_array<char, uint> c((char*)tok.ptr(), tok.len());
         return write_container(c);
     }
 
     template<class T>
-    metastream& write_container( binstream_container_base& c )
+    metastream& write_container(binstream_container_base& c)
     {
         return write_container(c);
     }
 
-    metastream& write_container( binstream_container_base& c )
+    metastream& write_container(binstream_container_base& c)
     {
         _xthrow(movein_process_key(WRITE_MODE));
 
@@ -725,10 +897,10 @@ public:
         _xthrow(data_value(&n, t.get_array_begin<uints>(), WRITE_MODE));
 
         //if container doesn't know number of items in advance, require separators
-        if( n == UMAXS )
+        if (n == UMAXS)
             t = c.set_array_needs_separators();
 
-        uints count=0;
+        uints count = 0;
         _xthrow(data_write_array_content(c, &count));
 
         _xthrow(data_value(&count, t.get_array_end(), WRITE_MODE));
@@ -739,15 +911,15 @@ public:
 
     ///Used in metastream operators for templated containers
     template<class T, class COUNT>
-    metastream& meta_container( binstream_containerT<T,COUNT>& a )
+    metastream& meta_container_type(binstream_containerT<T, COUNT>& a, ints raw_pointer_offset = -1)
     {
-        if(_binr)
+        if (_binr)
             read_container(a);
-        else if(_binw)
+        else if (_binw)
             write_container(a);
         else {
-            meta_decl_array();
-            *this << *(T*)0;
+            if (meta_decl_array(typeid(T[]).name(), raw_pointer_offset, -1, false, 0, 0, 0, 0))
+                *this << *(T*)0;
         }
         return *this;
     }
@@ -756,9 +928,9 @@ public:
     template<class T>
     metastream& meta_base_type(const char* type_name, T& v)
     {
-        if(_binr)
+        if (_binr)
             data_read(&v, bstype::t_type<T>());
-        else if(_binw)
+        else if (_binw)
             data_write(&v, bstype::t_type<T>());
         else
             meta_def_primitive<T>(type_name);
@@ -771,15 +943,15 @@ protected:
     ////////////////////////////////////////////////////////////////////////////////
     //@{ methods to physically stream the data utilizing the metastream
 
-    bool prepare_type_common( bool read )
+    bool prepare_type_common(bool read)
     {
         _root.desc = 0;
         _current_var = 0;
 
-        DASSERT( read || _sesopen >= 0 );      //or else pending ack on read
-        DASSERT( !read || _sesopen <= 0 );     //or else pending flush on write
+        DASSERT(read || _sesopen >= 0);      //or else pending ack on read
+        DASSERT(!read || _sesopen <= 0);     //or else pending flush on write
 
-        if( _sesopen == 0 ) {
+        if (_sesopen == 0) {
             _err.reset();
             _sesopen = read ? -1 : 1;
             _curvar.kth = 0;
@@ -789,7 +961,7 @@ protected:
         return true;
     }
 
-    opcd prepare_type_final( const token& name, bool cache, bool read )
+    opcd prepare_type_final(const token& name, bool cache, bool read)
     {
         _dometa = true;
 
@@ -797,7 +969,7 @@ protected:
         _curvar.var->varname = name;
         _curvar.var->nameless_root = name.is_empty();
 
-        if(cache)
+        if (cache)
             cache_fill_root();
         //else if( _curvar.var->nameless_root  &&  _curvar.var->is_compound() )
         //    movein_struct(read);
@@ -807,41 +979,41 @@ protected:
 
 
     template<class T>
-    opcd prepare_type( T&, const token& name, bool cache, bool read )
+    opcd prepare_type(T&, const token& name, bool cache, bool read)
     {
         //reset on unnamed properties - assumed root property streaming
         stream_reset(name.is_empty(), cache);
 
-        if( !prepare_type_common(read) )  return 0;
+        if (!prepare_type_common(read))  return 0;
 
         *this || *(typename resolve_enum<T>::type*)0;     // build description
 
         return prepare_type_final(name, cache, read);
     }
 
-    opcd prepare_named_type( const token& type, const token& name, bool cache, bool read )
+    opcd prepare_named_type(const token& type, const token& name, bool cache, bool read)
     {
         //reset on unnamed properties - assumed root property streaming
         stream_reset(name.is_empty(), cache);
 
-        if( !prepare_type_common(read) )  return 0;
+        if (!prepare_type_common(read))  return 0;
 
-        if( !meta_find(type) )
+        if (!meta_find(type))
             return ersNOT_FOUND;
 
         return prepare_type_final(name, cache, read);
     }
 
     template<class T>
-    opcd prepare_type_array( T&, uints n, const token& name, bool cache, bool read )
+    opcd prepare_type_array(T&, uints n, const token& name, bool cache, bool read)
     {
         //reset on unnamed properties - assumed root property streaming
         stream_reset(name.is_empty(), cache);
 
-        if( !prepare_type_common(read) )  return 0;
+        if (!prepare_type_common(read))  return 0;
 
-        meta_decl_array(n);
-        *this || *(typename resolve_enum<T>::type*)0;     // build description
+        if (meta_decl_array(typeid(T[]).name(), -1, -1, false, 0, 0, 0, 0, n))
+            *this || *(typename resolve_enum<T>::type*)0;     // build description
 
         return prepare_type_final(name, cache, read);
     }
@@ -850,61 +1022,61 @@ public:
 
     ///Read object of type T from the currently bound formatting stream
     template<class T>
-    opcd stream_in( T& x, const token& name = token() )
+    opcd stream_in(T& x, const token& name = token())
     {
         opcd e;
         try {
             xstream_in(x, name);
         }
-        catch(opcd ee) {e = ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
     ///Read object of type T from the currently bound formatting stream into the cache
     template<class T>
-    opcd cache_in( const token& name = token() )
+    opcd cache_in(const token& name = token())
     {
         opcd e;
         try {
             xcache_in<T>(name);
         }
-        catch(opcd ee) {e = ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
 
     ///Write object of type T to the currently bound formatting stream
     template<class T>
-    opcd stream_out( const T& x, const token& name = token() )
+    opcd stream_out(const T& x, const token& name = token())
     {
-        return stream_or_cache_out( x, false, name );
+        return stream_or_cache_out(x, false, name);
     }
 
     ///Write object of type T to the cache
     template<class T>
-    opcd cache_out( const T& x, const token& name = token() )
+    opcd cache_out(const T& x, const token& name = token())
     {
-        return stream_or_cache_out( x, true, name );
+        return stream_or_cache_out(x, true, name);
     }
 
     ///Write object of type T to the currently bound formatting stream
     //@param cache true if the object should be trapped in the cache instead of sending it out through the formatting stream
     template<class T>
-    opcd stream_or_cache_out( const T& x, bool cache, const token& name = token() )
+    opcd stream_or_cache_out(const T& x, bool cache, const token& name = token())
     {
         opcd e;
         try {
             xstream_or_cache_out(x, cache, name);
         }
-        catch(opcd ee) {e = ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
     ///Prepare streaming of a named type
-    opcd stream_out_named( const token& type, const token& name, bool cache=false )
+    opcd stream_out_named(const token& type, const token& name, bool cache = false)
     {
         return prepare_named_type(type, name, cache, WRITE_MODE);
     }
@@ -912,74 +1084,74 @@ public:
 
     ///Read array of objects of type T from the currently bound formatting stream
     template<class T, class COUNT>
-    opcd stream_array_in( binstream_containerT<T,COUNT>& C, const token& name = token(), uints n=UMAXS )
+    opcd stream_array_in(binstream_containerT<T, COUNT>& C, const token& name = token(), uints n = UMAXS)
     {
         opcd e;
         try {
-            e = prepare_type_array( *(T*)0, n, name, false, READ_MODE );
-            if(e) return e;
+            e = prepare_type_array(*(T*)0, n, name, false, READ_MODE);
+            if (e) return e;
 
             _binr = true;
             read_container(C);
             _binr = false;
         }
-        catch(opcd ee) {e=ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
     ///Read array of objects of type T from the currently bound formatting stream into the cache
     template<class T>
-    opcd cache_array_in( const token& name = token(), uints n=UMAXS )
+    opcd cache_array_in(const token& name = token(), uints n = UMAXS)
     {
         opcd e;
         try {
-            e = prepare_type_array( *(T*)0, n, name, true, READ_MODE );
+            e = prepare_type_array(*(T*)0, n, name, true, READ_MODE);
         }
-        catch(opcd ee) {e=ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
 
     ///Write array of objects of type T to the currently bound formatting stream
     template<class T, class COUNT>
-    opcd stream_array_out( binstream_containerT<T,COUNT>& C, const token& name = token() )
+    opcd stream_array_out(binstream_containerT<T, COUNT>& C, const token& name = token())
     {
-        return stream_or_cache_array_out(C,false,name);
+        return stream_or_cache_array_out(C, false, name);
     }
 
     ///Write array of objects of type T to the currently bound formatting stream
     template<class T, class COUNT>
-    opcd cache_array_out( binstream_containerT<T,COUNT>& C, bool cache=false, const token& name = token() )
+    opcd cache_array_out(binstream_containerT<T, COUNT>& C, bool cache = false, const token& name = token())
     {
-        return stream_or_cache_array_out(C,true,name);
+        return stream_or_cache_array_out(C, true, name);
     }
 
     ///Write array of objects of type T to the currently bound formatting stream
     //@param cache true if the array should be trapped in the cache instead of sending it out through the formatting stream
     template<class T, class COUNT>
-    opcd stream_or_cache_array_out( binstream_containerT<T,COUNT>& C, bool cache, const token& name = token() )
+    opcd stream_or_cache_array_out(binstream_containerT<T, COUNT>& C, bool cache, const token& name = token())
     {
         opcd e;
         try {
             e = prepare_type_array(*(T*)0, UMAXS, name, cache, WRITE_MODE);
-            if(e) return e;
+            if (e) return e;
 
-            if(!cache) {
+            if (!cache) {
                 _binw = true;
                 write_container<T>(C);
                 _binw = false;
             }
         }
-        catch(opcd ee) {e = ee;}
-        catch(exception&) {e = ersEXCEPTION;}
+        catch (opcd ee) { e = ee; }
+        catch (exception&) { e = ersEXCEPTION; }
         return e;
     }
 
     ///Read container of objects of type T from the currently bound formatting stream
     template<class CONT>
-    opcd stream_container_in( CONT& C, const token& name = token() )
+    opcd stream_container_in(CONT& C, const token& name = token())
     {
         typedef typename binstream_adapter_writable<CONT>::TBinstreamContainer     BC;
 
@@ -989,7 +1161,7 @@ public:
 
     ///Read container of objects of type T from the currently bound formatting stream into the cache
     template<class CONT>
-    opcd cache_container_in( CONT& C, const token& name = token() )
+    opcd cache_container_in(CONT& C, const token& name = token())
     {
         typedef typename binstream_adapter_writable<CONT>::TBinstreamContainer     BC;
 
@@ -999,7 +1171,7 @@ public:
 
     ///Write container of objects of type T to the currently bound formatting stream
     template<class CONT>
-    opcd stream_container_out( const CONT& C, const token& name = token() )
+    opcd stream_container_out(const CONT& C, const token& name = token())
     {
         typedef typename binstream_adapter_readable<CONT>::TBinstreamContainer     BC;
 
@@ -1009,7 +1181,7 @@ public:
 
     ///Write container of objects of type T to the cache
     template<class CONT>
-    opcd cache_container_out( const CONT& C, const token& name = token() )
+    opcd cache_container_out(const CONT& C, const token& name = token())
     {
         typedef typename binstream_adapter_readable<CONT>::TBinstreamContainer     BC;
 
@@ -1019,9 +1191,9 @@ public:
 
 
     template<class T>
-    void xstream_in( T& x, const token& name = token() )
+    void xstream_in(T& x, const token& name = token())
     {
-        _xthrow(prepare_type( x, name, false, READ_MODE ));
+        _xthrow(prepare_type(x, name, false, READ_MODE));
 
         _binr = true;
         *this || (typename resolve_enum<T>::type&)x;
@@ -1029,18 +1201,18 @@ public:
     }
 
     template<class T>
-    void xcache_in( const token& name = token() )
+    void xcache_in(const token& name = token())
     {
         _xthrow(prepare_type(*(T*)0, name, true, READ_MODE));
     }
 
 
     template<class T>
-    void xstream_or_cache_out( const T& x, bool cache, const token& name = token() )
+    void xstream_or_cache_out(const T& x, bool cache, const token& name = token())
     {
         _xthrow(prepare_type((typename resolve_enum<T>::type&)x, name, cache, WRITE_MODE));
 
-        if(!cache) {
+        if (!cache) {
             _binw = true;
             *this || (typename resolve_enum<T>::type&)x;
             _binw = false;
@@ -1048,18 +1220,22 @@ public:
     }
 
     template<class T>
-    void xstream_out( T& x, const token& name = token() )
-    { xstream_or_cache_out(x, false, name); }
+    void xstream_out(T& x, const token& name = token())
+    {
+        xstream_or_cache_out(x, false, name);
+    }
 
     template<class T>
-    void xcache_out( T& x, const token& name = token() )
-    { xstream_or_cache_out(x, true, name); }
-
-
-    void stream_acknowledge( bool eat = false )
+    void xcache_out(T& x, const token& name = token())
     {
-        DASSERT( _sesopen <= 0 );
-        if( _sesopen < 0 ) {
+        xstream_or_cache_out(x, true, name);
+    }
+
+
+    void stream_acknowledge(bool eat = false)
+    {
+        DASSERT(_sesopen <= 0);
+        if (_sesopen < 0) {
             _sesopen = 0;
             _beseparator = false;
             _binr = false;
@@ -1070,8 +1246,8 @@ public:
 
     void stream_flush()
     {
-        DASSERT( _sesopen >= 0 );
-        if( _sesopen > 0 ) {
+        DASSERT(_sesopen >= 0);
+        if (_sesopen > 0) {
             _sesopen = 0;
             _beseparator = false;
             _binw = false;
@@ -1082,12 +1258,12 @@ public:
 
     //@param fmts_reset reset formatting stream
     //@param cache_open leave cache open or closed
-    void stream_reset( bool fmts_reset, bool cache_open )
+    void stream_reset(bool fmts_reset, bool cache_open)
     {
-        if(fmts_reset) {
-            if(_sesopen < 0)
+        if (fmts_reset) {
+            if (_sesopen < 0)
                 _fmtstreamrd->reset_read();
-            else if(_sesopen > 0)
+            else if (_sesopen > 0)
                 _fmtstreamwr->reset_write();
 
             _sesopen = 0;
@@ -1102,20 +1278,21 @@ public:
 
         _curvar.var = 0;
         _cur_variable_name.set_empty();
+        _cur_variable_offset = 0;
         _rvarname.reset();
 
         _err.reset();
     }
 
-//@}
+    //@}
 
-    ///Reset cache and lead it into an active or inactive state
-    void cache_reset( bool open )
+        ///Reset cache and lead it into an active or inactive state
+    void cache_reset(bool open)
     {
         _cache.reset();
         //_current = _cachestack.realloc(1);
         //_current->offs = open ? 0 : UMAXS;
-        if(open) {
+        if (open) {
             _current = _cachestack.realloc(1);
             _current->buf = &_cache;
             _current->base = 0;
@@ -1132,252 +1309,217 @@ public:
         _cacheskip = 0;
     }
 
-    const MetaDesc::Var& get_root_var( const uchar*& cachedata ) const
+    const MetaDesc::Var& get_root_var(const uchar*& cachedata) const
     {
         cachedata = _cache.ptr() + sizeof(uints);
         return _root;
     }
 
-    const charstr& error_string() const         { return _err; }
+    const charstr& error_string() const { return _err; }
 
     // new streaming operators
 
-    metastream& operator || (bstype::key& a)    { return meta_base_type("bstype::key", a.k); }
+    metastream& operator || (bstype::key& a) { return meta_base_type("bstype::key", a.k); }
 
-    metastream& operator || (bool&a)            { return meta_base_type("bool", a); }
-    metastream& operator || (int8&a)            { return meta_base_type("int8", a); }
-    metastream& operator || (uint8&a)           { return meta_base_type("uint8", a); }
-    metastream& operator || (int16&a)           { return meta_base_type("int16", a); }
-    metastream& operator || (uint16&a)          { return meta_base_type("uint16", a); }
-    metastream& operator || (int32&a)           { return meta_base_type("int32", a); }
-    metastream& operator || (uint32&a)          { return meta_base_type("uint32", a); }
-    metastream& operator || (int64&a)           { return meta_base_type("int64", a); }
-    metastream& operator || (uint64&a)          { return meta_base_type("uint64", a); }
+    metastream& operator || (bool&a) { return meta_base_type("bool", a); }
+    metastream& operator || (int8&a) { return meta_base_type("int8", a); }
+    metastream& operator || (uint8&a) { return meta_base_type("uint8", a); }
+    metastream& operator || (int16&a) { return meta_base_type("int16", a); }
+    metastream& operator || (uint16&a) { return meta_base_type("uint16", a); }
+    metastream& operator || (int32&a) { return meta_base_type("int32", a); }
+    metastream& operator || (uint32&a) { return meta_base_type("uint32", a); }
+    metastream& operator || (int64&a) { return meta_base_type("int64", a); }
+    metastream& operator || (uint64&a) { return meta_base_type("uint64", a); }
 
-    metastream& operator || (char&a)            { return meta_base_type("char", a); }
+    metastream& operator || (char&a) { return meta_base_type("char", a); }
 
 #ifdef SYSTYPE_WIN
 # ifdef SYSTYPE_32
-    metastream& operator || (ints&a)            { return meta_base_type("int", a); }
-    metastream& operator || (uints&a)           { return meta_base_type("uint", a); }
+    metastream& operator || (ints&a) { return meta_base_type("int", a); }
+    metastream& operator || (uints&a) { return meta_base_type("uint", a); }
 # else //SYSTYPE_64
-    metastream& operator || (int&a)             { return meta_base_type("int", a); }
-    metastream& operator || (uint&a)            { return meta_base_type("uint", a); }
+    metastream& operator || (int&a) { return meta_base_type("int", a); }
+    metastream& operator || (uint&a) { return meta_base_type("uint", a); }
 # endif
 #elif defined(SYSTYPE_32)
-    metastream& operator || (long&a)            { return meta_base_type("long", a); }
-    metastream& operator || (ulong&a)           { return meta_base_type("ulong", a); }
+    metastream& operator || (long&a) { return meta_base_type("long", a); }
+    metastream& operator || (ulong&a) { return meta_base_type("ulong", a); }
 #endif
 
-    metastream& operator || (float&a)           { return meta_base_type("float", a); }
-    metastream& operator || (double&a)          { return meta_base_type("double", a); }
-    metastream& operator || (long double&a)     { return meta_base_type("long double", a); }
+    metastream& operator || (float&a) { return meta_base_type("float", a); }
+    metastream& operator || (double&a) { return meta_base_type("double", a); }
+    metastream& operator || (long double&a) { return meta_base_type("long double", a); }
 
 
-    metastream& operator || (const char* a)
+    metastream& operator || (const char*& a)
     {
-        if(_binr) {
+        if (_binr) {
             throw exception("unsupported");
         }
-        else if(_binw) {
+        else if (_binw) {
             write_token(a);
         }
         else {
-            meta_decl_array();
-            meta_def_primitive<char>("char");
+            if (meta_decl_raw_pointer(
+                typeid(char*).name(),
+                true,
+                (ints)&a,
+                [](const void* a) -> const void* { return *static_cast<char const* const*>(a); },
+                [](const void* a) -> uints { return 0; },
+                [](void* a, uints& i) -> void* { return static_cast<char**>(a) + i++; },
+                [](const void* a, uints& i) -> const void* { return *static_cast<char const* const*>(a) + i++; }
+            ))
+                meta_def_primitive<char>("char");
         }
         return *this;
     }
 
-    metastream& operator || (timet&a)           { return meta_base_type("time", a); }
+    template<typename T>
+    metastream& operator || (T*& a)
+    {
+        if (_binr) {
+            throw exception("unsupported");
+        }
+        else if (_binw) {
+            write_optional(a);
+        }
+        else {
+            if (meta_decl_raw_pointer(
+                typeid(T*).name(),
+                true,
+                (ints)&a,
+                [](const void* a) -> const void* { return *static_cast<T* const*>(a); },
+                [](const void* a) -> uints { return 0; },
+                [](void* a, uints& i) -> void* { return static_cast<T**>(a) + i++; },
+                [](const void* a, uints& i) -> const void* { return *static_cast<T const* const*>(a) + i++; }
+            ))
+                *this || *(T*)0;
+        }
+        return *this;
+    }
 
-    metastream& operator || (opcd&a)            { return meta_base_type("opcd", a); }
+    metastream& operator || (timet&a) { return meta_base_type("time", a); }
+
+    metastream& operator || (opcd&a) { return meta_base_type("opcd", a); }
 
     metastream& operator || (charstr&a)
     {
-        if(_binr) {
+        if (_binr) {
             auto& dyn = a.dynarray_ref();
             dyn.reset();
-            dynarray<char,uint>::dynarray_binstream_container c(dyn);
+            dynarray<char, uint>::dynarray_binstream_container c(dyn);
             read_container(c);
 
-            if(dyn.size())
+            if (dyn.size())
                 *dyn.add() = 0;
         }
-        else if(_binw) {
+        else if (_binw) {
             write_token(a);
         }
         else {
-            meta_decl_array();
-            meta_def_primitive<char>("char");
+            if (meta_decl_array(
+                typeid(a).name(),
+                (ints)&a.ptr_ref(),
+                sizeof(a),
+                false,
+                [](const void* a) -> const void* { return static_cast<const charstr*>(a)->ptr(); },
+                [](const void* a) -> uints { return static_cast<const charstr*>(a)->len(); },
+                [](void* a, uints& i) -> void* { return static_cast<charstr*>(a)->appendn_uninitialized(1); },
+                [](const void* a, uints& i) -> const void* { return static_cast<const charstr*>(a)->ptr() + i++; }
+            ))
+                meta_def_primitive<char>("char");
         }
         return *this;
     }
 
     metastream& operator || (token&a)
     {
-        if(_binr) {
+        if (_binr) {
             throw exception("unsupported");
         }
-        else if(_binw) {
+        else if (_binw) {
             write_token(a);
         }
         else {
-            meta_decl_array();
-            meta_def_primitive<char>("char");
+            compound_type_stream_as(a,
+                [&]() {
+                    member("ptr", a._ptr);
+                    member("pte", a._pte);
+                },
+                [&]() {
+                    if (meta_decl_array(
+                        "coid::token"_T,        //must be different than typeid used above
+                        (ints)&a._ptr,
+                        sizeof(a),
+                        false,
+                        [](const void* a) -> const void* { return static_cast<const token*>(a)->ptr(); },
+                        [](const void* a) -> uints { return static_cast<const token*>(a)->len(); },
+                        0,
+                        [](const void* a, uints& i) -> const void* { return static_cast<const token*>(a)->ptr() + i++; }
+                    ))
+                        meta_def_primitive<char>("char");
+                }
+            );
         }
+
         return *this;
     }
 
-
-
-/*
-    template<class T>
-    static type get_type(const T&)              { return bstype::t_type<T>(); }
-
-
-    metastream& operator << (const bool&a)      {meta_primitive( "bool", get_type(a) ); return *this;}
-    metastream& operator << (const int8&a)      {meta_primitive( "int8", get_type(a) ); return *this;}
-    metastream& operator << (const uint8&a)     {meta_primitive( "uint8", get_type(a) ); return *this;}
-    metastream& operator << (const int16&a)     {meta_primitive( "int16", get_type(a) ); return *this;}
-    metastream& operator << (const uint16&a)    {meta_primitive( "uint16", get_type(a) ); return *this;}
-    metastream& operator << (const int32&a)     {meta_primitive( "int32", get_type(a) ); return *this;}
-    metastream& operator << (const uint32&a)    {meta_primitive( "uint32", get_type(a) ); return *this;}
-    metastream& operator << (const int64&a)     {meta_primitive( "int64", get_type(a) ); return *this;}
-    metastream& operator << (const uint64&a)    {meta_primitive( "uint64", get_type(a) ); return *this;}
-
-    metastream& operator << (const char&a)      {meta_primitive( "char", get_type(a) ); return *this;}
-
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    metastream& operator << (const ints&a)      {meta_primitive( "int", get_type(a) ); return *this;}
-    metastream& operator << (const uints&a)     {meta_primitive( "uint", get_type(a) ); return *this;}
-# else //SYSTYPE_64
-    metastream& operator << (const int&a)       {meta_primitive( "int", get_type(a) ); return *this;}
-    metastream& operator << (const uint&a)      {meta_primitive( "uint", get_type(a) ); return *this;}
-# endif
-#elif defined(SYSTYPE_32)
-    metastream& operator << (const long&a)      {meta_primitive( "long", get_type(a) ); return *this;}
-    metastream& operator << (const ulong&a)     {meta_primitive( "ulong", get_type(a) ); return *this;}
-#endif
-
-    metastream& operator << (const float&a)     {meta_primitive( "float", get_type(a) ); return *this;}
-    metastream& operator << (const double&a)    {meta_primitive( "double", get_type(a) ); return *this;}
-    metastream& operator << (const long double&a)   {meta_primitive( "long double", get_type(a) ); return *this;}
-
-
-    metastream& operator << (const char* const& a) {
-        meta_decl_array(); meta_primitive( "char", bstype::t_type<char>() ); return *this;
-    }
-    //metastream& operator << (const unsigned char* const&a)  {meta_primitive( "const unsigned char *", binstream::t_type<char>() ); return *this;}
-
-    metastream& operator << (const bstype::kind& k) {
-        meta_primitive( "uint", bstype::t_type<uint>() ); return *this;
-    }
-
-    metastream& operator << (const timet&a)     {meta_primitive( "time", get_type(a) ); return *this;}
-
-    metastream& operator << (const opcd&)       {meta_primitive( "opcd", bstype::t_type<opcd>() ); return *this;}
-
-    metastream& operator << (const charstr&a)   {meta_decl_array(); meta_primitive( "char", bstype::t_type<char>() ); return *this;}
-    metastream& operator << (const token&a)     {meta_decl_array(); meta_primitive( "char", bstype::t_type<char>() ); return *this;}
-*/
 
     ////////////////////////////////////////////////////////////////////////////////
     //@{ meta_* functions deal with building the description tree
 protected:
 
-    MetaDesc::Var* meta_fill_parent_variable( MetaDesc* d )
+    MetaDesc::Var* meta_fill_parent_variable(MetaDesc* d)
     {
+        //DASSERT(!_alias_mode);
         MetaDesc::Var* var;
 
         //remember the first descriptor, it's the root type requested for streaming
-        if(!_root.desc) {
+        if (!_root.desc) {
             _root.desc = d;
             var = &_root;
         }
         else
-            var = _current_var->add_child( d, _cur_variable_name );
+            var = _current_var->add_child(d, _cur_variable_name, _cur_variable_offset);
 
         _cur_variable_name.set_empty();
 
         return var;
     }
 
-    bool meta_find( const token& name, bool* is_plain = 0 )
+    MetaDesc* meta_find(const token& name)//, bool* is_plain = 0)
     {
         MetaDesc* d = smap().find(name);
-        if(!d)
-            return false;
+        if (!d)
+            return d;
 
         _last_var = meta_fill_parent_variable(d);
-        if (is_plain)
-            *is_plain = _last_var->get_type().is_plain();
+        //if (is_plain)
+        //    *is_plain = _last_var->get_type().is_plain();
 
         meta_exit();
-        return true;
+        return d;
     }
 
-    bool meta_insert( const token& name, bool plain )
+    MetaDesc* meta_insert(const token& name, uints size, bool plain)
     {
-        if( meta_find(name) )
-            return true;
+        MetaDesc* md = meta_find(name);
+        if (md)
+            return md;
 
-        MetaDesc* d = smap().create(
+        auto& sm = smap();
+        md = sm.create(
             name,
             plain ? type::plain_compound() : type(),
             _cur_stream_fn);
 
-        _current_var = meta_fill_parent_variable(d);
-        smap().push( _current_var );
+        md->type_size = size;
 
-        return false;
-    }
+        _current_var = meta_fill_parent_variable(md);
+        sm.push(_current_var);
 
-
-    bool is_template_name_mode() {
-        return _templ_name_stack.size() > 0;
-    }
-
-    bool handle_template_name_mode( const token& name )
-    {
-        charstr& k = *_templ_name_stack.last();
-
-        if(_templ_arg_rdy)      //template string ready from nested template arg
-        {
-            charstr targ;
-            targ.takeover(k);
-            _templ_name_stack.resize(-1);
-
-            _templ_arg_rdy = false;
-
-            if( _templ_name_stack.size() == 0 )
-            {
-                //final name
-                _struct_name = name;
-                _struct_name += targ;
-
-                return meta_insert(_struct_name, false);
-            }
-
-            charstr& k1 = *_templ_name_stack.last();
-            char c = k1.last_char();
-            if( c != '<'  &&  c != '@'  &&  c != '*' )
-                k1.append(',');
-
-            k1.append(name);
-            k1.append(targ);
-        }
-        else
-        {
-            char c = k.last_char();
-            if( c != '<'  &&  c != '@'  &&  c != '*' )
-                k.append(',');
-
-            k.append(name);
-        }
-
-        return true;
+        return 0;
     }
 
 public:
@@ -1388,52 +1530,120 @@ public:
     }
 
     template<class T>
-    void meta_variable( const token& varname, const T* )
+    void meta_variable(const token& varname, const T* v)
     {
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
+        _cur_variable_offset = (int)(ints)v;
         _cur_stream_fn = &type_streamer<T>::fn;
 
         *this || *(B*)0;
     }
 
     template<class T>
-    void meta_variable_optional( const token& varname )
+    void meta_variable_indirect(const token& varname, ints offs)
     {
-        meta_variable<T>(varname, (const T*)0);
+        typedef typename resolve_enum<T>::type B;
+
+        _cur_variable_name = varname;
+        _cur_variable_offset = (int)offs;
+        _cur_stream_fn = &type_streamer<T>::fn;
+
+        *this || *(B*)0;
+
+        _last_var->singleref = true;
+    }
+
+    template<class T>
+    void meta_variable_raw_ptr(const token& varname, ints offs, bool streamed)
+    {
+        typedef typename resolve_enum<T>::type B;
+
+        _cur_variable_name = varname;
+        _cur_variable_offset = (int)offs;
+        _cur_stream_fn = &type_streamer<T>::fn;
+
+        if (meta_decl_raw_pointer(
+            typeid(T*).name(),
+            streamed,
+            0,
+            [](const void* a) -> const void* { return *reinterpret_cast<T const* const*>(a); },
+            0,
+            [](void* a, uints& i) -> void* { return *reinterpret_cast<T**>(a) + i++; },
+            [](const void* a, uints& i) -> const void* { return *reinterpret_cast<T const* const*>(a) + i++; }
+        ))
+            *this || *(B*)0;
+    }
+
+    template<class T, class Telem>
+    void meta_variable_container(const token& varname, ints offs, ints raw_ptr_offs, bool streamed,
+        MetaDesc::fn_ptr fnptr, MetaDesc::fn_count fncount, MetaDesc::fn_push fnpush, MetaDesc::fn_extract fnextract)
+    {
+        typedef typename resolve_enum<Telem>::type B;
+
+        _cur_variable_name = varname;
+        _cur_variable_offset = (int)offs;
+        _cur_stream_fn = &type_streamer<T>::fn;
+
+        if (meta_decl_raw_pointer(
+            typeid(T).name(),
+            streamed,
+            raw_ptr_offs,
+            fnptr,
+            fncount,
+            fnpush,
+            fnextract
+        ))
+            *this || *(B*)0;
+    }
+
+    template<class T>
+    void meta_variable_optional(const token& varname, const T* v)
+    {
+        meta_variable<T>(varname, v);
 
         _last_var->optional = true;
     }
 
     template<class T>
-    void meta_variable_obsolete( const token& varname, const T* v )
+    void meta_variable_obsolete(const token& varname)
     {
-        meta_variable<T>(varname, v);
+        meta_variable<T>(varname, (const T*)-1);
 
         _last_var->obsolete = true;
         _last_var->optional = true;
     }
 
     ///Define member array variable
-    template<class T>
-    void meta_variable_array( const token& varname, const T*, uints n )
+    template<size_t N, class T>
+    void meta_variable_fixed_array(const token& varname, T* v)
     {
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
+        _cur_variable_offset = (int)(ints)v;
         _cur_stream_fn = &type_streamer<T>::fn;
 
-        meta_decl_array(n);
-
-        *this || *(B*)0;
+        if (meta_decl_array(
+            typeid(T[N]).name(),
+            0,
+            sizeof(v),
+            true,
+            [](const void* a) -> const void* { return static_cast<const T*>(a); },
+            [](const void* a) -> uints { return N; },
+            [](void* a, uints& i) -> void* { return static_cast<T*>(a) + i++; },
+            [](const void* a, uints& i) -> const void* { return static_cast<T const*>(a) + i++; },
+            N
+        ))
+            *this || *(B*)0;
     }
 
 
 
 
     template<class T>
-    void meta_cache_default( const T& defval )
+    void meta_cache_default(const T& defval)
     {
         //typedef typename std::conditional<std::is_enum<T>::value, typename EnumType<sizeof(T)>::TEnum, T>::type B;
         typedef typename resolve_enum<T>::type B;
@@ -1449,7 +1659,7 @@ public:
         _current->ofsz = UMAXS;
 
         //insert a dummy address field
-        _current->set_addr( _current->insert_address(), sizeof(uints) );
+        _current->set_addr(_current->insert_address(), sizeof(uints));
 
         _dometa = true;
 
@@ -1467,7 +1677,7 @@ public:
 
     ///Default value coming from the metastream operator, assumed all members have default values
     template<class T>
-    void meta_cache_default_stream( const T* )
+    void meta_cache_default_stream(const T*)
     {
         _curvar.var = _last_var;
 
@@ -1480,7 +1690,7 @@ public:
         _current->ofsz = UMAXS;
 
         //insert a dummy address field
-        _current->set_addr( _current->insert_address(), sizeof(uints) );
+        _current->set_addr(_current->insert_address(), sizeof(uints));
 
         _dometa = true;
 
@@ -1502,53 +1712,129 @@ public:
         _curvar.var = 0;
     }
 
-
-
-
-
     ///Signal that the primitive or compound type coming is an array
     //@param n array element count, UMAXS if unknown or varying
-    void meta_decl_array( uints n = UMAXS )
+    //@param embedded true if array is embedded in parent (must be also fixed size in that case)
+    MetaDesc* meta_decl_array(
+        const token& type_name,
+        ints raw_pointer_offset,
+        ints type_size,
+        bool embedded,
+        MetaDesc::fn_ptr fnptr,
+        MetaDesc::fn_count fncount,
+        MetaDesc::fn_push fnpush,
+        MetaDesc::fn_extract fnextract,
+        uints n = UMAXS
+    )
     {
-        if( is_template_name_mode() ) {
-            static token tarray = "@";
-            handle_template_name_mode(tarray);
-            return;
+        //embedded arrays must be static
+        DASSERT(!embedded || n != UMAXS);
+        DASSERT(n != 0);
+
+        auto& sm = smap();
+        MetaDesc* d = sm.find(type_name);
+
+        if (!d) {
+            d = sm.create(type_name, bstype::kind(), _cur_stream_fn);
+            d->array_size = n;
+            d->type_size = type_size;
+            d->is_array_type = true;
+            d->embedded = embedded;
+            d->raw_pointer_offset = assert_cast<int>(raw_pointer_offset);
+            d->fnptr = fnptr;
+            d->fncount = fncount;
+            d->fnpush = fnpush;
+            d->fnextract = fnextract;
+            d->streaming_type = d;
+
+            _current_var = meta_fill_parent_variable(d);
+            sm.push(_current_var);
+
+            return d;
+        }
+        else {
+            DASSERT(n == d->array_size);
+            DASSERT(d->type_size == type_size);
+            DASSERT(d->is_array_type);
+
+            _last_var = meta_fill_parent_variable(d);
+            meta_exit();
         }
 
-        DASSERT( n != 0 );
-        MetaDesc* d = smap().create_array_desc(n, _cur_stream_fn);
+        //MetaDesc* d = smap().create_array_desc(n, _cur_stream_fn);
+        return 0;
+    }
 
-        _current_var = meta_fill_parent_variable(d);
-        smap().push( _current_var );
+    ///Signal that the primitive or compound type coming is a container with optional raw pointer inside
+    //@param streamed false if variable should not be streamed, just a part of meta description
+    MetaDesc* meta_decl_container(
+        const token& type_name,
+        uints type_size,
+        bool streamed,
+        ints raw_pointer_offset,
+        MetaDesc::fn_ptr fnptr,
+        MetaDesc::fn_count fncount,
+        MetaDesc::fn_push fnpush,
+        MetaDesc::fn_extract fnextract
+    )
+    {
+        if (!streamed) {
+            _current_var->obsolete = true;
+            _current_var->optional = true;
+        }
+
+        return meta_decl_array(type_name, raw_pointer_offset, type_size, false, fnptr, fncount, fnpush, fnextract, UMAXS);
+    }
+
+    ///Signal that the primitive or compound type coming is a raw pointer
+    //@param streamed false if variable should not be streamed, just a part of meta description
+    MetaDesc* meta_decl_raw_pointer(
+        const token& type_name,
+        bool streamed,
+        ints raw_pointer_offset,
+        MetaDesc::fn_ptr fnptr,
+        MetaDesc::fn_count fncount,
+        MetaDesc::fn_push fnpush,
+        MetaDesc::fn_extract fnextract
+    )
+    {
+        if (!streamed) {
+            _current_var->obsolete = true;
+            _current_var->optional = true;
+        }
+
+        MetaDesc* d = meta_decl_array(type_name, raw_pointer_offset, sizeof(void*), false, fnptr, fncount, fnpush, fnextract, UMAXS);
+
+        if (d)
+            d->is_pointer = true;
+
+        return d;
     }
 
     ///Only for primitive types
     template<class T>
-    void meta_def_primitive( const char* type_name )
+    MetaDesc* meta_def_primitive(const char* type_name)
     {
         type t = bstype::t_type<T>();
-        DASSERT( t.is_primitive() );
-
-        //if we are in template name assembly mode, take the type name and get out
-        if( is_template_name_mode() )
-        {
-            handle_template_name_mode(type_name);
-            return;
-        }
+        DASSERT(t.is_primitive());
 
         MetaDesc* d = smap().find_or_create(type_name, t, _cur_stream_fn);
+
         _last_var = meta_fill_parent_variable(d);
+        d->streaming_type = d;
 
         meta_exit();
+        return d;
     }
 
     ///Get back from multiple array decl around current type
     void meta_exit()
     {
-        while( _current_var && _current_var->is_array() ) {
-            _last_var = smap().pop();
-            _current_var = smap().last();
+        auto& sm = smap();
+
+        while (_current_var && _current_var->desc->is_array()) {
+            _last_var = sm.pop();
+            _current_var = sm.last();
         }
     }
 
@@ -1556,40 +1842,25 @@ public:
 
     ///Get type descriptor for given type
     template<class T>
-    const MetaDesc* get_type_desc( const T* )
+    const MetaDesc* get_type_desc()
     {
         _root.desc = 0;
         _current_var = 0;
 
-        *this << *(const T*)0;     // build description
+        _cur_variable_name.set_empty();
+        _cur_variable_offset = 0;
+
+        *this || *(typename resolve_enum<T>::type*)0;
+
         const MetaDesc* mtd = _root.desc;
 
         _root.desc = 0;
         return mtd;
     }
 
-    ///
-    template<class T>
-    struct TypeDesc {
-        static const MetaDesc* get( metastream& meta )
-        {
-            return meta.get_type_desc( (const T*)0 );
-        }
+    const MetaDesc* get_type_info(const token& type) const { return smap().find(type); }
 
-        static charstr get_str( metastream& meta )
-        {
-            const MetaDesc* dsc = meta.get_type_desc( (const T*)0 );
-
-            charstr res;
-
-            dsc->type_string(res);
-            return res;
-        }
-    };
-
-    const MetaDesc* get_type_info( const token& type ) const    { return smap().find(type); }
-
-    void get_type_info_all( dynarray<const MetaDesc*>& dst )    { return smap().get_all_types(dst); }
+    void get_type_info_all(dynarray<const MetaDesc*>& dst) { return smap().get_all_types(dst); }
 
 private:
 
@@ -1597,34 +1868,48 @@ private:
     ///Interface for holding built descriptors
     struct structure_map
     {
-        MetaDesc* find( const token& k ) const;
-        MetaDesc* create_array_desc( uints n, MetaDesc::stream_func fn );
+        MetaDesc* find(const token& k) const;
 
-        MetaDesc* create( const token& n, type t, MetaDesc::stream_func fn )
+        MetaDesc* create(const token& n, type t, MetaDesc::stream_func fn)
         {
             MetaDesc d(n);
             d.btype = t;
+            d.type_size = t.get_size();
             d.fnstream = fn;
-            return insert(d);
+            return insert(std::move(d));
         }
 
-        MetaDesc* find_or_create( const token& n, type t, MetaDesc::stream_func fn )
+        MetaDesc* create_anon(const token& n, type t, MetaDesc::stream_func fn)
+        {
+            MetaDesc* d = insert_anon();
+            d->type_name = n;
+            d->btype = t;
+            d->type_size = t.get_size();
+            d->fnstream = fn;
+            return d;
+        }
+
+        MetaDesc* find_or_create(const token& n, type t, MetaDesc::stream_func fn)
         {
             MetaDesc* d = find(n);
             return d ? d : create(n, t, fn);
         }
 
-        void get_all_types( dynarray<const MetaDesc*>& dst ) const;
+        void get_all_types(dynarray<const MetaDesc*>& dst) const;
 
-        MetaDesc::Var* last() const         { MetaDesc::Var** p = _stack.last();  return p ? *p : 0; }
-        MetaDesc::Var* pop()                { MetaDesc::Var* p;  return _stack.pop(p) ? p : 0; }
-        void push( MetaDesc::Var* v )       { _stack.push(v); }
+        MetaDesc::Var* last() const { MetaDesc::Var** p = _stack.last();  return p ? *p : 0; }
+        MetaDesc::Var* pop() { MetaDesc::Var* p;  return _stack.pop(p) ? p : 0; }
+        
+        void push(MetaDesc::Var* v) {
+            _stack.push(v);
+        }
 
         structure_map();
         ~structure_map();
 
     protected:
-        MetaDesc* insert( const MetaDesc& v );
+        MetaDesc* insert(MetaDesc&& v);
+        MetaDesc* insert_anon();
 
         dynarray<MetaDesc::Var*> _stack;
         void* pimpl;
@@ -1643,9 +1928,11 @@ private:
     MetaDesc::Var _root;
     MetaDesc::Var* _current_var;
     MetaDesc::Var* _last_var;
+    //MetaDesc* _streamdesc = 0;
 
     token _cur_variable_name;
     MetaDesc::stream_func _cur_stream_fn;
+    int _cur_variable_offset;
     //binstream::fnc_from_stream _cur_streamfrom_fnc;
     //binstream::fnc_to_stream _cur_streamto_fnc;
 
@@ -1665,11 +1952,9 @@ private:
     charstr _struct_name;               //< used during the template name building step
     charstr _convbuf;
 
-    dynarray<charstr> _templ_name_stack;
-    bool _templ_arg_rdy;
-
     bool _binw;
     bool _binr;
+    //bool _alias_mode = false;           //< true if creating alias streaming descriptor
     bool _dometa;                       //< true if shoud stream metadata, false if only the values
     bool _beseparator;                  //< true if separator between members should be read or written
 
@@ -1695,79 +1980,79 @@ private:
             : buf(0), offs(UMAXS), ofsz(UMAXS), var(0), olddef(0), base(0)
         {}
 
-        uints size() const              { return buf->size(); }
+        uints size() const { return buf->size(); }
 
         //@{ return ptr to data pointed to by the cache entry
-        const uchar* data() const       { return buf->ptr() + offs; }
-        uchar* data()                   { return buf->ptr() + offs; }
+        const uchar* data() const { return buf->ptr() + offs; }
+        uchar* data() { return buf->ptr() + offs; }
 
-        const uchar* data( uints o ) const { return buf->ptr() + o; }
-        uchar* data( uints o )          { return buf->ptr() + o; }
+        const uchar* data(uints o) const { return buf->ptr() + o; }
+        uchar* data(uints o) { return buf->ptr() + o; }
         //@}
 
         //@{ return ptr to data pointed to indirectly by the cache entry
-        const uchar* indirect() const   { uints k = addr();  DASSERT(k<size());  return buf->ptr() + k; }
-        uchar* indirect()               { uints k = addr();  DASSERT(k<size());  return buf->ptr() + k; }
+        const uchar* indirect() const { uints k = addr();  DASSERT(k < size());  return buf->ptr() + k; }
+        uchar* indirect() { uints k = addr();  DASSERT(k < size());  return buf->ptr() + k; }
         //@}
 
         ///Retrieve address (offset) stored at the current offset
         uints addr() const {
             uints v = offs + *(const uints*)(buf->ptr() + offs);
-            DASSERT( v%sizeof(uints) == 0 );    //should be aligned
+            DASSERT(v % sizeof(uints) == 0);    //should be aligned
             return v;
         }
-        uints addr( uints v ) const {
-            DASSERT( v%sizeof(uints) == 0 );
+        uints addr(uints v) const {
+            DASSERT(v % sizeof(uints) == 0);
             uints r = v + *(const uints*)(buf->ptr() + v);
 
-            DASSERT( r%sizeof(uints) == 0 );
+            DASSERT(r % sizeof(uints) == 0);
             return r;
         }
 
         ///Set address (offset) at the current offset 
-        void set_addr( uints v ) {
-            DASSERT( v%sizeof(uints) == 0 );
+        void set_addr(uints v) {
+            DASSERT(v % sizeof(uints) == 0);
             *(uints*)(buf->ptr() + offs) = v - offs;
         }
-        void set_addr( uints adr, uints v ) {
-            DASSERT( adr%sizeof(uints) == 0 );
-            DASSERT( v%sizeof(uints) == 0 );
+        void set_addr(uints adr, uints v) {
+            DASSERT(adr % sizeof(uints) == 0);
+            DASSERT(v % sizeof(uints) == 0);
             *(uints*)(buf->ptr() + adr) = v - adr;
         }
-        void set_addr_invalid( uints adr ) {
-            DASSERT( adr%sizeof(uints) == 0 );
+        void set_addr_invalid(uints adr) {
+            DASSERT(adr % sizeof(uints) == 0);
             *(uints*)(buf->ptr() + adr) = 0;
         }
 
-        bool valid_addr() const         { return offs != UMAXS  &&  0 != *(const uints*)(buf->ptr() + offs); }
-        bool valid_addr( uints adr ) const  { return 0 != *(const uints*)(buf->ptr() + adr); }
+        bool valid_addr() const { return offs != UMAXS && 0 != *(const uints*)(buf->ptr() + offs); }
+        bool valid_addr(uints adr) const { return 0 != *(const uints*)(buf->ptr() + adr); }
 
         ///Extract offset-containing field, moving to the next entry
         uints extract_offset()
         {
             uints v = addr();
-            DASSERT( v%sizeof(uints) == 0 );    //should be aligned
+            DASSERT(v % sizeof(uints) == 0);    //should be aligned
 
             offs += sizeof(uints);
             return v;
         }
 
-        void insert_offset( uints v )
+        void insert_offset(uints v)
         {
-            DASSERT( v%sizeof(uints) == 0 );    //should be aligned
+            DASSERT(v % sizeof(uints) == 0);    //should be aligned
 
             set_addr(v);
             offs += sizeof(uints);
         }
 
         uints next_offset() {
-            if(offs != UMAXS)
+            if (offs != UMAXS)
                 offs += sizeof(uints);
             return offs;
         }
 
-        uints get_asize() const         { return *(const uints*)data(ofsz); }
-        void set_asize( uints n )       { *(uints*)data(ofsz) = n; }
+        uints get_asize() const { return *(const uints*)data(ofsz); }
+        void set_asize(uints n) { *(uints*)data(ofsz) = n; }
 
         ///Extract size-containing field, moving to the next entry
         void extract_asize_field()
@@ -1779,35 +2064,35 @@ private:
         ///Insert size-containing field
         uints* insert_asize_field()
         {
-            ofsz = insert_void( sizeof(uints) );
+            ofsz = insert_void(sizeof(uints));
             return (uints*)data(ofsz);
         }
 
-        uints insert_table( uints n )
+        uints insert_table(uints n)
         {
             uints k = buf->size();
-            DASSERT( k%sizeof(uints) == 0 );    //should be padded
+            DASSERT(k % sizeof(uints) == 0);    //should be padded
 
-            buf->addc(n*sizeof(uints));
+            buf->addc(n * sizeof(uints));
             return k;
         }
 
         ///Retrieve value stored at given address
         template <class T>
-        const T& extract( uints o ) const { return *(const T*)(buf->ptr() + o); }
+        const T& extract(uints o) const { return *(const T*)(buf->ptr() + o); }
 
         ///Pad cache to specified granularity (but not greater than 8 bytes)
-        uints pad( uints size = sizeof(uints) )
+        uints pad(uints size = sizeof(uints))
         {
             uints k = buf->size();
-            uints t = align_value_up(k, size>8 ? 8 : size);
+            uints t = align_value_up(k, size > 8 ? 8 : size);
             buf->add(t - k);
             return t;
         }
 
         ///Allocate space in the buffer, aligning the buffer position according to the \a size
         //@return position where inserted
-        uints insert_void( uints size )
+        uints insert_void(uints size)
         {
             uints k = pad();
 
@@ -1817,11 +2102,11 @@ private:
 
         void* insert_void_padded(uints size)
         {
-            pad();
+            pad(size);
             return buf->add(size);
         }
 
-        void* insert_void_unpadded( uints size )
+        void* insert_void_unpadded(uints size)
         {
             return buf->add(size);
         }
@@ -1831,20 +2116,20 @@ private:
         uints insert_address()
         {
             uints k = buf->size();
-            DASSERT( k%sizeof(uints) == 0 );    //should be padded
+            DASSERT(k % sizeof(uints) == 0);    //should be padded
 
             buf->addc(sizeof(uints), true);
             return k;
         }
 
         ///Prepare for insertion of a member entry
-        void insert_member()            { insert_offset( pad() ); }
+        void insert_member() { insert_offset(pad()); }
 
         ///Prepare for extraction of a member entry
-        uints extract_member()          { return extract_offset(); }
+        uints extract_member() { return extract_offset(); }
 
         ///Read cache entry data, moving to the next cache entry
-        void read_cache( void* p, uints size )
+        void read_cache(void* p, uints size)
         {
             const uchar* src = indirect();
             offs += sizeof(uints);
@@ -1853,7 +2138,7 @@ private:
         }
 
         ///Allocate cache entry data, moving to the next cache entry
-        void* alloc_cache( uints size )
+        void* alloc_cache(uints size)
         {
             uints of = insert_void(size);
             set_addr(of);
@@ -1875,10 +2160,13 @@ private:
 private:
 
     ////////////////////////////////////////////////////////////////////////////////
-    MetaDesc::Var* last_var() const     { return _stack.last()->var; }
-    void pop_var()                      { DASSERT_RUN( _stack.pop(_curvar) ); }
+    MetaDesc::Var* last_var() const { return _stack.last()->var; }
+    void pop_var() {
+        DASSERT_RUN(_stack.pop(_curvar));
+        DASSERT(_curvar.var);
+    }
 
-    void push_var( bool read ) {
+    void push_var(bool read) {
         _stack.push(_curvar);
         _curvar.var = _curvar.var->desc->first_child(read);
         _curvar.kth = 0;
@@ -1890,37 +2178,39 @@ private:
         return v ? v->var : 0;
     }
 
-    bool is_first_var() const           { return _curvar.kth == 0; }
+    bool is_first_var() const { return _curvar.kth == 0; }
 
 
-    charstr& dump_stack( charstr& dst, int depth, MetaDesc::Var* var=0 ) const
+    charstr& dump_stack(charstr& dst, int depth, MetaDesc::Var* var = 0) const
     {
-        if(!dst.is_empty())
+        if (!dst.is_empty())
             dst << char('\n');
 
-        if( depth <= 0 )
+        if (depth <= 0)
             depth = (int)_stack.size() + depth;
 
-        if( depth > (int)_stack.size() )
+        if (depth > (int)_stack.size())
             depth = (int)_stack.size();
 
-        for( int i=0; i<depth; ++i )
+        for (int i = 0; i < depth; ++i)
         {
             //dst << char('/');
             _stack[i].var->dump(dst);
         }
 
-        if(var) {
+        if (var) {
             //dst << char('/');
             var->dump(dst);
         }
         return dst;
     }
 
-    void fmt_error()
+    void fmt_error(bool add_context = true)
     {
-        _fmtstreamrd->fmtstream_err(_err);
+        _fmtstreamrd->fmtstream_err(_err, add_context);
     }
+
+    void warn_obsolete(const token& name);
 
     ////////////////////////////////////////////////////////////////////////////////
 protected:
@@ -1928,10 +2218,10 @@ protected:
     static const bool READ_MODE = true;
     static const bool WRITE_MODE = false;
 
-    void movein_cache_member( bool read )
+    void movein_cache_member(bool read)
     {
         CacheEntry* ce = _cachestack.push();
-        _current = ce-1;
+        _current = ce - 1;
 
         ce->var = _curvar.var;
 
@@ -1939,12 +2229,12 @@ protected:
 
         //_current->offs points to the actual offset to member data if we are nested in another struct
         // or it is the offset to member data itself if we are in array
-        if( _curvar.var->is_array_element() )
+        if (_curvar.var->is_array_element())
         {
             ce->buf = _current->buf;
             ce->offs = cachewrite ? _current->pad() : _current->offs;
         }
-        else if(cachewrite)
+        else if (cachewrite)
         {
             _current->insert_member();
 
@@ -1954,8 +2244,8 @@ protected:
         else
         {
             //check if the member was cached or use the default value cache instead
-            if( !_current->valid_addr() ) {
-                DASSERT( _curvar.var->has_default() );
+            if (!_current->valid_addr()) {
+                DASSERT(_curvar.var->has_default());
                 _current->extract_member(); //move offset in parent to next member
 
                 ce->buf = &_curvar.var->defval;
@@ -1967,63 +2257,63 @@ protected:
                 ce->buf = _current->buf;
                 ce->offs = v;
 
-                DASSERT( ce->offs <= ce->size() );
+                DASSERT(ce->offs <= ce->size());
             }
         }
 
         _current = ce;
     }
 
-    opcd movein_struct( bool read )
+    opcd movein_struct(bool read)
     {
         bool cache = cache_prepared();
 
-        if(!cache || _cachevar)
+        if (!cache || _cachevar)
         {
             bool nameless = _curvar.var->nameless_root;
             opcd e = read
-                ? _fmtstreamrd->read_struct_open( nameless, &_curvar.var->desc->type_name )
-                : _fmtstreamwr->write_struct_open( nameless, &_curvar.var->desc->type_name );
+                ? _fmtstreamrd->read_struct_open(nameless, &_curvar.var->desc->type_name)
+                : _fmtstreamwr->write_struct_open(nameless, &_curvar.var->desc->type_name);
 
-            if(e) {
-                dump_stack(_err,0);
-                _err << " - error " << (read?"reading":"writing") << " struct opening token\n";
-                if(read)
+            if (e) {
+                dump_stack(_err, 0);
+                _err << " - error " << (read ? "reading" : "writing") << " struct opening token\n";
+                if (read)
                     fmt_error();
                 throw exception(_err);
                 return e;
             }
         }
 
-        if(cache)
+        if (cache)
         {
             movein_cache_member(read);
 
             //append member offset table
-            if(!read || _cachevar)
-                _current->insert_table( _curvar.var->desc->num_children() );
+            if (!read || _cachevar)
+                _current->insert_table(_curvar.var->desc->num_children());
         }
 
-        if(read) _rvarname.reset();
+        if (read) _rvarname.reset();
         push_var(read);
 
         return 0;
     }
 
-    opcd moveout_struct( bool read )
+    opcd moveout_struct(bool read)
     {
         bool cache = cache_prepared();
 
         pop_var();
-        if(read) _rvarname.reset();
+        if (read) _rvarname.reset();
 
-        if(_current && _current->var == _curvar.var)
+        if (_current && _current->var == _curvar.var)
         {
-            if(_cachestack.last()->olddef)
+            if (_cachestack.last()->olddef)
                 _cachedefval = _cachestack.last()->olddef;
             _current = _cachestack.pop();
 
-            if(_curvar.var == _cacheroot) {
+            if (_curvar.var == _cacheroot) {
                 //DASSERT( _current == 0 );
                 _cacheroot = 0;
                 cache = false;
@@ -2031,17 +2321,17 @@ protected:
         }
 
 
-        if( !cache || _cachevar )
+        if (!cache || _cachevar)
         {
             bool nameless = _curvar.var->nameless_root;
             opcd e = read
-                ? _fmtstreamrd->read_struct_close( nameless, &_curvar.var->desc->type_name )
-                : _fmtstreamwr->write_struct_close( nameless, &_curvar.var->desc->type_name );
+                ? _fmtstreamrd->read_struct_close(nameless, &_curvar.var->desc->type_name)
+                : _fmtstreamwr->write_struct_close(nameless, &_curvar.var->desc->type_name);
 
-            if(e) {
-                dump_stack(_err,0);
-                _err << " - error " << (read?"reading":"writing") << " struct closing token";
-                if(read)
+            if (e) {
+                dump_stack(_err, 0);
+                _err << " - error " << (read ? "reading" : "writing") << " struct closing token";
+                if (read)
                     fmt_error();
                 throw exception(_err);
                 return e;
@@ -2055,17 +2345,17 @@ protected:
     }
 
 
-    opcd movein_process_key( bool read )
+    opcd movein_process_key(bool read)
     {
-        if( !_rvarname.is_empty() ) {
-            DASSERT( _rvarname == _curvar.var->varname );
+        if (!_rvarname.is_empty()) {
+            DASSERT(_rvarname == _curvar.var->varname);
             //_rvarname.reset();
             return 0;
         }
         else
-        if( _curvar.var->nameless_root ||
-            _curvar.var->is_array_element() )
-            return 0;
+            if (_curvar.var->nameless_root ||
+                _curvar.var->is_array_element())
+                return 0;
 
         return read
             ? fmts_or_cache_read_key()
@@ -2073,34 +2363,34 @@ protected:
     }
 
     ///Traverse the tree and set up the next target for input/output streaming
-    opcd moveto_expected_target( bool read )
+    opcd moveto_expected_target(bool read)
     {
         //get next var
         MetaDesc::Var* par = parent_var();
-        if(!par) {
+        if (!par) {
             //_dometa = 0;
             return 0;
         }
 
-        MetaDesc::Var* next = par->desc->next_child(_curvar.var, read);
+        MetaDesc::Var* next = par->stream_desc()->next_child(_curvar.var, read);
 
         //find what should come next
-        if( _curvar.var == _cachevar ) {
+        if (_curvar.var == _cachevar) {
             //end caching - _cachevar was cached completely
             _current->offs = UMAXS;
             return 0;
         }
-        else if(_current)
+        else if (_current)
         {
-            if( _curvar.var == _cachedefval ) {
+            if (_curvar.var == _cachedefval) {
                 _cachedefval = _cachestack.last()->olddef;
                 _current = _cachestack.pop();
-                if(_current) _current->next_offset();
+                if (_current) _current->next_offset();
             }
 
-            if( _curvar.var == _cachequit )
+            if (_curvar.var == _cachequit)
                 invalidate_cache_entry();
-/*
+            /*
             if( !next && par == _cacheroot ) {
                 _current = _cachestack.pop();
                 DASSERT( _current == 0 );
@@ -2110,7 +2400,7 @@ protected:
 
         _curvar.var = next;
 
-        if(read)
+        if (read)
             _rvarname.reset();
 
         return 0;
@@ -2120,75 +2410,75 @@ protected:
     ///This is called from internal binstream when a primitive data or control token is
     /// written. Possible type can be a primitive one, T_STRUCTBGN or T_STRUCTEND, 
     /// or array cotrol tokens
-    opcd data_write( const void* p, type t )
+    opcd data_write(const void* p, type t)
     {
-        if(!_dometa)
+        if (!_dometa)
             return data_write_nometa(p, t);
 
-        if(!t.is_array_end()) {
+        if (!t.is_array_end()) {
             opcd e = movein_process_key(WRITE_MODE);
-            if(e) return e;
+            if (e) return e;
         }
 
         return data_value((void*)p, t, WRITE_MODE);
     }
 
     ///This is called from internal binstream when a primitive data or control token is read.
-    opcd data_read( void* p, type t )
+    opcd data_read(void* p, type t)
     {
-        if(!_dometa)
+        if (!_dometa)
             return data_read_nometa(p, t);
 
-        if(!t.is_array_end()) {
+        if (!t.is_array_end()) {
             opcd e = movein_process_key(READ_MODE);
-            if(e) return e;
+            if (e) return e;
         }
 
         return data_value(p, t, READ_MODE);
     }
 
     ///
-    opcd data_value( void* p, type t, bool read )
+    opcd data_value(void* p, type t, bool read)
     {
         //read value
         opcd e = fmts_or_cache(p, t, read);
-        if(e) {
-            dump_stack(_err,0);
-            _err << " - error " << (read?"reading":"writing") << " variable '" << _curvar.var->varname << "', error: " << opcd_formatter(e);
+        if (e) {
+            dump_stack(_err, 0);
+            _err << " - error " << (read ? "reading" : "writing") << " variable '" << _curvar.var->varname << "', error: " << opcd_formatter(e);
             fmt_error();
             throw exception(_err);
             return e;
         }
 
-        if(t.is_array_start())
+        if (t.is_array_start())
             return 0;
 
         return moveto_expected_target(read);
     }
 
     ///
-    opcd data_write_nometa( const void* p, type t )
+    opcd data_write_nometa(const void* p, type t)
     {
-        if( !t.is_array_end() && _beseparator ) {
+        if (!t.is_array_end() && _beseparator) {
             opcd e = _fmtstreamwr->write_separator();
-            if(e) return e;
+            if (e) return e;
         }
         else
             _sesopen = 1;
 
         _beseparator = !t.is_array_start();
 
-        return _fmtstreamwr->write(p,t);
+        return _fmtstreamwr->write(p, t);
     }
 
     ///
-    opcd data_read_nometa( void* p, type t )
+    opcd data_read_nometa(void* p, type t)
     {
-        if( !t.is_array_end() && _beseparator )
+        if (!t.is_array_end() && _beseparator)
         {
             opcd e = _fmtstreamrd->read_separator();
-            if(e) {
-                dump_stack(_err,0);
+            if (e) {
+                dump_stack(_err, 0);
                 _err << " - error reading separator: " << opcd_formatter(e);
                 fmt_error();
                 throw exception(_err);
@@ -2200,60 +2490,60 @@ protected:
 
         _beseparator = !t.is_array_start();
 
-        return _fmtstreamrd->read(p,t);
+        return _fmtstreamrd->read(p, t);
     }
 
-    opcd data_write_raw( const void* p, uints& len )
+    opcd data_write_raw(const void* p, uints& len)
     {
-        return _fmtstreamwr->write_raw( p, len );
+        return _fmtstreamwr->write_raw(p, len);
     }
 
-    opcd data_read_raw( void* p, uints& len )
+    opcd data_read_raw(void* p, uints& len)
     {
-        if(_cachevar)
-            p = _current->data( _current->insert_void(len) );
+        if (_cachevar)
+            p = _current->data(_current->insert_void(len));
 
-        return _fmtstreamrd->read_raw( p, len );
+        return _fmtstreamrd->read_raw(p, len);
     }
 
-    opcd data_read_raw_full( void* p, uints& len )
+    opcd data_read_raw_full(void* p, uints& len)
     {
-        for(;;) {
+        for (;;) {
             uints olen = len;
             opcd e = data_read_raw(p, len);
-            if(e != ersRETRY) return e;
+            if (e != ersRETRY) return e;
 
             p = (char*)p + (olen - len);
         }
     }
 
 
-    opcd data_write_array_content( binstream_container_base& c, uints* count )
+    opcd data_write_array_content(binstream_container_base& c, uints* count)
     {
         c.set_array_needs_separators();
         type tae = c._type.get_array_element();
         uints n = c.count();
 
-        opcd e=0;
-        if( !tae.is_primitive() )
+        opcd e = 0;
+        if (!tae.is_primitive())
         {
-            if( cache_prepared() )  //cached compound array
+            if (cache_prepared())  //cached compound array
             {
                 //write to cache
-                DASSERT( !_curvar.var->is_primitive() );
+                DASSERT(!_curvar.var->stream_desc()->is_primitive());
 
-                uints prevoff=UMAXS, i;
-                for( i=0; i<n; ++i )
+                uints prevoff = UMAXS, i;
+                for (i = 0; i < n; ++i)
                 {
                     const void* p = c.extract(1);
-                    if(!p)
+                    if (!p)
                         break;
 
                     //compound objects stored in an array are prefixed with offset past their body
                     // off will thus contain offset to the next element
                     uints off = _current->pad();
-                    if(i>0)
-                        _current->set_addr( prevoff, off );
+                    if (i > 0)
+                        _current->set_addr(prevoff, off);
                     prevoff = _current->insert_address();
 
                     push_var(false);
@@ -2263,9 +2553,9 @@ protected:
                     pop_var();
                 }
 
-                if(i>0) {
+                if (i > 0) {
                     uints off = _current->pad();
-                    _current->set_addr( prevoff, off );
+                    _current->set_addr(prevoff, off);
                 }
 
                 *count = i;
@@ -2273,12 +2563,12 @@ protected:
             else                    //uncached compound array
                 e = data_write_compound_array_content(c, count);
         }
-        else if( cache_prepared() ) //cache with a primitive array
+        else if (cache_prepared()) //cache with a primitive array
         {
-            if( !_cachevar  &&  c.is_continuous()  &&  n != UMAXS )
+            if (!_cachevar  &&  c.is_continuous() && n != UMAXS)
             {
                 uints na = n * tae.get_size();
-                xmemcpy( _current->insert_void_unpadded(na), c.extract(n), na );
+                xmemcpy(_current->insert_void_unpadded(na), c.extract(n), na);
 
                 _current->offs += na;
                 *count = n;
@@ -2288,14 +2578,14 @@ protected:
                 type t = c._type;
                 uints n = c.count();
 
-                if( t.is_primitive()  &&  c.is_continuous()  &&  n != UMAXS )
+                if (t.is_primitive() && c.is_continuous() && n != UMAXS)
                 {
-                    DASSERT( !t.is_no_size() );
+                    DASSERT(!t.is_no_size());
 
                     uints na = n * t.get_size();
-                    e = data_write_raw( c.extract(n), na );
+                    e = data_write_raw(c.extract(n), na);
 
-                    if(!e)  *count = n;
+                    if (!e)  *count = n;
                 }
                 else
                     e = data_write_compound_array_content(c, count);
@@ -2307,84 +2597,84 @@ protected:
         return e;
     }
 
-    opcd data_write_compound_array_content( binstream_container_base& c, uints* count )
+    opcd data_write_compound_array_content(binstream_container_base& c, uints* count)
     {
         type tae = c._type.get_array_element();
-        uints n = c.count(), k=0;
+        uints n = c.count(), k = 0;
         bool complextype = !c._type.is_primitive();
         bool needpeek = c.array_needs_separators();
 
         opcd e;
-        while( n>0 )
+        while (n > 0)
         {
             --n;
 
             const void* p = c.extract(1);
-            if(!p)
+            if (!p)
                 break;
 
-            if( needpeek && (e = data_write_array_separator(tae,0)) )
+            if (needpeek && (e = data_write_array_separator(tae, 0)))
                 return e;
 
             push_var(false);
 
-            if(complextype)
+            if (complextype)
                 e = c.stream_out(this, const_cast<void*>(p));
             else
                 e = data_write(p, tae);
 
             pop_var();
 
-            if(e)
+            if (e)
                 return e;
             ++k;
 
             type::mask_array_element_first_flag(tae);
         }
 
-        if(needpeek)
-            e = data_write_array_separator(tae,1);
+        if (needpeek)
+            e = data_write_array_separator(tae, 1);
 
-        if(!e)
+        if (!e)
             *count = k;
 
         return e;
     }
 
-    opcd data_read_array_content( binstream_container_base& c, uints n, uints* count )
+    opcd data_read_array_content(binstream_container_base& c, uints n, uints* count)
     {
         c.set_array_needs_separators();
         type tae = c._type.get_array_element();
 
-        opcd e=0;
-        if( !tae.is_primitive() )     //handles arrays of compound objects
+        opcd e = 0;
+        if (!tae.is_primitive())     //handles arrays of compound objects
         {
-            if( cache_prepared() )  //cached compound array
+            if (cache_prepared())  //cached compound array
             {
                 //reading from cache
-                DASSERT( _cachevar  ||  n != UMAXS );
-                DASSERT( !_curvar.var->is_primitive() );
+                DASSERT(_cachevar || n != UMAXS);
+                DASSERT(!_curvar.var->stream_desc()->is_primitive());
 
-                uints i, prevoff=UMAXS;
-                for( i=0; i<n; ++i )
+                uints i, prevoff = UMAXS;
+                for (i = 0; i < n; ++i)
                 {
-                    if( _cachevar ) {
-                        if(ersNO_MORE == data_read_array_separator(tae))
+                    if (_cachevar) {
+                        if (ersNO_MORE == data_read_array_separator(tae))
                             break;
                         type::mask_array_element_first_flag(tae);
                     }
 
                     void* p = c.insert(1);
-                    if(!p)
+                    if (!p)
                         return ersNOT_ENOUGH_MEM;
 
                     //compound objects stored in an array are prefixed with offset past their body
                     // off will thus contain offset to the next element
                     uints off;
-                    if(_cachevar) {
+                    if (_cachevar) {
                         off = _current->pad();
-                        if(i>0)
-                            _current->set_addr( prevoff, off );
+                        if (i > 0)
+                            _current->set_addr(prevoff, off);
                         prevoff = _current->insert_address();
                     }
                     else
@@ -2397,13 +2687,13 @@ protected:
                     pop_var();
 
                     //set offset to the next array element
-                    if(!_cachevar)
+                    if (!_cachevar)
                         _current->offs = off;
                 }
 
-                if( _cachevar  &&  i>0 ) {
+                if (_cachevar  &&  i > 0) {
                     uints off = _current->pad();
-                    _current->set_addr( prevoff, off );
+                    _current->set_addr(prevoff, off);
                 }
 
                 *count = i;
@@ -2411,12 +2701,12 @@ protected:
             else                    //uncached compound array
                 e = data_read_compound_array_content(c, n, count);
         }
-        else if( cache_prepared() ) //cache with a primitive array
+        else if (cache_prepared()) //cache with a primitive array
         {
-            if( !_cachevar  &&  c.is_continuous()  &&  n != UMAXS )
+            if (!_cachevar  &&  c.is_continuous() && n != UMAXS)
             {
                 uints na = n * tae.get_size();
-                xmemcpy( c.insert(n), _current->data(), na );
+                xmemcpy(c.insert(n), _current->data(), na);
 
                 _current->offs += na;
                 *count = n;
@@ -2425,14 +2715,14 @@ protected:
             {
                 type t = c._type;
 
-                if( t.is_primitive()  &&  c.is_continuous()  &&  n != UMAXS )
+                if (t.is_primitive() && c.is_continuous() && n != UMAXS)
                 {
-                    DASSERT( !t.is_no_size() );
+                    DASSERT(!t.is_no_size());
 
                     uints na = n * t.get_size();
-                    e = data_read_raw_full( c.insert(n), na );
+                    e = data_read_raw_full(c.insert(n), na);
 
-                    if(!e)  *count = n;
+                    if (!e)  *count = n;
                 }
                 else
                     e = data_read_compound_array_content(c, n, count);
@@ -2444,36 +2734,36 @@ protected:
         return e;
     }
 
-    opcd data_read_compound_array_content( binstream_container_base& c, uints n, uints* count )
+    opcd data_read_compound_array_content(binstream_container_base& c, uints n, uints* count)
     {
         type tae = c._type.get_array_element();
         bool complextype = !c._type.is_primitive();
         bool needpeek = c.array_needs_separators();
-        uints k=0;
+        uints k = 0;
 
         opcd e;
-        while( n>0 )
+        while (n > 0)
         {
             --n;
 
             //peek if there's an element to read
-            if( needpeek && (e = data_read_array_separator(tae)) )
+            if (needpeek && (e = data_read_array_separator(tae)))
                 break;
 
             void* p = c.insert(1);
-            if(!p)
+            if (!p)
                 return ersNOT_ENOUGH_MEM;
 
             push_var(true);
 
-            if(complextype)
+            if (complextype)
                 e = c.stream_in(this, p);
             else
                 e = data_value(p, tae, READ_MODE);
 
             pop_var();
 
-            if(e)
+            if (e)
                 return e;
             ++k;
 
@@ -2485,12 +2775,12 @@ protected:
     }
 
     ///
-    opcd data_write_array_separator( type t, uchar end )
+    opcd data_write_array_separator(type t, uchar end)
     {
-        if(!_dometa)
+        if (!_dometa)
             _beseparator = false;
 
-        write_array_separator(t,end);
+        write_array_separator(t, end);
 
         //if(!end)
         //    push_var();
@@ -2501,12 +2791,12 @@ protected:
     ///Called from binstream to read array separator or detect an array end
     ///This method is called only for uncached data; reads from the cache
     /// use the data_read_array_content() method.
-    opcd data_read_array_separator( type t )
+    opcd data_read_array_separator(type t)
     {
-        if(!_dometa)
+        if (!_dometa)
             _beseparator = false;
 
-        if( !read_array_separator(t) )
+        if (!read_array_separator(t))
             return ersNO_MORE;
 
         //push_var();
@@ -2514,32 +2804,32 @@ protected:
     }
 
     ///
-    void write_array_separator( type t, uchar end )
+    void write_array_separator(type t, uchar end)
     {
-        if( cache_prepared() )
+        if (cache_prepared())
             return;
 
-        opcd e = _fmtstreamwr->write_array_separator(t,end);
+        opcd e = _fmtstreamwr->write_array_separator(t, end);
 
-        if(e) {
-            dump_stack(_err,0);
+        if (e) {
+            dump_stack(_err, 0);
             _err << " - error writing array separator: " << opcd_formatter(e);
             throw exception(_err);
         }
     }
 
     //@return false if no more elements
-    bool read_array_separator( type t )
+    bool read_array_separator(type t)
     {
-        if( cache_prepared() && !_cachevar )
+        if (cache_prepared() && !_cachevar)
             return true;
 
         opcd e = _fmtstreamrd->read_array_separator(t);
-        if( e == ersNO_MORE )
+        if (e == ersNO_MORE)
             return false;
 
-        if(e) {
-            dump_stack(_err,0);
+        if (e) {
+            dump_stack(_err, 0);
             _err << " - error reading array separator: " << opcd_formatter(e);
             fmt_error();
             throw exception(_err);
@@ -2550,7 +2840,7 @@ protected:
 
 
     bool cache_prepared() const {
-        return _current != 0  &&  _current->offs != UMAXS;
+        return _current != 0 && _current->offs != UMAXS;
     }
 
 
@@ -2559,7 +2849,7 @@ protected:
         MetaDesc* desc = _stack.last()->var->desc;
 
         uints k = desc->get_child_pos(_cachequit) * sizeof(uints) + _current->base;
-        DASSERT( k!=UMAXS  &&  _current->valid_addr(k) );
+        DASSERT(k != UMAXS && _current->valid_addr(k));
 
         _current->set_addr_invalid(k);
         _current->offs = UMAXS;
@@ -2568,67 +2858,67 @@ protected:
 
 
     ///Read data from formatstream or cache
-    opcd fmts_or_cache( void* p, bstype::kind t, bool read )
+    opcd fmts_or_cache(void* p, bstype::kind t, bool read)
     {
-        opcd e=0;
-        if( cache_prepared() )
+        opcd e = 0;
+        if (cache_prepared())
         {
-            if(read && !t.is_array_end() && !_cachevar && !_current->valid_addr()) {
-            //cache is open for reading but the member is not there
-            //this can happen when reading a struct that was cached due to reordered input
-                if( !cache_use_default() ) {
-                    dump_stack(_err,0);
+            if (read && !t.is_array_end() && !_cachevar && !_curvar.var->is_array_element() && !_current->valid_addr()) {
+                //cache is open for reading but the member is not there
+                //this can happen when reading a struct that was cached due to reordered input
+                if (!cache_use_default()) {
+                    dump_stack(_err, 0);
                     _err << " - variable '" << _curvar.var->varname << "' not found and no default value provided";
                     fmt_error();
                     throw exception(_err);
                 }
             }
 
-            if( t.is_array_start() )
+            if (t.is_array_start())
             {
                 movein_cache_member(read);
 
-                if(!read || _cachevar) {
+                if (!read || _cachevar) {
                     *_current->insert_asize_field() = UMAXS;
 
-                    if(_cachevar)
-                        e = _fmtstreamrd->read(p,t);
+                    if (_cachevar)
+                        e = _fmtstreamrd->read(p, t);
                 }
                 else {
                     _current->extract_asize_field();
 
                     uints n = _current->get_asize();
-                    DASSERT( n != UMAXS );
+                    DASSERT(n != UMAXS);
 
                     t.set_count(n, p);
                 }
             }
-            else if(t.is_array_end())
+            else if (t.is_array_end())
             {
-                if(!read || _cachevar) {
-                    if(_cachevar)
-                        e = _fmtstreamrd->read(p,t);
+                if (!read || _cachevar) {
+                    if (_cachevar)
+                        e = _fmtstreamrd->read(p, t);
 
                     uints n = t.get_count(p);
-                    DASSERT( n != UMAXS );
+                    DASSERT(n != UMAXS);
 
                     _current->set_asize(n);
                 }
                 else {
-                    if( _current->get_asize() != t.get_count(p) )
+                    if (_current->get_asize() != t.get_count(p))
                         return ersMISMATCHED "elements left in cached array";
                 }
 
-                if(_cachestack.last()->olddef)
+                if (_cachestack.last()->olddef)
                     _cachedefval = _cachestack.last()->olddef;
                 _current = _cachestack.pop();
             }
             else    //data reads
             {
                 //only primitive data here
-                DASSERT( t.is_primitive() );
-                DASSERT( t.type != type::T_STRUCTBGN  &&  t.type != type::T_STRUCTEND );
-                DASSERT( _cachevar || !_curvar.var->is_array_element() );
+                DASSERT(t.is_primitive());
+                DASSERT(t.type != type::T_STRUCTBGN  &&  t.type != type::T_STRUCTEND);
+                DASSERT(_cachevar || !_curvar.var->is_array_element());
 
                 uints tsize = t.get_size();
 
@@ -2647,7 +2937,7 @@ protected:
             }
         }
         else
-            e = read ? _fmtstreamrd->read(p,t) : _fmtstreamwr->write(p,t);
+            e = read ? _fmtstreamrd->read(p, t) : _fmtstreamwr->write(p, t);
 
         return e;
     }
@@ -2659,21 +2949,21 @@ protected:
 
         ++_curvar.kth;
 
-        if( e == ersNO_MORE ) {
+        if (e == ersNO_MORE) {
             //if reading to cache, make it skip reading the variable
             // error will be dealt with later, or a default value will be used (if existing)
-            if(_cachevar)
+            if (_cachevar)
                 _cacheskip = _curvar.var;
             //if normal reading (not a reading to cache), set up defval read or fail
-            else if( !cache_use_default() && !_curvar.var->optional ) {
-                dump_stack(_err,0);
+            else if (!cache_use_default() && !_curvar.var->optional) {
+                dump_stack(_err, 0);
                 _err << " - variable '" << _curvar.var->varname << "' not found and no default value provided";
                 fmt_error();
                 throw exception(_err);
             }
         }
-        else if(e) {
-            dump_stack(_err,0);
+        else if (e) {
+            dump_stack(_err, 0);
             _err << " - error while seeking for variable '" << _curvar.var->varname << "': " << opcd_formatter(e);
             fmt_error();
             throw exception(_err);
@@ -2687,14 +2977,14 @@ protected:
     opcd fmts_or_cache_read_key()
     {
         //if reading to cache, and if it's been already cached
-        if(_cachevar) {
-            if(_current->valid_addr()) {
+        if (_cachevar) {
+            if (_current->valid_addr()) {
                 _cacheskip = _curvar.var;
                 return 0;
             }
         }
         //already reading from the cache or the required key has been found in the cache
-        else if( cache_prepared() || cache_lookup() )
+        else if (cache_prepared() || cache_lookup())
             return !_curvar.var->optional || _current->valid_addr() ? 0 : ersNO_MORE;
 
         opcd e;
@@ -2702,24 +2992,24 @@ protected:
 
         do {
             e = fmts_read_key();
-            if(e) {
+            if (e) {
                 //no more members under current compound
-                DASSERT( e == ersNO_MORE );
-				if(!_curvar.var->optional)
+                DASSERT(e == ersNO_MORE);
+                if (!_curvar.var->optional)
                     e = 0;
                 break;
             }
 
-            DASSERT( !_curvar.var->is_array_element() );
+            DASSERT(!_curvar.var->is_array_element());
 
             //cache the next member if the key read belongs to an out of the order sibling
             outoforder = _rvarname != _curvar.var->varname;
-            if(outoforder)
+            if (outoforder)
                 cache_fill_member();
 
             //_rvarname.reset();
         }
-        while(outoforder);
+        while (outoforder);
 
         return e;
     }
@@ -2727,12 +3017,12 @@ protected:
     ///
     opcd fmts_or_cache_write_key()
     {
-        if( cache_prepared() )
+        if (cache_prepared())
             return 0;
 
         opcd e = _fmtstreamwr->write_key(_curvar.var->varname, _curvar.kth);
-        if(e) {
-            dump_stack(_err,0);
+        if (e) {
+            dump_stack(_err, 0);
             _err << " - error while writing the variable name '" << _curvar.var->varname << "': " << opcd_formatter(e);
             throw exception(_err);
         }
@@ -2753,12 +3043,12 @@ protected:
         // members until the one pointed to by _curvar.var is found
         MetaDesc::Var* par = parent_var();
 
-        if(!par) {
+        if (!par) {
             //if there is no parent, that means this was attempt to read the top level
             // member itself
             //there is no point in caching current member since it's not defined
             // and thus an error
-            dump_stack(_err,0);
+            dump_stack(_err, 0);
             _err << " - expected variable: " << _curvar.var->varname;
             fmt_error();
             e = ersNOT_FOUND "no such variable";
@@ -2767,19 +3057,19 @@ protected:
 
 
         uints base;
-        if(_cachestack.size() > 0 && _cachestack.last()->var == par) { //_cache.size() > 0 ) {
+        if (_cachestack.size() > 0 && _cachestack.last()->var == par) { //_cache.size() > 0 ) {
             //compute base offset
             base = _current->offs == UMAXS
                 ? _current->base
                 : _current->offs - par->desc->get_child_pos(_curvar.var) * sizeof(uints);   //restore from cur var
 
-            if(_cacheroot == 0) //cache opened in advance
+            if (_cacheroot == 0) //cache opened in advance
                 _cacheroot = par;
         }
         else {
             //create child offset table for the members of par variable
             bool newroot = _cacheroot == 0;
-            if(newroot) {
+            if (newroot) {
                 _cacheroot = par;
                 _cache.reset();
             }
@@ -2793,12 +3083,12 @@ protected:
             _current->offs = UMAXS;//newroot ? UMAXS : base;
             _current->ofsz = UMAXS;
 
-            _current->insert_table( par->desc->num_children() );
+            _current->insert_table(par->desc->num_children());
         }
 
         MetaDesc::Var* crv = par->desc->find_child(_rvarname);
-        if(!crv) {
-            dump_stack(_err,0);
+        if (!crv) {
+            dump_stack(_err, 0);
             _err << " - member variable: " << _rvarname << " not defined";
             fmt_error();
             e = ersNOT_FOUND "no such member variable";
@@ -2807,8 +3097,8 @@ protected:
         }
 
         uints k = par->desc->get_child_pos(crv) * sizeof(uints);
-        if( _current->valid_addr(base+k) ) {
-            dump_stack(_err,0);
+        if (_current->valid_addr(base + k)) {
+            dump_stack(_err, 0);
             _err << " - data for member: " << _rvarname << " specified more than once";
             fmt_error();
             e = ersMISMATCHED "redundant member data";
@@ -2816,13 +3106,13 @@ protected:
             //return e;
         }
 
-        cache_fill( crv, base + k );
+        cache_fill(crv, base + k);
     }
 
     ///Fill intermediate cache
     void cache_fill_root()
     {
-        DASSERT( _current && _current->buf->size() == 0 );
+        DASSERT(_current && _current->buf->size() == 0);
         _cacheroot = &_root;
 
         _current->insert_table(1);
@@ -2830,7 +3120,7 @@ protected:
     }
 
     ///
-    opcd cache_fill( MetaDesc::Var* crv, uints offs )
+    opcd cache_fill(MetaDesc::Var* crv, uints offs)
     {
         MetaDesc::Var* old_var = _curvar.var;
         MetaDesc::Var* old_cvar = _cachevar;
@@ -2854,29 +3144,29 @@ protected:
     ///
     struct cache_container : public binstream_container<uints>
     {
-        const void* extract( uints n )  { return 0; }
+        const void* extract(uints n) { return 0; }
 
         //just fake it as the memory wouldn't be used anyway but it can't be NULL
-        void* insert( uints n )         { return (void*)1; }
+        void* insert(uints n) { return (void*)1; }
 
-        bool is_continuous() const      { return true; }    //for primitive types it's continuous
+        bool is_continuous() const { return true; }    //for primitive types it's continuous
 
-        uints count() const             { return desc.array_size; }
+        uints count() const { return desc.array_size; }
 
 
-        cache_container( metastream& meta, MetaDesc& desc )
+        cache_container(metastream& meta, MetaDesc& desc)
             : binstream_container<uints>(desc.array_type(), 0, &stream_in)
             , meta(meta)
             , desc(desc)
         {}
 
-        static void stream_in( metastream* m, void* p, binstream_container_base* co ) {
+        static void stream_in(metastream* m, void* p, binstream_container_base* co) {
             cache_container* me = static_cast<cache_container*>(co);
-            m->streamvar( me->desc.children[0] );
+            m->streamvar(me->desc.children[0]);
         }
 
     protected:
-        metastream& meta;
+        metastream & meta;
         const MetaDesc& desc;
     };
     /*
@@ -2886,23 +3176,23 @@ protected:
     }*/
 
     ///
-    opcd streamvar( const MetaDesc::Var& var )
+    opcd streamvar(const MetaDesc::Var& var)
     {
-        if(!_curvar.var->nameless_root && !_curvar.var->is_array_element())
+        if (!_curvar.var->nameless_root && !_curvar.var->is_array_element())
             movein_process_key(READ_MODE);
 
         //set if reading to cache, when the current variable has been already read or its default value will be used
-        if(_cacheskip) {
+        if (_cacheskip) {
             _cacheskip = 0;
             return moveto_expected_target(READ_MODE);
         }
 
-        MetaDesc& desc = *var.desc;
+        MetaDesc& desc = *var.stream_desc();
 
-        if( desc.is_primitive() ) {
+        if (desc.is_primitive()) {
             return data_value(0, desc.btype, READ_MODE);
         }
-        else if( desc.is_array() ) {
+        else if (desc.is_array()) {
             cache_container cc(*this, desc);
             read_container_body(cc);//, stream_element);
             return 0;
@@ -2912,7 +3202,7 @@ protected:
 
         uints offs = _current->offs;
         uints n = desc.children.size();
-        for( uints i=0; i<n; ++i )
+        for (uints i = 0; i < n; ++i)
         {
             _curvar.var = &desc.children[i];
             streamvar(*_curvar.var);
@@ -2930,18 +3220,18 @@ protected:
     ///Find _curvar.var->varname in cache
     bool cache_lookup()
     {
-        if( _cachestack.size() == 0 )
+        if (_cachestack.size() == 0)
             return false;
 
         MetaDesc::Var* parvar = parent_var();
-        if(_current->var != parvar)
+        if (_current->var != parvar)
             return false;
 
         //get child map
         MetaDesc* par = parvar->desc;
 
         uints k = par->get_child_pos(_curvar.var) * sizeof(uints) + _current->base;
-        if( _current->valid_addr(k) )
+        if (_current->valid_addr(k))
         {
             //found in the cache, set up a cache read
             _current->offs = k;
@@ -2958,7 +3248,7 @@ protected:
     ///Setup usage of the default value for reading
     bool cache_use_default()
     {
-        if( !_curvar.var->has_default() )  return false;
+        if (!_curvar.var->has_default())  return false;
 
         _current = _cachestack.push();
         _current->var = _curvar.var;
@@ -2993,7 +3283,7 @@ inline type_holder<T> get_type_holder(T*) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
-void type_streamer<T>::fn( metastream* m, void* p, binstream_container_base* ) {
+void type_streamer<T>::fn(metastream* m, void* p, binstream_container_base*) {
     *m || *static_cast<typename resolve_enum<T>::type*>(p);
 }
 
@@ -3001,48 +3291,75 @@ void type_streamer<T>::fn( metastream* m, void* p, binstream_container_base* ) {
 
 ///TODO: move to dynarray.h:
 template <class T, class COUNT, class A>
-metastream& operator << ( metastream& m, const dynarray<T,COUNT,A>& )
+metastream& operator << (metastream& m, const dynarray<T, COUNT, A>& a)
 {
-    m.meta_decl_array();
-    m << *(T*)0;
+    if (m.meta_decl_array(
+        typeid(a).name(),
+        (ints)&a.ptr_ref(),
+        sizeof(a),
+        false,
+        [](const void* p) -> void* { return static_cast<const dynarray<T, COUNT, A>*>(p)->ptr(); },
+        [](const void* p) -> uints { return static_cast<const dynarray<T, COUNT, A>*>(p)->count(); },
+        [](void* p, uints&) -> void* { return static_cast<dynarray<T, COUNT, A>*>(p)->add(); },
+        [](const void* p, uints& i) -> const void* { return static_cast<const dynarray<T, COUNT, A>*>(p)->ptr() + i++; }
+    ))
+        m << *(T*)0;
     return m;
 }
 
 
 template <class T, class COUNT, class A>
-metastream& operator || ( metastream& m, dynarray<T,COUNT,A>& a )
+metastream& operator || (metastream& m, dynarray<T, COUNT, A>& a)
 {
-    if(m.stream_reading()) {
+    if (m.stream_reading()) {
         a.reset();
-        typename dynarray<T,COUNT,A>::dynarray_binstream_container c(a);
+        typename dynarray<T, COUNT, A>::dynarray_binstream_container c(a);
         m.read_container(c);
     }
-    else if(m.stream_writing()) {
-        typename dynarray<T,COUNT,A>::dynarray_binstream_container c(a);
+    else if (m.stream_writing()) {
+        typename dynarray<T, COUNT, A>::dynarray_binstream_container c(a);
         m.write_container(c);
     }
     else {
-        m.meta_decl_array();
-        m || *(T*)0;
+        if (m.meta_decl_array(
+            typeid(a).name(),
+            (ints)&a.ptr_ref(),
+            sizeof(a),
+            false,
+            [](const void* p) -> const void* { return static_cast<const dynarray<T, COUNT, A>*>(p)->ptr(); },
+            [](const void* p) -> uints { return static_cast<const dynarray<T, COUNT, A>*>(p)->size(); },
+            [](void* p, uints&) -> void* { return static_cast<dynarray<T, COUNT, A>*>(p)->add(); },
+            [](const void* p, uints& i) -> const void* { return static_cast<const dynarray<T, COUNT, A>*>(p)->ptr() + i++; }
+        ))
+            m || *(T*)0;
     }
     return m;
 }
 
 template <class T>
-metastream& operator || ( metastream& m, range<T>& a )
+metastream& operator || (metastream& m, range<T>& a)
 {
-    if(m.stream_reading()) {
+    if (m.stream_reading()) {
         a.reset();
         typename range<T>::range_binstream_container c(a);
         m.read_container(c);
     }
-    else if(m.stream_writing()) {
+    else if (m.stream_writing()) {
         typename range<T>::range_binstream_container c(a);
         m.write_container(c);
     }
     else {
-        m.meta_decl_array();
-        m || *(T*)0;
+        if (m.meta_decl_array(
+            typeid(a).name(),
+            (ints)&a._ptr,
+            sizeof(a),
+            false,
+            [](const void* a) -> const void* { return static_cast<const range<T>*>(a)->ptr(); },
+            [](const void* a) -> uints { return static_cast<const range<T>*>(a)->size(); },
+            0,
+            [](const void* a, uints& i) -> const void* { return static_cast<const range<T>*>(a)->ptr() + i++; }
+        ))
+            m || *(T*)0;
     }
     return m;
 }
@@ -3057,22 +3374,22 @@ COID_NAMESPACE_END
 
 #define COID_METABIN_OP1(TYPE,P0) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0); });\
         return m; }}
 
 #define COID_METABIN_OP2(TYPE,P0,P1) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); });\
         return m; }}
 
 #define COID_METABIN_OP3(TYPE,P0,P1,P2) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); m.member(#P2, v.P2); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); m.member(#P2, v.P2); });\
         return m; }}
 
 #define COID_METABIN_OP4(TYPE,P0,P1,P2,P3) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); m.member(#P2, v.P2); m.member(#P3, v.P3); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0); m.member(#P1, v.P1); m.member(#P2, v.P2); m.member(#P3, v.P3); });\
         return m; }}
 
 
@@ -3080,22 +3397,22 @@ COID_NAMESPACE_END
 
 #define COID_METABIN_OP1D(TYPE,P0,P1,D0,D1) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0, D0); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0, D0); });\
         return m; }}
 
 #define COID_METABIN_OP2D(TYPE,P0,P1,D0,D1) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); });\
         return m; }}
 
 #define COID_METABIN_OP3D(TYPE,P0,P1,P2,D0,D1,D2) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); m.member(#P2, v.P2, D2); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); m.member(#P2, v.P2, D2); });\
         return m; }}
 
 #define COID_METABIN_OP4D(TYPE,P0,P1,P2,P3,D0,D1,D2,D3) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); m.member(#P2, v.P2, D2); m.member(#P3, v.P3, D3); });\
+        m.compound_type(v, [&]() { m.member(#P0, v.P0, D0); m.member(#P1, v.P1, D1); m.member(#P2, v.P2, D2); m.member(#P3, v.P3, D3); });\
         return m; }}
 
 
@@ -3103,22 +3420,22 @@ COID_NAMESPACE_END
 
 #define COID_METABIN_OP1A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member_array("col", &v[0], 1); });\
+        m.compound_type(v, [&]() { m.member_array<1>("col", &v[0]); });\
         return m; }}
 
 #define COID_METABIN_OP2A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member_array("col", &v[0], 2); });\
+        m.compound_type(v, [&]() { m.member_array<2>("col", &v[0]); });\
         return m; }}
 
 #define COID_METABIN_OP3A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member_array("col", &v[0], 3); });\
+        m.compound_type(v, [&]() { m.member_array<3>("col", &v[0]); });\
         return m; }}
 
 #define COID_METABIN_OP4A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound(#TYPE, [&]() { m.member_array("col", &v[0], 4); });\
+        m.compound_type(v, [&]() { m.member_array<4>("col", &v[0]); });\
         return m; }}
 
 
@@ -3128,23 +3445,25 @@ COID_NAMESPACE_END
 
 namespace CHECK  // namespace to not let "operator <<" become global
 {
-    typedef char no[7];
-    template<typename T> no& operator || (coid::metastream&, T&);
+typedef char no[7];
+template<typename T> no& operator || (coid::metastream&, T&);
 
-    template <typename T>
-    struct meta_operator_exists
-    {
-        typedef typename std::remove_reference<T>::type B;
-        typedef typename std::remove_const<B>::type C;
+template <typename T>
+struct meta_operator_exists
+{
+    typedef typename std::remove_reference<T>::type B;
+    typedef typename std::remove_const<B>::type C;
 
-        enum { value = std::is_enum<C>::value
-            || (sizeof(*(coid::metastream*)(0) || *(C*)(0)) != sizeof(no)) };
+    enum {
+        value = std::is_enum<C>::value
+        || (sizeof(*(coid::metastream*)(0) || *(C*)(0)) != sizeof(no))
     };
+};
 
-    template<>
-    struct meta_operator_exists<bool> {
-        enum { value = true };
-    };
+template<>
+struct meta_operator_exists<bool> {
+    enum { value = true };
+};
 }
 
 

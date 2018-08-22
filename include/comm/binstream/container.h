@@ -100,15 +100,13 @@ struct binstream_container_base
     }
 
     opcd stream_in( metastream* m, void* p ) {
-        try { _stream_in(m, p, this); }
-        catch( const std::exception&) { return ersEXCEPTION; }
-        return 0;
+        _stream_in(m, p, this);
+        return ersNOERR;
     }
 
     opcd stream_out( metastream* m, void* p ) {
-        try { _stream_out(m, p, this); }
-        catch( const std::exception&) { return ersEXCEPTION; }
-        return 0;
+        _stream_out(m, p, this);
+        return ersNOERR;
     }
 
 

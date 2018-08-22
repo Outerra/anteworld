@@ -10,6 +10,7 @@ void std_test();
 void metastream_test();
 }
 
+void metastream_test4();
 void metastream_test3();
 void metastream_test2();
 int main_atomic(int argc, char * argv[]);
@@ -144,7 +145,7 @@ int main( int argc, char* argv[] )
     //coid::test();
     //test_malloc();
 
-    metastream_test3();
+    metastream_test4();
     //metastream_test2();
 	//float_test();
 

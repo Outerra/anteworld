@@ -93,7 +93,6 @@
     void operator delete(void*, void*)  { }
 
 
-
 COID_NAMESPACE_BEGIN
 
 struct memtrack {
@@ -149,6 +148,25 @@ void memtrack_reset();
 void memtrack_enable( bool en );
 
 void memtrack_shutdown();
+
+
+///Allocate tracked memory
+inline void* tracked_alloc(const char* name, size_t size)
+{
+    void* p = ::dlmalloc(size);
+    if (p)
+        memtrack_alloc(name, dlmalloc_usable_size(p));
+    return p;
+}
+
+///Free tracked memory
+inline void tracked_free(const char* name, void* p)
+{
+    if (p)
+        memtrack_free("zstd", dlmalloc_usable_size(p));
+    ::dlfree(p);
+}
+
 
 COID_NAMESPACE_END
 

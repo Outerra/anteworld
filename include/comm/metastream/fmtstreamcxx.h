@@ -223,12 +223,12 @@ public:
             if( !t.is_nameless() ) {
                 if( t.is_array_element() )
                     write_tabs(_indent);
-                else
-                    _bufw << char(' ');
+                //else
+                //    _bufw << char(' ');
                 ++_indent;
 
-                if(p)
-                    _bufw << char('(') << *(const token*)p << ") ";
+                //if(p)
+                //    _bufw << char('(') << *(const token*)p << ") ";
                 _bufw << char('{');
                 _bufw << tEol;
             }
@@ -452,8 +452,8 @@ public:
                     //optional class name found
                     if(p) {
                         token& s = *(token*)p;
-                        if(!s.is_empty() && s != tok)
-                            return ersSYNTAX_ERROR "class name mismatch";
+                        //if(!s.is_empty() && s != tok)
+                        //    return ersSYNTAX_ERROR "class name mismatch";
                     }
                     tok = _tokenizer.next();
                 }

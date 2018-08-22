@@ -125,8 +125,6 @@ public:
         takeover(str);
     }
 
-    operator token() const { return token(ptr(), ptre()); }
-
 
 
     ///Take control over content of another string, the other string becomes empty
@@ -513,6 +511,13 @@ public:
             : ((uints)n < s ? (_tstr[n] = c) : 0);
     }
     //@}
+
+    ///Append newline, but only if there's already some text
+    charstr& sepline() {
+        if (len() > 0)
+            append('\n');
+        return *this;
+    }
 
     //concatenation
     TOKEN_OP_STR_NONCONST(charstr&, +=);
@@ -1610,39 +1615,47 @@ public:
     }
 
     ///Convert string to lowercase
-    void tolower()
+    charstr& tolower()
     {
         char* pe = (char*)ptre();
         for(char* p = (char*)ptr(); p < pe; ++p)
             *p = (char) ::tolower(*p);
+
+        return *this;
     }
 
     ///Convert range within string to lowercase
-    void tolower(ints from, ints to)
+    charstr& tolower(ints from, ints to)
     {
         clamp_range(from, to);
 
         char* pe = (char*)ptr() + to;
         for(char* p = (char*)ptr() + from; p < pe; ++p)
             *p = (char) ::tolower(*p);
+
+        return *this;
     }
 
     ///Convert string to uppercase
-    void toupper()
+    charstr& toupper()
     {
         char* pe = (char*)ptre();
         for(char* p = (char*)ptr(); p < pe; ++p)
             *p = (char) ::toupper(*p);
+        
+        return *this;
     }
 
     ///Convert range within string to uppercase
-    void toupper(ints from, ints to)
+    charstr& toupper(ints from, ints to)
     {
         clamp_range(from, to);
 
         char* pe = (char*)ptr() + to;
         for(char* p = (char*)ptr() + from; p < pe; ++p)
             *p = (char) ::toupper(*p);
+
+        return *this;
     }
 
     ///Replace every occurence of character \a from to character \a to
@@ -1660,23 +1673,20 @@ public:
         return n;
     }
 
-    ///Replace all occurrences of substring by another
-    uint replace( const token& from, const token& to, charstr& dst, bool icase = false )
+    ///Replace all occurrences of substring with another
+    uint replace(charstr& dst, const token& from, const token& to, bool icase = false) const
     {
-        uint n = 0;
-        token str = *this, tok;
-        while(str) {
-            token tok = str.cut_left(from, icase);
-            dst.append(tok);
-
-            if(tok.ptre() != str.ptr()) {
-                dst.append(to);
-                ++n;
-            }
-        }
-        return n;
+        return token(*this).replace(from, to, dst, icase);
     }
 
+    ///In-place replace of all occurrences of substring with another
+    charstr& replace(const token& from, const token& to, bool icase = false)
+    {
+        charstr dst;
+        token(*this).replace(from, to, dst, icase);
+        _tstr.swap(dst._tstr);
+        return *this;
+    }
 
     ///Insert character at position, a negative offset goes counts from the end
     bool ins(int pos, char c)
@@ -1892,6 +1902,8 @@ public:
     //@return zero-terminated C-string
     const char* c_str() const { return _tstr.size() ? _tstr.ptr() : ""; }
 
+    char*& ptr_ref() { return _tstr.ptr_ref(); }
+
     ///String length excluding terminating zero
     uint len() const { return _tstr.size() ? (_tstr.size() - 1) : 0; }
     uints lens() const { return _tstr.sizes() ? (_tstr.sizes() - 1) : 0; }
@@ -1914,10 +1926,11 @@ public:
     uints reserved() const { return _tstr.reserved_total(); }
 
     ///Reset string to empty but keep the memory
-    void reset() {
+    charstr& reset() {
         if(_tstr.size())
             _tstr[0] = 0;
         _tstr.reset();
+        return *this;
     }
 
     ~charstr() {}
@@ -2154,9 +2167,7 @@ protected:
 
 
 ////////////////////////////////////////////////////////////////////////////////
-inline token::token(const charstr& str)
-    : _ptr(str.ptr()), _pte(str.ptre())
-{}
+inline token::token(const charstr& str) : _ptr(str.ptr()), _pte(str.ptre()) {}
 
 inline token& token::operator = (const charstr& t)
 {
@@ -2172,6 +2183,23 @@ inline token token::rebase(const charstr& from, const charstr& to) const
     DASSERT(offset + len() <= to.len());
 
     return token(to.ptr() + offset, len());
+}
+
+inline uint token::replace(const token& from, const token& to, charstr& dst, bool icase) const
+{
+    uint n = 0;
+    token str = *this, tok;
+
+    while (str) {
+        token tok = str.cut_left(from, icase);
+        dst.append(tok);
+
+        if (tok.ptre() != str.ptr()) {
+            dst.append(to);
+            ++n;
+        }
+    }
+    return n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

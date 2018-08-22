@@ -1,3 +1,4 @@
+#pragma once
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -35,15 +36,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef __COID_COMM_TRAIT__HEADER_FILE__
-#define __COID_COMM_TRAIT__HEADER_FILE__
-
 #include "namespace.h"
 #include "commtypes.h"
 #include "alloc/memtrack.h"
 
 #include <type_traits>
-#include <functional>
 
 
 #ifdef SYSTYPE_MSVC
@@ -57,55 +54,6 @@ template<class T> struct is_trivially_destructible { static const bool value = f
 
 
 COID_NAMESPACE_BEGIN
-
-/*
-////////////////////////////////////////////////////////////////////////////////
-#if defined(_MSC_VER) && _MSC_VER < 1300
-
-template< int COND, class ttA, class ttB >
-struct type_select
-{
-    template< int CONDX >
-    struct selector {typedef ttA type;};
-
-    template<>
-    struct selector< false >
-    {typedef ttB type;};
-
-    typedef typename selector< COND >::type  type;
-};
-
-#else
-
-template< int, typename ttA, typename >
-struct type_select
-{
-    typedef ttA type;
-};
-
-template< typename ttA, typename ttB >
-struct type_select<false,ttA,ttB>
-{
-    typedef ttB type;
-};
-
-#endif
-
-
-////////////////////////////////////////////////////////////////////////////////
-template<class T>
-struct type_dereference {typedef void type;};
-
-template<class K>
-struct type_dereference<K*> {typedef K type;};
-
-////////////////////////////////////////////////////////////////////////////////
-template<class T>
-struct type_deconst {typedef T type; typedef const T type_const;};
-
-template<class K>
-struct type_deconst<const K> {typedef K type; typedef const K type_const;};
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -126,6 +74,7 @@ struct nonptr_reference<T*> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+
 template<class T>
 struct type_base
 {
@@ -295,6 +244,97 @@ inline T* align_forward( void* p )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+//used to detect char ptr types
+template<typename T, typename R> struct is_char_ptr {};
+template<typename R> struct is_char_ptr<const char *, R> { typedef R type; };
+template<typename R> struct is_char_ptr<char *, R>       { typedef R type; };
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+template<class INT>
+struct SIGNEDNESS
+{
+    //typedef int     SIGNED;
+    //typedef uint    UNSIGNED;
+};
+
+#define SIGNEDNESS_MACRO(T,S,U,B) \
+template<> struct SIGNEDNESS<T> { typedef S SIGNED; typedef U UNSIGNED; static const int isSigned=B; };
+
+
+SIGNEDNESS_MACRO(int8,int8,uint8,1);
+SIGNEDNESS_MACRO(uint8,int8,uint8,0);
+SIGNEDNESS_MACRO(int16,int16,uint16,1);
+SIGNEDNESS_MACRO(uint16,int16,uint16,0);
+SIGNEDNESS_MACRO(int32,int32,uint32,1);
+SIGNEDNESS_MACRO(uint32,int32,uint32,0);
+SIGNEDNESS_MACRO(int64,int64,uint64,1);
+SIGNEDNESS_MACRO(uint64,int64,uint64,0);
+
+#ifdef SYSTYPE_WIN
+# ifdef SYSTYPE_32
+SIGNEDNESS_MACRO(ints,ints,uints,1);
+SIGNEDNESS_MACRO(uints,ints,uints,0);
+# else
+SIGNEDNESS_MACRO(int,int,uint,1);
+SIGNEDNESS_MACRO(uint,int,int,0);
+# endif
+#elif defined(SYSTYPE_32)
+SIGNEDNESS_MACRO(long,long,ulong,1);
+SIGNEDNESS_MACRO(ulong,long,ulong,0);
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+template <class INT>
+inline constexpr INT signed_max() {
+    return ~(INT(-1) << (sizeof(INT) * 8 - 1));
+}
+
+template <class INT>
+inline constexpr INT signed_min() {
+    return -signed_max<INT>() - 1;
+}
+
+template<class INT, class INTFROM>
+inline INT saturate_cast(INTFROM a) {
+    static_assert(std::is_integral<INT>::value, "integral type required");
+    INT minv = std::is_signed<INT>::value ? signed_min<INT>() : 0;
+    INT maxv = std::is_signed<INT>::value ? signed_max<INT>() : INT(-1);
+    return a > maxv ? maxv : (a < minv ? minv : INT(a));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+#if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800
+
+///Selection of int type by minimum bit count
+template <class INT> struct int_bits_base {
+    typedef INT type;
+};
+
+template<int NBITS> struct int_bits {
+    static_assert(NBITS <= 64, "number of bits must be less or equal to 64");
+    typedef
+        std::conditional_t<(NBITS <= 8), int8,
+        std::conditional_t<(NBITS > 8 && NBITS <= 16), int16,
+        std::conditional_t<(NBITS > 16 && NBITS <= 32), int32,
+        std::conditional_t<(NBITS > 32 && NBITS <= 64), int64, int>>>> type;
+};
+
+template<int NBITS>
+using int_bits_t = typename int_bits<NBITS>::type;
+
+template<int NBITS>
+using uint_bits_t = typename std::make_unsigned<typename int_bits<NBITS>::type>::type;
+
+#endif
+
+
+////////////////////////////////////////////////////////////////////////////////
 ///Helper struct for types that may want to be cached in thread local storage
 ///Specializations should be defined for strings, dynarrays, otherwise it's just
 /// a normal type
@@ -323,213 +363,4 @@ private:
     T _val;
 };
 
-
-////////////////////////////////////////////////////////////////////////////////
-#ifdef COID_VARIADIC_TEMPLATES
-
-#if SYSTYPE_MSVC > 0 && SYSTYPE_MSVC < 1900
-//replacement for make_index_sequence
-template <size_t... Ints>
-struct index_sequence
-{
-    using type = index_sequence;
-    using value_type = size_t;
-    //static coid_constexpr std::size_t size() { return sizeof...(Ints); }
-};
-
-// --------------------------------------------------------------
-
-template <class Sequence1, class Sequence2>
-struct _merge_and_renumber;
-
-template <size_t... I1, size_t... I2>
-struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
-    : index_sequence<I1..., (sizeof...(I1)+I2)...>
-{ };
-
-// --------------------------------------------------------------
-
-template <size_t N>
-struct make_index_sequence
-    : _merge_and_renumber<typename make_index_sequence<N/2>::type,
-    typename make_index_sequence<N - N/2>::type>
-{ };
-
-template<> struct make_index_sequence<0> : index_sequence<> { };
-template<> struct make_index_sequence<1> : index_sequence<0> { };
-
-#else
-
-template<size_t Size>
-using make_index_sequence = std::make_index_sequence<Size>;
-
-template<size_t... Ints>
-using index_sequence = std::index_sequence<Ints...>;
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-
-template <typename Func, int K, typename A, typename ...Args> struct variadic_call_helper
-{
-    static void call(const Func& f, A&& a, Args&& ...args) {
-        f(K, std::forward<A>(a));
-        variadic_call_helper<Func, K+1, Args...>::call(f, std::forward<Args>(args)...);
-    }
-};
-
-template <typename Func, int K, typename A> struct variadic_call_helper<Func, K, A>
-{
-    static void call(const Func& f, A&& a) {
-        f(K, std::forward<A>(a));
-    }
-};
-
-///Invoke function on variadic arguments
-//@param fn function to invoke, in the form (int k, auto&& p)
-template<typename Func, typename ...Args>
-inline void variadic_call( const Func& fn, Args&&... args ) {
-    variadic_call_helper<Func, 0, Args...>::call(fn, std::forward<Args>(args)...);
-}
-
-template<typename Func>
-inline void variadic_call( const Func& fn ) {}
-
-////////////////////////////////////////////////////////////////////////////////
-
-///Helper to get types and count of lambda arguments
-/// http://stackoverflow.com/a/28213747/2435594
-
-template <typename R, typename ...Args>
-struct callable_base {
-    virtual ~callable_base() {}
-    virtual R operator()( Args ...args ) const = 0;
-    virtual callable_base* clone() const = 0;
-    virtual size_t size() const = 0;
-};
-
-template <bool Const, bool Variadic, typename R, typename... Args>
-struct closure_traits_base
-{
-    using arity = std::integral_constant<size_t, sizeof...(Args) >;
-    using is_variadic = std::integral_constant<bool, Variadic>;
-    using is_const    = std::integral_constant<bool, Const>;
-    using returns_void = std::is_void<R>;
-
-    using result_type = R;
-
-    template <size_t i>
-    using arg = typename std::tuple_element<i, std::tuple<Args...>>::type;
-
-    using callbase = callable_base<result_type, Args...>;
-
-    template <typename Fn>
-    struct callable : callbase
-    {
-        COIDNEWDELETE("callable");
-
-        callable(const Fn& fn) : fn(fn) {}
-
-        R operator()( Args ...args ) const override final {
-            return fn(std::forward<Args>(args)...);
-        }
-
-        callbase* clone() const override final {
-            return new callable<Fn>(fn);
-        }
-
-        size_t size() const override final {
-            return sizeof(*this);
-        }
-
-    private:
-        Fn fn;
-    };
-
-    struct function
-    {
-        template <typename Fn>
-        function( const Fn& fn ) : c(0) { c = new callable<Fn>(fn); }
-
-        function() : c(0) {}
-        function(nullptr_t) : c(0) {}
-
-        function( const function& other ) : c(0) {
-            if(other.c)
-                c = other.c->clone();
-        }
-
-        function( function&& other ) : c(0) {
-            c = other.c;
-            other.c = 0;
-        }
-
-        ~function() { if(c) delete c; }
-
-        function& operator = (const function& other) {
-            if(c) delete c;
-            if(other.c)
-                c = other.c->clone();
-            return *this;
-        }
-
-        function& operator = (function&& other) {
-            if(c) delete c;
-            c = other.c;
-            other.c = 0;
-            return *this;
-        }
-
-        R operator()( Args ...args ) const {
-            return (*c)(std::forward<Args>(args)...);
-        }
-
-        typedef callbase* function::*unspecified_bool_type;
-
-        ///Automatic cast to unconvertible bool for checking via if
-        operator unspecified_bool_type() const { return c ? &function::c : 0; }
-
-    protected:
-        callbase* c;
-    };
-};
-
-template <typename T>
-struct closure_traits : closure_traits<decltype(&T::operator())> {};
-
-template <class R, class... Args>
-struct closure_traits<R(Args...)> : closure_traits_base<false,false,R,Args...>
-{};
-
-#define COID_REM_CTOR(...) __VA_ARGS__
-
-#define COID_CLOSURE_TRAIT(cv, var, is_var)                                 \
-template <typename C, typename R, typename... Args>                         \
-struct closure_traits<R (C::*) (Args... COID_REM_CTOR var) cv>              \
-    : closure_traits_base<std::is_const<int cv>::value, is_var, R, Args...> \
-{};
-
-COID_CLOSURE_TRAIT(const, (,...), 1)
-COID_CLOSURE_TRAIT(const, (), 0)
-COID_CLOSURE_TRAIT(, (,...), 1)
-COID_CLOSURE_TRAIT(, (), 0)
-
-
-template <typename Fn>
-using function = typename closure_traits<Fn>::function;
-
-#endif //COID_VARIADIC_TEMPLATES
-
 COID_NAMESPACE_END
-
-////////////////////////////////////////////////////////////////////////////////
-
-//std function is known to have a non-trivial rebase
-namespace coid {
-    template<class F>
-    struct has_trivial_rebase<std::function<F>> {
-        static const bool value = false;
-    };
-}
-
-#endif //__COID_COMM_TRAIT__HEADER_FILE__

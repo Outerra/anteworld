@@ -66,7 +66,7 @@ public:
         txtstream::flush();
         binstreambuf& buf = *get_read_buffer();
 
-#if defined(SYSTYPE_WIN) && !defined(_CONSOLE)
+#if defined(SYSTYPE_WIN) && (!defined(_CONSOLE) || defined(STDSTREAM_DEBUG_OUT))
         dynarray<char>& dyn = buf.get_buf();
         *dyn.add() = 0;
         debug_out(dyn.ptr());

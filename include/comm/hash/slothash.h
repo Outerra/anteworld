@@ -195,8 +195,14 @@ public:
     //@return pointer to the new item or nullptr if the key already exists and MULTIKEY is false
     template<class...Ps>
     T* push_construct(Ps&&... ps) {
-        T* p = base::push_construct(std::forward<Ps>(ps)...);
-        return insert_value_(p);
+        uints id;
+        bool isnew;
+        T* p = base::add_uninit(&isnew, &id);
+
+        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, isnew, std::forward<Ps>(ps)...);
+
+        //T* p = base::push_construct(std::forward<Ps>(ps)...);
+        return insert_value_(p, uint(id));
     }
 
     ///Insert a new uninitialized slot for the key
@@ -206,7 +212,7 @@ public:
     T* push_construct_in_slot(uint id, Ps&&... ps)
     {
         bool isnew;
-        T* p = base::get_or_create(id, &isnew);
+        T* p = base::get_or_create_uninit(id, &isnew);
 
         if (!isnew)
             //destroy old hash links
@@ -214,7 +220,7 @@ public:
 
         slotalloc_detail::constructor<base::POOL, T>::construct_object(p, isnew, std::forward<Ps>(ps)...);
 
-        return insert_value_(p);
+        return insert_value_(p, id);
     }
 
 
@@ -292,6 +298,15 @@ public:
         memset(_buckets.ptr(), 0xff, _buckets.byte_size());
     }
 
+    void reserve(uints nitems) {
+        uints os = _buckets.size();
+        if (nitems <= os)
+            return;
+
+        _buckets.addc(nitems - os, true);
+        base::reserve(nitems);
+    }
+
     void swap(slothash& other) {
         base::swap(other);
         _buckets.swap(other._buckets);
@@ -350,8 +365,9 @@ protected:
 
         bool isnew = id == UMAX32;
         if (isnew) {
-            T* p = base::add_uninit();
-            id = (uint)base::get_item_id(p);
+            uints ids;
+            T* p = base::add_uninit(0, &ids);
+            id = uint(ids);
 
             seqtable()[id] = _buckets[b];
             _buckets[b] = id;
@@ -388,9 +404,9 @@ protected:
         return base::get_mutable_item(id);
     }
 
-    T* insert_value_(T* p)
+    T* insert_value_(T* p, uint id)
     {
-        uint id = (uint)base::get_item_id(p);
+        //uint id = (uint)base::get_item_id(p);
         const KEY& key = _EXTRACTOR(*p);
 
         return init_value_slot_(id, key);
@@ -403,12 +419,11 @@ protected:
         if (!fid)
             return 0;
 
-        T* p = base::add_uninit(isnew);
-
-        uint id = (uint)base::get_item_id(p);
+        uints id;
+        T* p = base::add_uninit(isnew, &id);
 
         seqtable()[id] = *fid;
-        *fid = id;
+        *fid = uint(id);
 
         return p;
     }

@@ -135,7 +135,8 @@ struct base_versioning
 
 
     versionid get_versionid(uints id) const {
-        return versionid(id, 0);
+        DASSERT_RET(id < 0x00ffffffU, versionid());
+        return versionid(uint(id), 0);
     }
 
     bool check_versionid(versionid vid) const {
@@ -257,8 +258,26 @@ private:
 
 
 
+
 ////////////////////////////////////////////////////////////////////////////////
 
+template <bool UNINIT, typename T>
+struct newtor {
+    static T* create(T* p) {
+        return p;
+    }
+};
+
+template <typename T>
+struct newtor<false, T> {
+    static T* create(T* p) {
+        return new(p) T;
+    }
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 
 /*@{
 Copy objects to a target that can be either initialized or uninitialized.

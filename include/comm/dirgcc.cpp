@@ -45,6 +45,9 @@
 #include <fnmatch.h>
 #include <errno.h>
 #include <utime.h>
+#include <dlfcn.h>
+
+#define xstat64 stat64
 
 COID_NAMESPACE_BEGIN
 
@@ -125,6 +128,32 @@ bool directory::is_regular( ushort mode )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+int directory::is_valid(zstring path)
+{
+    xstat st;
+    return xstat64(no_trail_sep(path), &st) == 0
+        ? (is_regular(st.st_mode) ? 1 : 2)
+        : 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool directory::is_valid_file(zstring arg)
+{
+    if(!arg)
+        return false;
+
+    xstat st;
+    return xstat64(no_trail_sep(arg), &st) == 0 && is_regular(st.st_mode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool directory::is_valid_dir(const char* arg)
+{
+    directory::xstat st;
+    return xstat64(arg, &st) == 0 && directory::is_directory(st.st_mode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 opcd directory::mkdir( zstring name, mode_t mode )
 {
     if(!::mkdir(name.c_str(), mode))  return 0;
@@ -133,26 +162,38 @@ opcd directory::mkdir( zstring name, mode_t mode )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_cwd( charstr& buf )
+opcd directory::move_file(zstring src, zstring dst)
 {
-    uints size = 64;
+    //TODO directories
+    if(0 == ::rename(src.c_str(), dst.c_str()))
+        return 0;
+    return ersIO_ERROR;
+}
 
-    while( size < 1024  &&  !getcwd(buf.get_buf(size-1), size) )
+////////////////////////////////////////////////////////////////////////////////
+charstr directory::get_cwd()
+{
+    charstr buf;
+    uints size = PATH_MAX;
+
+    while (size < 1024 && !getcwd(buf.get_buf(size - 1), size))
     {
         size <<= 1;
         buf.reset();
     }
     buf.correct_size();
 
-    return treat_trailing_separator(buf, true);
+    treat_trailing_separator(buf, true);
+    return buf;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_program_path( charstr& buf )
+charstr directory::get_program_path()
 {
     charstr path = "/proc/";
     path << ::getpid() << "/exe";
 
+    charstr buf;
     ::readlink(path.c_str(), buf.get_buf(PATH_MAX), PATH_MAX);
 
     buf.correct_size();
@@ -160,14 +201,17 @@ charstr& directory::get_program_path( charstr& buf )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_ped( charstr& buf )
+charstr& directory::get_module_path_func(const void* fn, charstr& dst, bool append)
 {
-    get_program_path(buf);
+    Dl_info info;
+    dladdr((void*)fn, &info);
 
-    token t = buf.c_str();
-    t.cut_right_back('/', token::cut_trait_keep_sep_with_source());
+    if (append)
+        dst << info.dli_fname;
+    else
+        dst = info.dli_fname;
 
-    return buf.resize( t.len() );
+    return dst;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,10 +239,9 @@ const directory::xstat* directory::next()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_home_dir( charstr& buf )
+charstr directory::get_home_dir()
 {
-    buf = "~/";
-    return buf;
+    return "~/";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +260,59 @@ opcd directory::set_file_times(zstring fname, timet actime, timet modtime)
     ut.modtime = modtime.t;
 
     return utime(fname.c_str(), &ut) == 0 ? 0 : ersFAILED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// this is mostly copypasta of ::list_file_paths
+// TODO: probably can be greatly optimized
+void directory::find_files(
+    const token& path,
+    const token& extension,
+    bool recursive,
+    bool return_also_folders,
+    const coid::function<void(const find_result& file_info)>& fn)
+{
+    directory dir;
+
+    if (recursive) {
+        if (dir.open(path, "*.*") != ersNOERR)
+            return;
+    }
+    else {
+        charstr filter = "*.";
+        filter << extension;
+        if (dir.open(path, filter) != ersNOERR)
+            return;
+    }
+
+    while (dir.next()) {
+        if (dir.is_entry_regular()) {
+            if ((!recursive) || (extension == '*') || dir.get_last_file_name_token().cut_right_back('.').cmpeqi(extension)) {
+                const xstat* stat = dir.get_stat();
+                find_result result;
+                result._path = dir.get_last_full_path();
+                result._last_modified = stat->st_mtime;
+                result._size = stat->st_size;
+                result._flags = 0;
+                fn(result);
+            }
+        }
+        else if (dir.is_entry_subdirectory()) {
+            if (return_also_folders) {
+                const xstat* stat = dir.get_stat();
+                find_result result;
+                result._path = dir.get_last_full_path();
+                result._last_modified = stat->st_mtime;
+                result._size = 0;
+                result._flags = 0;
+                fn(result);
+            }
+
+            if (recursive) {
+                directory::find_files(dir.get_last_full_path(), extension, recursive, return_also_folders, fn);
+            }
+        }
+    }
 }
 
 COID_NAMESPACE_END

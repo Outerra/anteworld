@@ -148,10 +148,75 @@ static void metastream_test3x()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-struct testmtg {
+struct container {
+    char bordel[2];
+    int* p;
+    int16 sajrajt;
+
+    friend metastream& operator || (metastream& m, container& c) {
+        return m.member_container_type(c, &c.p, true,
+            [](const void* a) -> const void* { return static_cast<const container*>(a)->p; },
+            [](const void* a) -> uints { return UMAXS; },
+            [](void* a, uints& i) -> void* { return static_cast<container*>(a)->p + i++; },
+            [](const void* a, uints& i) -> const void* { return static_cast<const container*>(a)->p + i++; }
+        );
+    }
+};
+
+struct aaa {
+    int x;
+    char* salama;
+    int16 bordel[7];
+
+    container c;
+    const char* string;
+
+    dynarray<token> stuff;
+
+    friend metastream& operator || (metastream& m, aaa& v) {
+        return m.compound_type(v, [&]() {
+            m.member("x", v.x);
+            m.member("salama", v.salama);
+            m.member("bordel", v.bordel);
+            m.member("c", v.c);
+            m.member("str", v.string);
+            m.member("stuff", v.stuff);
+        });
+    }
+};
+
+void metastream_test4()
+{
+    metastream m;
+    auto a = m.get_type_desc<dynarray<token>>();
+    auto x = m.get_type_desc<aaa>();
+
+    DASSERT(0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct testmtg
+{
+    struct something {
+        charstr blah;
+        int fooi;
+
+        friend metastream& operator || (metastream& m, something& p) {
+            return m.compound_type_stream_as_type<coid::charstr>(p,
+                [&]() {
+                    m.member("blah", p.blah);
+                    m.member("fooi", p.fooi);
+                },
+                [](something& p, coid::charstr&& v) { p.blah.takeover(v); },
+                [](something& p) -> const coid::charstr& { return p.blah; });
+        }
+    };
+
     dynarray<charstr> as;
     dynarray<int> ar;
     charstr name;
+    token fame;
     int k;
 
     friend metastream& operator || (metastream& m, testmtg& p) {
@@ -161,6 +226,29 @@ struct testmtg {
             m.member("name", p.name);
             m.member("k", p.k);
         });
+
+        /*return m.compound_type_stream_as_compound(p, [&]() {
+            //reflection
+            m.member("as", p.as);
+            m.member("ar", p.ar);
+            m.member("name", p.name);
+            m.member("k", p.k);
+        }, [&]() {
+            //stream
+            int x;
+            coid::charstr y;
+
+            if (m.stream_writing()) {
+                //prepare x, y
+            }
+
+            m.member("x", x);
+            m.member("y", y);
+
+            if (m.stream_reading()) {
+                //do something with x, y
+            }
+        });*/
     }
 };
 
@@ -196,6 +284,7 @@ void metastream_test3()
     metagen_test();
 
     metastream_test3x();
+
 /*
     dynarray<ref<FooA>> ar;
     ar.add()->create(new FooA(1, 2));

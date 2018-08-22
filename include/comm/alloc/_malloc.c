@@ -3268,7 +3268,7 @@ static void do_check_top_chunk(mstate m, mchunkptr p) {
 /* Check properties of (inuse) mmapped chunks */
 static void do_check_mmapped_chunk(mstate m, mchunkptr p) {
   size_t  sz = chunksize(p);
-  size_t len = (sz + m->modalign + (p->prev_foot) + MMAP_FOOT_PAD);
+  size_t len = (sz + p->prev_foot + m->modalign + MMAP_FOOT_PAD);
   assert(is_mmapped(p));
   assert(use_mmap(m));
   assert((is_aligned(chunk2mem(p), m->modalign)) || (p->head == FENCEPOST_HEAD));
@@ -3906,13 +3906,13 @@ static mchunkptr mmap_resize(mstate m, mchunkptr oldp, size_t nb, int flags) {
     return oldp;
   else {
     size_t offset = oldp->prev_foot;
-    size_t oldmmsize = oldsize + offset + MMAP_FOOT_PAD;
+    size_t oldmmsize = oldsize + offset + m->modalign + MMAP_FOOT_PAD;
     size_t newmmsize = mmap_align(nb + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
     char* cp = (char*)CALL_MREMAP((char*)oldp - offset,
                                   oldmmsize, newmmsize, flags);
     if (cp != CMFAIL) {
       mchunkptr newp = (mchunkptr)(cp + offset);
-      size_t psize = newmmsize - offset - MMAP_FOOT_PAD;
+      size_t psize = newmmsize - offset - m->modalign - MMAP_FOOT_PAD;
       newp->head = psize;
       mark_inuse_foot(m, newp, psize);
       chunk_plus_offset(newp, psize)->head = FENCEPOST_HEAD;

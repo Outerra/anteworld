@@ -491,13 +491,13 @@ inline binstream& operator >> ( binstream& bin, hash_multikeyset<VAL,EXTRACTKEY,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
+/*template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
 inline metastream& operator << ( metastream& m, const hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
 {
     m.meta_decl_array();
     m << *(const VAL*)0;
     return m;
-}
+}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
@@ -515,20 +515,29 @@ inline metastream& operator || ( metastream& m, hash_keyset<VAL,EXTRACTKEY,HASHF
         return m.write_container(bc);
     }
     else {
-        m.meta_decl_array();
-        m || *(VAL*)0;
+        if (m.meta_decl_array(
+            typeid(a).name(),
+            -1,
+            sizeof(a),
+            false,
+            0,  //not a linear array
+            [](const void* a) -> uints { return static_cast<const _HT*>(a)->size(); },
+            0,//[](void* a, uints& i) -> void* {},
+            0 //[](const void* a, uints& i) -> const void* {}
+        ))
+            m || *(VAL*)0;
     }
 
     return m;
 }
-
+/*
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
 inline metastream& operator << ( metastream& m, const hash_multikeyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
 {
     m.meta_decl_array();
     m << *(const VAL*)0;
     return m;
-}
+}*/
 
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
 inline metastream& operator || ( metastream& m, hash_multikeyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
@@ -545,8 +554,17 @@ inline metastream& operator || ( metastream& m, hash_multikeyset<VAL,EXTRACTKEY,
         return m.write_container(bc);
     }
     else {
-        m.meta_decl_array();
-        m || *(VAL*)0;
+        if (m.meta_decl_array(
+            typeid(a).name(),
+            -1,
+            sizeof(a),
+            false,
+            0,  //not a linear array
+            [](const void* a) -> uints { return static_cast<const _HT*>(a)->size(); },
+            0,//[](void* a, uints& i) -> void* {},
+            0 //[](const void* a, uints& i) -> const void* {}
+        ))
+            m || *(VAL*)0;
     }
 
     return m;

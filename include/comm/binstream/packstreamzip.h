@@ -100,6 +100,24 @@ public:
         init_streams();
     }
 
+    packstreamzip(packstreamzip&& src) : packstream(std::move(src)) {
+        _wblockout.takeover(src._wblockout);
+        _rblockin.takeover(src._rblockin);
+
+        inflateEnd(&_strin);
+        deflateEnd(&_strout);
+        init_streams();
+    }
+
+    packstreamzip(const packstreamzip& src) : packstream(src) {
+        _wblockout = src._wblockout;
+        _rblockin = src._rblockin;
+
+        inflateEnd(&_strin);
+        deflateEnd(&_strout);
+        init_streams();
+    }
+
 protected:
 
     void init_streams()
@@ -116,42 +134,49 @@ protected:
 
 public:
     ///
-    virtual opcd write_raw( const void* p, uints& len )
+    virtual opcd write_raw(const void* p, uints& len)
     {
-        if(len == 0)
+        if (len == 0)
             return 0;
 
-        if( _wblockout.size() == 0 )
+        if (_wblockout.size() == 0)
         {
             _wblockout.need_new(BUFFER_SIZE);
             _strout.avail_out = BUFFER_SIZE;
             _strout.next_out = _wblockout.ptr();
         }
 
-        _strout.next_in = (unsigned char*)p;
-        _strout.avail_in = (uint)len;
+        static const uints max_in = 0x10000000;
+        uints block = stdmin(len, max_in);
 
-        while(1)
+        _strout.next_in = (unsigned char*)p;
+        _strout.avail_in = (uint)block;
+
+        while (1)
         {
-            int stt = deflate( &_strout, Z_NO_FLUSH );
-            if( stt != Z_OK )
+            int stt = deflate(&_strout, Z_NO_FLUSH);
+            if (stt != Z_OK)
                 return ersIO_ERROR;
 
             // flush
-            if( _strout.avail_out == 0 )
+            if (_strout.avail_out == 0)
             {
                 uints bs = BUFFER_SIZE;
-                opcd e = _out->write_raw( _wblockout.ptr(), bs );
-                if(e)  return e;
+                opcd e = _out->write_raw(_wblockout.ptr(), bs);
+                if (e)  return e;
                 _strout.avail_out = BUFFER_SIZE;
                 _strout.next_out = _wblockout.ptr();
             }
 
-            if( _strout.avail_in == 0 )
-                break;
+            if (_strout.avail_in == 0) {
+                len -= block;
+                if (len > 0)
+                    block = stdmin(len, max_in);
+                else
+                    break;
+            }
         }
 
-        len = 0;
         return 0;
     }
 
@@ -160,6 +185,8 @@ public:
     {
         if(len == 0)
             return 0;
+
+        DASSERT_RET(len < 0x100000000ULL, ersOUT_OF_RANGE);
 
         if( _rblockin.size() == 0 )
         {

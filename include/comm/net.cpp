@@ -79,6 +79,8 @@
 # include <dlfcn.h>
 # include <memory.h>
 # include <stdarg.h>
+# include <dlfcn.h>
+# include <link.h>
 
 #endif
 
@@ -196,15 +198,7 @@ namespace coid {
 
     charstr& dynamic_library::module_path(charstr& dst, bool append)
     {
-        HMODULE hm = NULL;
-
-        if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-            (LPCSTR)&module_path,
-            &hm))
-            return dst;
-        
-        GetModuleFileNameA(hm,
+        GetModuleFileNameA((HMODULE)_handle,
             append ? dst.get_append_buf(MAX_PATH) : dst.get_buf(MAX_PATH),
             MAX_PATH);
         return dst.correct_size();
@@ -252,9 +246,19 @@ namespace coid {
         return (_handle==NULL) ? NULL : dlsym(_handle, funcname);
     }
 
-    charstr& module_path(charstr& dst, bool append)
+    charstr& dynamic_library::module_path(charstr& dst, bool append)
     {
-#error TODO dladdr
+        struct link_map* lm = 0;
+        dlinfo(_handle, RTLD_DI_LINKMAP, &lm);
+
+        if (lm) {
+            if (append)
+                dst << lm->l_name;
+            else
+                dst = lm->l_name;
+        }
+
+        return dst;
     }
 
     dynamic_library::~dynamic_library()
@@ -313,6 +317,16 @@ namespace coid {
     void netAddress::setAddrAny()
     {
         sin_addr = 0;//INADDR_ANY;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    void netAddress::set(uint addr, int port)
+    {
+        memset(this, 0, sizeof(netAddress));
+
+        sin_family = 2;//AF_INET;
+        sin_addr = ::htonl(addr);
+        sin_port = ::htons(port);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

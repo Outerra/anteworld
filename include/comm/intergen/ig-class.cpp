@@ -158,10 +158,18 @@ bool Class::parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& na
                     ifc->bdefaultcapture = lex.matches_either('+', '-') == 1;
                     ifc->name = lex.match(lex.IDENT);
 
-                    while(lex.matches("::")) {
+                    while(lex.matches("::"_T)) {
+                        if (ifc->nsname)
+                            ifc->nsname << "::"_T;
+                        ifc->nsname << ifc->name;
+
                         ifc->nss.add()->swap(ifc->name);
                         ifc->name = lex.match(lex.IDENT);
                     }
+
+                    if (ifc->nsname)
+                        ifc->nsname << "::"_T;
+                    ifc->nsname << ifc->name;
 
                     if(lex.matches(':')) {
                         //a base class for the interface
@@ -222,7 +230,7 @@ bool Class::parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& na
                     m->bduplicate = duplicate != 0;
 
                     {
-                        if(!m->parse(lex, classname, namespc, irefargs, true))
+                        if(!m->parse(lex, classname, namespc, ifc->nsname, irefargs, true))
                             ++ncontinuable_errors;
 
                         if(duplicate == 2) {
@@ -306,7 +314,7 @@ bool Class::parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& na
                     m->bduplicate = duplicate != 0;
                     m->bimplicit = bimplicit;
 
-                    if(!m->parse(lex, classname, namespc, irefargs, false))
+                    if(!m->parse(lex, classname, namespc, ifc->nsname, irefargs, false))
                         ++ncontinuable_errors;
 
                     if(duplicate == 2) {

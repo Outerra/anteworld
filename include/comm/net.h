@@ -115,6 +115,8 @@ public:
     ///       overrides any potential port number specified in the \a host.
     void set( const token& host, int port, bool portoverride ) ;
 
+    void set(uint addr, int port);
+
     bool isLocalHost() const;
     bool isAddrAny() const;
 

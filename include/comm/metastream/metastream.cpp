@@ -38,15 +38,26 @@
 #include "metastream.h"
 #include "../local.h"
 #include "../hash/hashkeyset.h"
+#include "../log/logger.h"
 
 COID_NAMESPACE_BEGIN
 
 
+////////////////////////////////////////////////////////////////////////////////
+void metastream::warn_obsolete(const token& name)
+{
+    (_err = "warning: obsolete variable '") << name << '\'';
+    fmt_error(false);
+    coidlog_warning("metastream", _err);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 struct SMReg {
-    typedef hash_keyset<MetaDesc,_Select_Copy<MetaDesc,token> >  MAP;
-    MAP _map;
-    dynarray< local<MetaDesc> > _arrays;
-    //comm_mutex _mutex;
+    typedef hash_keyset<MetaDesc,_Select_Copy<MetaDesc,token>> map_t;
+    map_t _map;
+
+    dynarray<local<MetaDesc>> _anon;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +65,7 @@ void metastream::structure_map::get_all_types( dynarray<const MetaDesc*>& dst ) 
 {
     SMReg& smr = *(SMReg*)pimpl;
 
-    SMReg::MAP::const_iterator b,e;
+    SMReg::map_t::const_iterator b,e;
     b = smr._map.begin();
     e = smr._map.end();
 
@@ -78,37 +89,28 @@ metastream::structure_map::~structure_map()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MetaDesc* metastream::structure_map::insert( const MetaDesc& v )
+MetaDesc* metastream::structure_map::insert( MetaDesc&& v )
 {
-    //SMReg& smr = SINGLETON(SMReg);
-    //GUARDTHIS(smr._mutex);
     SMReg& smr = *(SMReg*)pimpl;
 
-    return (MetaDesc*) smr._map.insert_value(v);
+    return (MetaDesc*) smr._map.insert_value(std::forward<MetaDesc>(v));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+MetaDesc* metastream::structure_map::insert_anon()
+{
+    SMReg& smr = *(SMReg*)pimpl;
+
+    return (*smr._anon.add() = new MetaDesc()).ptr();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 MetaDesc* metastream::structure_map::find( const token& k ) const
 {
-    //SMReg& smr = SINGLETON(SMReg);
-    //GUARDTHIS(smr._mutex);
     const SMReg& smr = *(const SMReg*)pimpl;
 
-    return (MetaDesc*) smr._map.find_value(k);
+    const MetaDesc* md = smr._map.find_value(k);
+    return (MetaDesc*)md;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-MetaDesc* metastream::structure_map::create_array_desc( uints size, MetaDesc::stream_func fn )
-{
-    //SMReg& smr = SINGLETON(SMReg);
-    //GUARDTHIS(smr._mutex);
-    SMReg& smr = *(SMReg*)pimpl;
-
-    MetaDesc* d = *smr._arrays.add() = new MetaDesc;
-    d->array_size = size;
-    d->fnstream = fn;
-    return d;
-}
-
 
 COID_NAMESPACE_END

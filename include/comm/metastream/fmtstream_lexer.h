@@ -80,17 +80,18 @@ public:
     }
 
     ///Return formatting stream error (if any) and current line and column for error reporting purposes
-    //@param err [in] error text
-    //@param err [out] final (formatted) error text with line info etc.
-    virtual void fmtstream_err( charstr& err )
+    //@param dst [inout] error text
+    //@param add_context add context info, like a caret pointing to a token of text
+    virtual void fmtstream_err( charstr& dst, bool add_context = true )
     {
         charstr& txt = _tokenizer.prepare_exception();
 
-        txt << err;
+        txt << dst;
 
-        _tokenizer.append_exception_location();
+        if(add_context)
+            _tokenizer.append_exception_location();
 
-        std::swap(err, txt);
+        std::swap(dst, txt);
         txt.reset();
     }
 

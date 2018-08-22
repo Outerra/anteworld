@@ -12,8 +12,8 @@
   <ItemDefinitionGroup>
     <hpp>
       <CommandLineTemplate>"$(MSBuildThisFileDirectory)..\bin\intergen.exe" [inputs] "$(MSBuildThisFileDirectory)\metagen"</CommandLineTemplate>
-      <Outputs>%(RootDir)%(Directory)%(Filename).inl;%(RootDir)%(Directory)%(Filename).intergen.cpp;%(RootDir)%(Directory)%(Filename).intergen.js.cpp;%(RootDir)%(Directory)%(Filename).intergen.lua.cpp</Outputs>
-      <AdditionalDependencies>$(MSBuildThisFileDirectory)\metagen\template.inl.mtg;$(MSBuildThisFileDirectory)\metagen\interface.h.mtg;$(MSBuildThisFileDirectory)\metagen\interface.js.h.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.js.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.lua.cpp.mtg</AdditionalDependencies>
+      <Outputs>%(RootDir)%(Directory)%(Filename).inl;%(RootDir)%(Directory)%(Filename).intergen.cpp;%(RootDir)%(Directory)%(Filename).intergen.js.cpp;%(RootDir)%(Directory)%(Filename).intergen.jsc.cpp;%(RootDir)%(Directory)%(Filename).intergen.lua.cpp</Outputs>
+      <AdditionalDependencies>$(MSBuildThisFileDirectory)\metagen\template.inl.mtg;$(MSBuildThisFileDirectory)\metagen\interface.h.mtg;$(MSBuildThisFileDirectory)\metagen\interface.js.h.mtg;$(MSBuildThisFileDirectory)\metagen\interface.jsc.h.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.js.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.jsc.cpp.mtg;$(MSBuildThisFileDirectory)\metagen\file.intergen.lua.cpp.mtg</AdditionalDependencies>
     </hpp>
   </ItemDefinitionGroup>
 </Project>

@@ -46,16 +46,24 @@
 
 COID_NAMESPACE_BEGIN
 
-
 ///Run-length Rice encoder/decoder
 template<class INT, int MINPLANE=0>
 struct rlr_coder
 {
     typedef std::make_unsigned_t<INT> UINT;
-
-    enum {
-        BITS = 8*sizeof(INT)-1,
+    enum : int {
+        BITS = 8 * sizeof(INT) - 1,
     };
+
+    ///make unsigned by interleaving 0 -1 1 -2 2 ...
+    static UINT encode_sign(INT v) {
+        return (v << 1) ^ (v >> BITS);
+    }
+
+    static INT decode_sign(UINT v) {
+        return (INT(v << BITS) >> BITS) ^ (v >> 1);
+    }
+
 
     rlr_coder() {
         dataend = 0;
@@ -175,7 +183,8 @@ struct rlr_coder
     void encode1( INT vs )
     {
         //make unsigned by interleaving 0 -1 1 -2 2 ...
-        UINT v = (vs<<1) ^ (vs>>BITS);
+        UINT v = encode_sign(vs);
+        //UINT v = (vs<<1) ^ (vs>>BITS);
 
         if(v>>plane)
         {
@@ -324,11 +333,6 @@ protected:
             }
         }
     }
-
-    static INT decode_sign( INT v ) {
-        return (INT(v<<BITS)>>BITS) ^ (v>>1);
-    }
-
 
 private:
 

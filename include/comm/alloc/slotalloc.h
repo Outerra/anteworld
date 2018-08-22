@@ -271,6 +271,8 @@ public:
                 if (!newitem) destroy(*p);
                 else *newitem = false;
             }
+            else if (newitem)
+                *newitem = true;
             return p;
         }
         if (newitem) *newitem = true;
@@ -598,6 +600,54 @@ public:
 
         extarray_expand(n);
         expand<false>(n);
+
+        if (TRACKING)
+            tracker_t::set_modified(id);
+
+        set_bit(id);
+
+        ++_count;
+
+        if (is_new) *is_new = true;
+        return ptr(id);
+    }
+
+    ///Get a particular item from given slot or default-construct a new one there
+    //@param id item id, reverts to add() if UMAXS
+    //@param is_new optional if not null, receives true if the item was newly created (also not restored from pool)
+    T* get_or_create_uninit(uints id, bool* is_new = 0)
+    {
+        if (id == UMAXS) {
+            if (is_new) *is_new = true;
+            return add_uninit();
+        }
+
+        if (id < _created) {
+            //within allocated space
+            if (TRACKING)
+                tracker_t::set_modified(id);
+
+            T* p = ptr(id);
+
+            if (get_bit(id)) {
+                //existing object
+                if (is_new) *is_new = false;
+                return p;
+            }
+
+            set_bit(id);
+
+            ++_count;
+
+            if (is_new) *is_new = !POOL;
+            return p;
+        }
+
+        //extra space needed
+        uints n = id + 1 - _created;
+
+        extarray_expand_uninit(n);
+        expand<true>(n);
 
         if (TRACKING)
             tracker_t::set_modified(id);
@@ -1439,13 +1489,6 @@ private:
     }
 
     template <bool UNINIT>
-    static T* newT(T* p) { return p; }
-
-    template <>
-    static T* newT<false>(T* p) { return new(p) T; }
-
-
-    template <bool UNINIT>
     T* expand(uints n)
     {
         uints np = align_to_chunks(_created + n, page::ITEMS);
@@ -1458,12 +1501,12 @@ private:
         //in POOL mode the unallocated items in between the valid ones are assumed to be constructed
         if (POOL && !UNINIT && n > 1) {
             for_range_unchecked(base, n - 1, [](T* p) {
-                newT<UNINIT>(p);
+                slotalloc_detail::newtor<UNINIT, T>::create(p);
             });
         }
 
         T* p = ptr(_created - 1);
-        return newT<UNINIT>(p);
+        return slotalloc_detail::newtor<UNINIT, T>::create(p);
     }
 
     bool set_bit(uints k) { return set_bit(_allocated, k); }

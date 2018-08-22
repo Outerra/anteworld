@@ -51,7 +51,7 @@ struct atmospheric_params
             m.member("mie", d.mie, 4e-3f);
             m.member("intensity", d.intensity, 25.f);
             m.member("ground_reflectance", d.ground_reflectance, 0.08f);
-            m.member("exposure", d.exposure, 3.5f);
+            m.member("exposure", d.exposure, 4.0f);
             m.member("shadow_light", d.shadow_light, 1.0f);
             m.member("scattering", d.scattering, 0.5f);
             m.member("min_ambient", d.min_ambient_intensity, 5e-8f);
@@ -211,10 +211,11 @@ struct weather_params
     float wind_gradient_height;         //< gradient height: 457m large cities, 366m suburbs, 274m open terrain, 213m open sea
     float wind_stability;               //< Hellmann exponent, 0.06 .. 0.60, default 1/7
     float wind_turbulence;              //< 0..7, http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19980028448_1998081596.pdf
-
+	
     float cloud_density;                //< cloud cover density, 0..1
     float rain_density;                 //< rain density, 0..1
     float snow_density;                 //< snow density, 0..1
+    float lightning_per_kmsqmin;         //< lightning bolts count per sqare kilometer and minute
 
     float auto_weather_period;          //< period in which weather changes if auto weather enabled
     bool auto_weather;                  //< automatic weather change
@@ -242,14 +243,45 @@ struct weather_params
             m.member("wind_stability", w.wind_stability, 1.0f/7);
             m.member("wind_turbulence", w.wind_turbulence, 0.0f);
 
-            m.member("cloud_density", w.cloud_density, 0.1f);
+            m.member("cloud_density", w.cloud_density, 0.05f);
             m.member("rain_density", w.rain_density, 0);
             m.member("snow_density", w.snow_density, 0);
+            m.member("lightning_per_kmsqmin", w.lightning_per_kmsqmin, 0.0f);
+            m.member_obsolete<float>("lightning_probability_multiplier");
 
             m.member("auto_weather_period", w.auto_weather_period, 100);
             m.member("auto_weather", w.auto_weather, true);
         });
     }
+};
+
+struct water_state_params
+{
+	float sea_dominant_wave_length;
+	float sea_wave_amplitude_multiplier;
+	float sea_foam_multiplier;
+	float sea_current_heading;
+	float sea_current_speed;
+	float sea_wind_contribution;
+    float sea_surf_amplitude_multiplier;
+
+    water_state_params() {
+        coid::metastream::initialize_from_defaults(this);
+    }
+
+	friend coid::metastream& operator || (coid::metastream& m, water_state_params& ws)
+	{
+		return m.compound("water_state_params", [&]()
+		{
+			m.member("sea_dominant_wave_length", ws.sea_dominant_wave_length, 10.0f);
+			m.member("sea_wave_amplitude_multiplier", ws.sea_wave_amplitude_multiplier, 1.0f);
+			m.member("sea_foam_multiplier", ws.sea_foam_multiplier, 1.0f);
+			m.member("sea_current_heading", ws.sea_current_heading, 0.0f);
+			m.member("sea_current_speed", ws.sea_current_speed, 0.0f);
+			m.member("sea_wind_contribution", ws.sea_wind_contribution, 0.0f);
+            m.member("sea_surf_amplitude_multiplier", ws.sea_surf_amplitude_multiplier, 1.0f);
+        });
+	}
 };
 
 

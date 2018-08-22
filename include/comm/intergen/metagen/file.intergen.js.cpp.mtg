@@ -121,11 +121,11 @@ $-(/if)$
 
     // --- creators ---
 
-$-[method static?]$
+$-[method static? !ifccr?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
-    static iref<$..name$_js_dispatcher> $name$( const script_handle& scriptpath
+    static iref<$..name$_js_dispatcher> $name$( const ::js::script_handle& scriptpath
         $-[args]$, $type$ $name$$size$$[/args]$, const coid::token& bindname, v8::Handle<v8::Context>* );
 
     $-(if !internal?)$
@@ -161,7 +161,7 @@ $-[/event]$
         v8::Isolate* iso = v8::Isolate::GetCurrent();
         //v8::Context::Scope context_scope(V8_LOCAL(iso, _context));
         V8_HANDLE_SCOPE(iso, handle_scope__);
-        v8::TryCatch trycatch__;
+        V8_TRYCATCH(iso, js_trycatch);
 
         bind_events(context(iso), true, v8::Local<v8::Value>());
     }
@@ -174,9 +174,9 @@ private:
         if (!_bound_events) {
             //v8::Context::Scope context_scope(V8_LOCAL(iso, _context));
             V8_HANDLE_SCOPE(iso, handle_scope__);
-            v8::TryCatch trycatch__;
+            V8_TRYCATCH(iso, js_trycatch);
 
-            bind_events(context(iso), false, V8_UNDEFINED);
+            bind_events(context(iso), false, V8_UNDEFINED(iso));
         }
 
         return !_events[id].IsEmpty() && !V8_LOCAL(iso, _events[id])->IsUndefined();
@@ -204,11 +204,11 @@ v8::CBK_RET $..name$_js_dispatcher::v8_$name$$@index$( const v8::ARGUMENTS& args
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     ::js::interface_wrapper_base<$..ns rest="::"$::$..name$>* ifc = static_cast<::js::interface_wrapper_base<$..ns rest="::"$::$..name$>*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -335,9 +335,9 @@ $-(elif)$
     V8_HANDLE_SCOPE(iso, handle_scope__);
     v8::Handle<v8::Context> ctx__ = context(iso);
     v8::Context::Scope context_scope__(ctx__);
-    v8::TryCatch trycatch__;
+    V8_TRYCATCH(iso, js_trycatch__);
 
-    bind_events(ctx__, false, V8_UNDEFINED);
+    bind_events(ctx__, false, V8_UNDEFINED(iso));
     auto ev__ = V8_LOCAL(iso, _events[$@index$]);
 
     if (_events[$@index$].IsEmpty() || ev__->IsUndefined())
@@ -374,8 +374,8 @@ $-[args inarg?]$$(if volatile?)$
     to_v8$(if volatile?)$_volatile$(/if)$<$basetype$>::cleanup(__inargs[$@order$]);$(/if)$
 $-[/args]$
 
-    if (trycatch__.HasCaught())
-        script_handle::throw_js_error(trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$(): ");
+    if (js_trycatch__.HasCaught())
+        ::js::script_handle::throw_js_error(js_trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$(): ");
 // gather results
 $-(if !noutargs?)$
 
@@ -447,20 +447,20 @@ v8::CBK_RET $..name$_js_dispatcher::v8_evback_$name$$@index$( const v8::ARGUMENT
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $..ns rest="::" after="::"$js::$..name$_js_dispatcher* ifc = static_cast<$..ns rest="::" after="::"$js::$..name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
 
     v8::Handle<v8::Context> ctx = ifc->context(iso);
     v8::Context::Scope context_scope(ctx);
-    v8::TryCatch trycatch__;
+    V8_TRYCATCH(iso, js_trycatch);
 
-    ifc->bind_events(ctx, false, V8_UNDEFINED);
+    ifc->bind_events(ctx, false, V8_UNDEFINED(iso));
     auto ev__ = V8_LOCAL(iso, ifc->_events[$@index$]);
 
     if (ifc->_events[$@index$].IsEmpty() || ev__->IsUndefined()) {
@@ -500,11 +500,11 @@ v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<v8::String> property, const 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $ns rest="::" after="::"$js::$name$_js_dispatcher* ifc = static_cast<$ns rest="::" after="::"$js::$name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -550,11 +550,11 @@ v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<v8::String> property, v8::Lo
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $ns rest="::" after="::"$js::$name$_js_dispatcher* ifc = static_cast<$ns rest="::" after="::"$js::$name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -572,12 +572,17 @@ v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<v8::String> property, v8::Lo
     write_from_v8(value, val);
 
     v8::String::Utf8Value key(property);
+    try {
 $-(if setter.token?)$
-    (*R_)(coid::token(*key, key.length()), val);
+        (*R_)(coid::token(*key, key.length()), val);
 $-(elif)$
-    (*R_)(*key, val);
+        (*R_)(*key, val);
 $-(/if)$
-
+    }
+    catch ( std::exception& e )
+    {
+        v8::throw_js(iso,v8::Exception::Error,e.what());
+    }
 #ifdef V8_MAJOR_VERSION
     args.GetReturnValue().Set(value);
 #else
@@ -592,7 +597,7 @@ v8::CBK_RET $name$_js_dispatcher::v8log( const v8::ARGUMENTS& args )
     v8::Isolate* iso = args.GetIsolate();
 
     if (args.Length() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     const void* inst = 0;
 
@@ -617,7 +622,7 @@ v8::CBK_RET $name$_js_dispatcher::v8log( const v8::ARGUMENTS& args )
     intergen_interface::ifclog_ext(coid::log::none, coid::tokenhash("$ns rest="::" after="::"$$name$"),
         inst, tokey);
 
-    return V8_RETURN(args, V8_UNDEFINED);
+    return V8_RETURN(args, V8_UNDEFINED(iso));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,11 +649,11 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
 
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $ns rest="::" after="::"$js::$name$_js_dispatcher* ifc = static_cast<$ns rest="::" after="::"$js::$name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -695,16 +700,17 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface_global( const v8::ARGUMENTS&
 ////////////////////////////////////////////////////////////////////////////////
 v8::CBK_RET $name$_js_dispatcher::v8rebind_events( const v8::ARGUMENTS& args )
 {
-$-(if event?)$
     v8::Isolate* iso = args.GetIsolate();
+
+$-(if event?)$
     V8_HANDLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $ns rest="::" after="::"$js::$name$_js_dispatcher* ifc = static_cast<$ns rest="::" after="::"$js::$name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -717,7 +723,7 @@ $-(if event?)$
     }
 
 $-(/if)$
-    return V8_RETURN(args, V8_UNDEFINED);
+    return V8_RETURN(args, V8_UNDEFINED(iso));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,11 +734,11 @@ v8::CBK_RET $name$_js_dispatcher::v8current_global( const v8::ARGUMENTS& args )
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::Local<v8::Object> obj__ = args.Holder();
     if (obj__.IsEmpty() || obj__->InternalFieldCount() == 0)
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     v8::Local<v8::Value> intobj__ = obj__->GetInternalField(0);
     if (!intobj__->IsExternal())
-        return V8_RETURN(args, V8_UNDEFINED);
+        return V8_RETURN(args, V8_UNDEFINED(iso));
 
     $ns rest="::" after="::"$js::$name$_js_dispatcher* ifc = static_cast<$ns rest="::" after="::"$js::$name$_js_dispatcher*>
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
@@ -806,18 +812,20 @@ $-(/if)$
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Script> $name$_js_dispatcher::load_script( const coid::token& script, const coid::token& fname )
 {
+    v8::Isolate* iso = v8::Isolate::GetCurrent();
     v8::Local<v8::String> scriptv8 = v8::string_utf8(script);
 
     // set up an error handler to catch any exceptions the script might throw.
-    v8::TryCatch trycatch__;
+    V8_TRYCATCH(iso, js_trycatch);
 
     v8::Handle<v8::Script> compiled_script = v8::Script::Compile(scriptv8, v8::symbol(fname));
-    if (trycatch__.HasCaught())
-        script_handle::throw_js_error(trycatch__, "$ns rest="::" after="::"$js::$name$::load_script(): ");
+    if (js_trycatch.HasCaught())
+        ::js::script_handle::throw_js_error(js_trycatch, "$ns rest="::" after="::"$js::$name$::load_script(): ");
 
     compiled_script->Run();
-    if (trycatch__.HasCaught())
-        script_handle::throw_js_error(trycatch__, "$ns rest="::" after="::"$js::$name$::load_script(): ");
+    
+    if (js_trycatch.HasCaught())
+        ::js::script_handle::throw_js_error(js_trycatch, "$ns rest="::" after="::"$js::$name$::load_script(): ");
 
     return compiled_script;
 }
@@ -839,8 +847,9 @@ $-[/event]$
 
     V8_HANDLE_SCOPE(iso, handle_scope__);
     v8::Context::Scope context_scope__(context);
-    v8::TryCatch trycatch__;
+    V8_TRYCATCH(iso, js_trycatch);
     v8::Local<v8::Object> global;
+    
     bool clear = false;
     if (ref.IsEmpty() || ref->IsUndefined())
         global = context->Global();
@@ -861,7 +870,7 @@ $-[/event]$
             continue;
 
         v8::Local<v8::Function> foo = v8::Local<v8::Function>::Cast(var);
-        bool failed = trycatch__.HasCaught() || foo->IsUndefined();
+        bool failed = js_trycatch.HasCaught() || foo->IsUndefined();
 
         if (!failed)
              V8_PERSISTENT(iso, _events[i], foo);
@@ -873,9 +882,9 @@ $-[/event]$
 $-(/if)$
 // --- creators ---
 
-$-[method static?]$
+$-[method static? !ifccr?]$
 ////////////////////////////////////////////////////////////////////////////////
-iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const script_handle& script
+iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const ::js::script_handle& script
         $-[args]$, $type$ $name$$size$$[/args]$, const coid::token& bindname, v8::Handle<v8::Context>* ctx )
 {
     v8::Isolate* iso = script.has_context()
@@ -932,7 +941,7 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const script_handle
     if (!extctx && !script.is_context())
     {
         if (!script.has_context()) {
-            context->Global()->Set(v8::symbol("$$include"), V8_NEWTYPE2(iso, FunctionTemplate, &script_handle::js_include)->GetFunction());
+            context->Global()->Set(v8::symbol("$$include"), V8_NEWTYPE2(iso, FunctionTemplate, &::js::script_handle::js_include)->GetFunction());
             context->Global()->Set(v8::symbol("$$query_interface"), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8query_interface_global)->GetFunction());
             context->Global()->Set(v8::symbol("$$log"), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8log)->GetFunction());
         }
@@ -990,7 +999,7 @@ v8::Handle<v8::Value> $..name$_js_dispatcher::v8creator_$name$$@order$( const v8
         coid::charstr tmp = "Wrong number of arguments in ";
         tmp << "$name$";
         v8::throw_js(iso, &v8::Exception::Error, tmp);
-        return V8_UNDEFINED;
+        return V8_UNDEFINED(iso);
     }
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
@@ -1126,7 +1135,7 @@ $-(/if)$
 ////////////////////////////////////////////////////////////////////////////////
 static void register_binders_for_$name$( bool on )
 {
-$-[method static?]$
+$-[method static? !ifccr?]$
     //c++ creator of JS interface object
     interface_register::register_interface_creator(
         "$..ns rest="::" after="::"$$..name$.$name$@creator.js",

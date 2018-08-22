@@ -125,7 +125,7 @@ struct token
         set(czstr, czstr ? ::strlen(czstr) : 0);
     }
 
-    explicit token(const charstr& str);
+    token(const charstr& str);
 
     token(const char* ptr, uints len)
         : _ptr(ptr), _pte(ptr + len)
@@ -184,6 +184,9 @@ struct token
     uint hash() const {
         return __coid_hash_string(ptr(), len());
     }
+
+    ///Replace all occurrences of substring with another
+    uint replace(const token& from, const token& to, charstr& dst, bool icase = false) const;
 
     ///Rebase token pointing into one string to point into the same region in another string
     token rebase(const charstr& from, const charstr& to) const;
@@ -387,6 +390,59 @@ struct token
     char char_is_whitespace(ints n) const {
         char c = nth_char(n);
         return (c == ' ' || c == '\t' || c == '\r' || c == '\n') ? c : 0;
+    }
+
+
+
+    //@return true if contains only alpha ascii chars
+    bool is_alpha() const {
+        const char* p = _ptr;
+        const char* e = _pte;
+        for (; p < e; ++p) {
+            char c = *p;
+            bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+            if (!ok)
+                break;
+        }
+        return p == e;
+    }
+
+    //@return true if contains only numeric chars
+    bool is_num() const {
+        const char* p = _ptr;
+        const char* e = _pte;
+        for (; p < e; ++p) {
+            char c = *p;
+            bool ok = c >= '0' && c <= '9';
+            if (!ok)
+                break;
+        }
+        return p == e;
+    }
+
+    //@return true if contains only alpha ascii chars or digits
+    bool is_alphanum() const {
+        const char* p = _ptr;
+        const char* e = _pte;
+        for (; p < e; ++p) {
+            char c = *p;
+            bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+            if (!ok)
+                break;
+        }
+        return p == e;
+    }
+
+    //@return true if contains any digits
+    bool has_digits() const {
+        const char* p = _ptr;
+        const char* e = _pte;
+        for (; p < e; ++p) {
+            char c = *p;
+            if (c >= '0' && c <= '9')
+                return true;
+        }
+        return false;
     }
 
 
@@ -796,6 +852,9 @@ struct token
     ///Cut left token, up to a character from specified group of single characters as delimiters
     token cut_left_group(const token& separators, cut_trait ctr = cut_trait_remove_sep())
     {
+        if (separators.len() == 1)
+            return cut_left(separators.first_char(), ctr);
+
         token r;
         const char* p = _ptr + count_notingroup(separators);
         if (p < _pte)         //if not all is not separator
@@ -808,6 +867,10 @@ struct token
         }
         else
             return ctr.process_notfound(*this, r);
+    }
+
+    token cut_left_group(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+        return cut_left(separator, ctr);
     }
 
     ///Cut left token up to the substring
@@ -858,6 +921,9 @@ struct token
     ///Cut left substring, searching backwards for a character from specified group of single characters as delimiters
     token cut_left_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep())
     {
+        if (separators.len() == 1)
+            return cut_left_back(separators.first_char(), ctr);
+
         token r;
         uints off = count_notingroup_back(separators);
 
@@ -873,6 +939,10 @@ struct token
         }
         else
             return ctr.process_notfound(*this, r);
+    }
+
+    token cut_left_group_back(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+        return cut_left_back(separator, ctr);
     }
 
     ///Cut left token, searching for a substring separator backwards
@@ -943,6 +1013,10 @@ struct token
         return cut_left_group(separators, ctr.make_swap());
     }
 
+    token cut_right_group(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+        return cut_right(separator, ctr);
+    }
+
     ///Cut right token up to the specified substring
     token cut_right(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep())
     {
@@ -965,6 +1039,10 @@ struct token
     token cut_right_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep())
     {
         return cut_left_group_back(separators, ctr.make_swap());
+    }
+
+    token cut_right_group_back(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+        return cut_right_back(separator, ctr);
     }
 
     ///Cut right substring, searching for separator backwards
@@ -2382,7 +2460,7 @@ struct token
 
 
     ///Convert token to array of wchar_t characters
-    bool utf8_to_wchar_buf(wchar_t* dst, uints maxlen) const;
+    uints utf8_to_wchar_buf(wchar_t* dst, uints maxlen) const;
 
     template<class A>
     bool utf8_to_wchar_buf(dynarray<wchar_t, uint, A>& dst) const;
@@ -2669,7 +2747,7 @@ COID_NAMESPACE_END
 #ifdef COID_USER_DEFINED_LITERALS
 
 ///String literal returning token (_T suffix)
-inline coid::token operator "" _T(const char* s, size_t len)
+inline const coid::token operator "" _T(const char* s, size_t len)
 {
     return coid::token(s, len);
 }

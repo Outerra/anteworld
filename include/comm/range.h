@@ -44,7 +44,7 @@
 
 COID_NAMESPACE_BEGIN
 
-template<class,class,class> class dynarray;
+template<class, class, class> class dynarray;
 
 ///A range of elements in memory
 template<class T>
@@ -62,71 +62,71 @@ struct range
     {}
 
     template<class COUNT, class A>
-    range( const dynarray<T,COUNT,A>& str );
+    range(const dynarray<T, COUNT, A>& str);
 
-    range( T* ptr, uints len )
-        : _ptr(ptr), _pte(ptr+len)
+    range(T* ptr, uints len)
+        : _ptr(ptr), _pte(ptr + len)
     {}
 
-    range( T* ptr, T* ptre )
+    range(T* ptr, T* ptre)
         : _ptr(ptr), _pte(ptre)
     {}
 
-    range( const range& src ) : _ptr(src._ptr), _pte(src._pte)
+    range(const range& src) : _ptr(src._ptr), _pte(src._pte)
     {}
 
-    range( const range& src, uints offs, uints len )
+    range(const range& src, uints offs, uints len)
     {
-        if( offs > src.size() )
+        if (offs > src.size())
             _ptr = src._pte, _pte = _ptr;
-        else if( len > src.size() - offs )
-            _ptr = src._ptr+offs, _pte = src._pte;
+        else if (len > src.size() - offs)
+            _ptr = src._ptr + offs, _pte = src._pte;
         else
-            _ptr = src._ptr+offs, _pte = src._ptr + len;
+            _ptr = src._ptr + offs, _pte = src._ptr + len;
     }
 
-    friend void swap( range& a, range& b )
+    friend void swap(range& a, range& b)
     {
         a.swap(b);
     }
 
-    void swap( range& other ) {
+    void swap(range& other) {
         std::swap(_ptr, other._ptr);
         std::swap(_pte, other._pte);
     }
 
-    const T* ptr() const                    { return _ptr; }
-    const T* ptre() const                   { return _pte; }
+    const T* ptr() const { return _ptr; }
+    const T* ptre() const { return _pte; }
 
     //@return length of range
-    uints size() const                      { return _pte - _ptr; }
+    uints size() const { return _pte - _ptr; }
 
-    uints byte_size() const                 { return size() * sizeof(T); }
+    uints byte_size() const { return size() * sizeof(T); }
 
-    void truncate( ints n )
+    void truncate(ints n)
     {
-        if( n < 0 )
+        if (n < 0)
         {
-            if( (uints)-n > size() )  _pte = _ptr;
+            if ((uints)-n > size())  _pte = _ptr;
             else  _pte += n;
         }
-        else if( (uints)n < size() )
+        else if ((uints)n < size())
             _pte = _ptr + n;
     }
 
     T& operator[] (ints i) {
-        DASSERT( i >= 0 && _ptr+i < _pte );
+        DASSERT(i >= 0 && _ptr + i < _pte);
         return _ptr[i];
     }
 
     const T& operator[] (ints i) const {
-        DASSERT( i >= 0 && _ptr+i < _pte );
+        DASSERT(i >= 0 && _ptr + i < _pte);
         return _ptr[i];
     }
 
     bool operator == (const range& tok) const
     {
-        if(size() != tok.size())
+        if (size() != tok.size())
             return 0;
         return std::equal(_ptr, _pte, tok._ptr);
     }
@@ -185,8 +185,8 @@ struct range
     ///Eat the first element from range, returning it
     T& operator ++ ()
     {
-        DASSERT( _ptr < _pte );
-        if(_ptr < _pte)
+        DASSERT(_ptr < _pte);
+        if (_ptr < _pte)
         {
             ++_ptr;
             return _ptr[-1];
@@ -211,18 +211,18 @@ struct range
     ///Eat the last element from range, returning it
     T& operator -- (int)
     {
-        DASSERT( _ptr < _pte );
-        if(_ptr < _pte)
+        DASSERT(_ptr < _pte);
+        if (_ptr < _pte)
             --_pte;
 
         return *_pte;
     }
 
     ///Shift the starting pointer forwards or backwards
-    range& shift_start( ints i )
+    range& shift_start(ints i)
     {
         T* p = _ptr + i;
-        if( p > _pte )
+        if (p > _pte)
             p = _pte;
 
         _ptr = p;
@@ -230,31 +230,31 @@ struct range
     }
 
     ///Shift the end forwards or backwards
-    range& shift_end( ints i )
+    range& shift_end(ints i)
     {
         T* p = _pte + i;
-        if( p < _ptr )
+        if (p < _ptr)
             p = _ptr;
 
         _pte = p;
         return *this;
     }
 
-    bool is_empty() const               { return _ptr == _pte; }
-    bool is_set() const                 { return _ptr != _pte; }
-    bool is_null() const                { return _ptr == 0; }
-    void set_empty()                    { _pte = _ptr; }
-    void set_empty( T* p )              { _ptr = _pte = p; }
-    void set_null()                     { _ptr = _pte = 0; }
+    bool is_empty() const { return _ptr == _pte; }
+    bool is_set() const { return _ptr != _pte; }
+    bool is_null() const { return _ptr == 0; }
+    void set_empty() { _pte = _ptr; }
+    void set_empty(T* p) { _ptr = _pte = p; }
+    void set_null() { _ptr = _pte = 0; }
 
     typedef const char* range::*unspecified_bool_type;
 
     ///Automatic cast to bool for checking emptiness
     operator unspecified_bool_type () const {
-        return _ptr == _pte  ?  0  :  &range::_ptr;
+        return _ptr == _pte ? 0 : &range::_ptr;
     }
 
-    range& operator = ( const range& t )
+    range& operator = (const range& t)
     {
         _ptr = t._ptr;
         _pte = t._pte;
@@ -262,12 +262,12 @@ struct range
     }
 
     template<class COUNT, class A>
-    range& operator = ( const dynarray<T,COUNT,A>& t );
+    range& operator = (const dynarray<T, COUNT, A>& t);
 
     ///Set range from ptr and length.
     //@note use set_empty(ptr) to avoid conflict with overloads when len==0
     //@return pointer past the end
-    T* set( T* str, uints len )
+    T* set(T* str, uints len)
     {
         _ptr = str;
         _pte = str + len;
@@ -275,7 +275,7 @@ struct range
     }
 
     ///Set range from ptr pair
-    T* set( T* str, T* strend )
+    T* set(T* str, T* strend)
     {
         _ptr = str;
         _pte = strend;
@@ -283,11 +283,11 @@ struct range
     }
 
 
-    T* begin()                          { return _ptr; }
-    T* end()                            { return _pte; }
+    T* begin() { return _ptr; }
+    T* end() { return _pte; }
 
-    const T* begin() const              { return _ptr; }
-    const T* end() const                { return _pte; }
+    const T* begin() const { return _ptr; }
+    const T* end() const { return _pte; }
 
 
     ///Invoke functor on each element
@@ -308,12 +308,12 @@ struct range
     ///Invoke functor on each element
     //@note handles the case when current element is deleted from the array
     template<typename Func>
-    void for_each( Func f ) const
+    void for_each(Func f) const
     {
         uints n = size();
-        for(uints i=0; i<n; ++i) {
+        for (uints i = 0; i < n; ++i) {
             f(_ptr[i]);
-            if(n > size()) {    //deleted element, ensure continuing with the next
+            if (n > size()) {    //deleted element, ensure continuing with the next
                 --i;
                 n = size();
             }
@@ -326,8 +326,8 @@ struct range
     T* find_if(Func f) const
     {
         uints n = size();
-        for(uints i=0; i<n; ++i)
-            if(f(_ptr[i])) return _ptr+i;
+        for (uints i = 0; i < n; ++i)
+            if (f(_ptr[i])) return _ptr + i;
         return 0;
     }
 
@@ -335,21 +335,21 @@ struct range
     //@return -1 if not contained, otherwise index to the key
     //@{
     template<class K>
-    ints contains( const K& key ) const
+    ints index_of(const K& key) const
     {
         uints c = size();
-        for( uints i=0; i<c; ++i )
-            if(_ptr[i] == key)  return i;
+        for (uints i = 0; i < c; ++i)
+            if (_ptr[i] == key)  return i;
         return -1;
     }
 
     ///Linear search whether array contains element comparable with \a key via equality functor
     template<class K, class EQ>
-    ints contains( const K& key, const EQ& eq ) const
+    ints index_of(const K& key, const EQ& eq) const
     {
         uints c = size();
-        for( uints i=0; i<c; ++i )
-            if(eq(_ptr[i], key))  return i;
+        for (uints i = 0; i < c; ++i)
+            if (eq(_ptr[i], key))  return i;
         return -1;
     }
 
@@ -359,13 +359,26 @@ struct range
     //@return -1 if not contained, otherwise index to the key
     //@{
     template<class K>
-    ints contains_back( const K& key ) const
+    ints index_of_back(const K& key) const
     {
         uints c = size();
-        for(; c>0; )
+        for (; c > 0; )
         {
             --c;
-            if(_ptr[c] == key)  return c;
+            if (_ptr[c] == key)  return c;
+        }
+        return -1;
+    }
+
+    template<class K, class EQ>
+    ints index_of_back(const K& key, const EQ& eq) const
+    {
+        uints c = size();
+        for (; c > 0; )
+        {
+            --c;
+            if (eq(_ptr[c], key))
+                return c;
         }
         return -1;
     }
@@ -376,21 +389,129 @@ struct range
     //@return element position if found, or (-1 - insert_pos)
     //@{
     template<class K>
-    ints contains_sorted( const K& key ) const
+    ints index_of_sorted(const K& key) const
     {
         uints lb = lower_bound(key);
-        if( lb >= size()
-            || !(_ptr[lb] == key) )  return -1 - ints(lb);
+        if (lb >= size()
+            || !(_ptr[lb] == key))  return -1 - ints(lb);
         return lb;
     }
 
     template<class K, class FUNC>
-    ints contains_sorted( const K& key, const FUNC& fn ) const
+    ints index_of_sorted(const K& key, const FUNC& fn) const
+    {
+        uints lb = lower_bound(key, fn);
+        if (lb >= size()
+            || !(_ptr[lb] == key))  return -1 - ints(lb);
+        return lb;
+    }
+    //@}
+
+
+    ///Linear search whether array contains element comparable with \a key
+    //@return 0 if not contained, otherwise ptr to the key
+    //@{
+    template<class K>
+    const T* contains(const K& key) const
+    {
+        uints c = size();
+        for (uints i = 0; i < c; ++i)
+            if (_ptr[i] == key)
+                return _ptr + i;
+        return 0;
+    }
+
+    ///Linear search whether array contains element comparable with \a key via equality functor
+    template<class K, class EQ>
+    const T* contains(const K& key, const EQ& eq) const
+    {
+        uints c = size();
+        for (uints i = 0; i < c; ++i)
+            if (eq(_ptr[i], key))
+                return _ptr + i;
+        return 0;
+    }
+
+    template<class K>
+    T* contains(const K& key) { return const_cast<T*>(std::as_const(*this).contains(key)); }
+
+    template<class K, class EQ>
+    T* contains(const K& key, const EQ& eq) { return const_cast<T*>(std::as_const(*this).contains(key, eq)); }
+    //@}
+
+    ///Linear search (backwards) whether array contains element comparable with \a key
+    //@return 0 if not contained, otherwise ptr to the key
+    //@{
+    template<class K>
+    const T* contains_back(const K& key) const
+    {
+        uints c = size();
+        for (; c > 0; )
+        {
+            --c;
+            if (_ptr[c] == key)
+                return _ptr + c;
+        }
+        return 0;
+    }
+
+    template<class K, class EQ>
+    const T* contains_back(const K& key, const EQ& eq) const
+    {
+        uints c = size();
+        for (; c > 0; )
+        {
+            --c;
+            if (eq(_ptr[c], key))
+                return _ptr + c;
+        }
+        return 0;
+    }
+
+    template<class K>
+    T* contains_back(const K& key) { return const_cast<T*>(std::as_const(*this).contains_back(key)); }
+
+    template<class K, class EQ>
+    T* contains_back(const K& key, const EQ& eq) { return const_cast<T*>(contains_back(key, eq)); }
+    //@}
+
+    ///Binary search whether sorted array contains element comparable to \a key
+    /// Uses operator T<K or functor(T,K) to search for the element, and operator T==K for equality comparison
+    //@return ptr to element if found or 0 otherwise
+    //@param sort_index optional ptr to variable receiving sort index
+    //@{
+    template<class K>
+    const T* contains_sorted(const K& key, uints* sort_index = 0) const
+    {
+        uints lb = lower_bound(key);
+        if (sort_index)
+            *sort_index = lb;
+
+        return lb >= size() || !(_ptr[lb] == key)
+            ? 0
+            : _ptr + lb;
+    }
+
+    template<class K, class FUNC>
+    const T* contains_sorted( const K& key, const FUNC& fn, uints* sort_index =0 ) const
     {
         uints lb = lower_bound(key,fn);
-        if( lb >= size()
-            || !(_ptr[lb] == key) )  return -1 - ints(lb);
-        return lb;
+        if (sort_index)
+            *sort_index = lb;
+
+        return lb >= size() || !(_ptr[lb] == key)
+            ? 0
+            : _ptr + lb;
+    }
+
+    template<class K>
+    T* contains_sorted(const K& key, uints* sort_index = 0) {
+        return const_cast<T*>(std::as_const(*this).contains_sorted(key, sort_index));
+    }
+
+    template<class K, class FUNC>
+    T* contains_sorted(const K& key, const FUNC& fn, uints* sort_index = 0) {
+        return const_cast<T*>(std::as_const(*this).contains_sorted(key, fn, sort_index));
     }
     //@}
 
@@ -398,7 +519,7 @@ struct range
     ///Binary search sorted array
     //@note there must exist < operator able to do (T < K) comparison
     template<class K>
-    uints lower_bound( const K& key ) const
+    uints lower_bound(const K& key) const
     {
         // k<m -> top = m
         // k>m -> bot = m+1
@@ -406,11 +527,11 @@ struct range
         uints i, j, m;
         i = 0;
         j = size();
-        for( ; j>i; )
+        for (; j > i; )
         {
-            m = (i+j)>>1;
-            if(_ptr[m] < key)
-                i = m+1;
+            m = (i + j) >> 1;
+            if (_ptr[m] < key)
+                i = m + 1;
             else
                 j = m;
         }
@@ -419,7 +540,7 @@ struct range
 
     ///Binary search sorted array using function object f(T,K) for comparing T<K
     template<class K, class FUNC>
-    uints lower_bound( const K& key, const FUNC& fn ) const
+    uints lower_bound(const K& key, const FUNC& fn) const
     {
         // k<m -> top = m
         // k>m -> bot = m+1
@@ -427,11 +548,11 @@ struct range
         uints i, j, m;
         i = 0;
         j = size();
-        for(; j>i;)
+        for (; j > i;)
         {
-            m = (i+j)>>1;
-            if(fn(_ptr[m], key))
-                i = m+1;
+            m = (i + j) >> 1;
+            if (fn(_ptr[m], key))
+                i = m + 1;
             else
                 j = m;
         }
@@ -441,34 +562,34 @@ struct range
     ///Binary search sorted array
     //@note there must exist < operator able to do (K < T) comparison
     template<class K>
-    uints upper_bound( const K& key ) const
+    uints upper_bound(const K& key) const
     {
         uints i, j, m;
         i = 0;
         j = size();
-        for(; j>i;)
+        for (; j > i;)
         {
-            m = (i+j) >> 1;
-            if(key < _ptr[m])
+            m = (i + j) >> 1;
+            if (key < _ptr[m])
                 j = m;
             else
-                i = m+1;
+                i = m + 1;
         }
         return (uints)i;
     }
 
     ///Binary search sorted array using function object f(K,T) for comparing K<T
     template<class K, class FUNC>
-    uints upper_bound( const K& key, const FUNC& fn ) const
+    uints upper_bound(const K& key, const FUNC& fn) const
     {
         uints i, j, m;
         i = 0;
         j = size();
-        for(; j>i;)
+        for (; j > i;)
         {
-            m = (i+j)>>1;
-            if(fn(key, _ptr[m]))
-                i = m+1;
+            m = (i + j) >> 1;
+            if (fn(key, _ptr[m]))
+                i = m + 1;
             else
                 j = m;
         }
@@ -482,7 +603,7 @@ struct range
         if (s == 0)
             return 0;
 
-        return _ptr+s-1;
+        return _ptr + s - 1;
     }
 
     void reset() {
@@ -494,15 +615,15 @@ struct range
     {
         typedef binstream_container_base::fnc_stream	fnc_stream;
 
-        virtual const void* extract( uints n )
+        virtual const void* extract(uints n)
         {
-            DASSERT( _pos+n <= _v.size() );
+            DASSERT(_pos + n <= _v.size());
             const T* p = &_v.ptr()[_pos];
             _pos += n;
             return p;
         }
 
-        virtual void* insert( uints n ) {
+        virtual void* insert(uints n) {
             throw std::exception("unsupported");
         }
 
@@ -510,14 +631,14 @@ struct range
 
         virtual uints count() const { return _v.size(); }
 
-        range_binstream_container( const range<T>& v )
+        range_binstream_container(const range<T>& v)
             : _v(const_cast<range<T>&>(v))
         {
             _pos = 0;
         }
 
-        range_binstream_container( const range<T>& v, fnc_stream fout, fnc_stream fin )
-            : binstream_containerT<T>(fout,fin)
+        range_binstream_container(const range<T>& v, fnc_stream fout, fnc_stream fin)
+            : binstream_containerT<T>(fout, fin)
             , _v(const_cast<range<T>&>(v))
         {
             _pos = 0;

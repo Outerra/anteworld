@@ -84,7 +84,7 @@ public:
     virtual opcd close(bool linger = false)
     {
         if (_in)
-            packed_ack(false);
+            packed_ack(true);
         if (_out)
             packed_flush();
         return 0;

@@ -270,8 +270,8 @@ public:
     static handle load_library( const char* libname );
     static void *getFuncAddress(handle lib_handle, const char *funcname);
 
-    static charstr& module_path(charstr& dst, bool append = false);
-    static charstr& module_name(charstr& dst, bool append = false);
+    charstr& module_path(charstr& dst, bool append = false);
+    charstr& module_name(charstr& dst, bool append = false);
 
 private:
 

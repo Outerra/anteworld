@@ -350,6 +350,7 @@
     <ClInclude Include="..\..\..\alloc\slotalloc_tracker.h">
       <Filter>alloc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\function.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -457,5 +458,8 @@
     <ClCompile Include="..\..\..\commassert.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
   </ItemGroup>
 </Project>
