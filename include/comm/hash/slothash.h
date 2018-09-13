@@ -106,7 +106,7 @@ public:
         //append related array for hash table sequences
         //base::append_relarray(&_seqtable);
 
-        _buckets.calloc(reserve_items, true);
+        reserve(reserve_items);
     }
 
     //@return object with given key or null if no matching object was found
@@ -196,13 +196,16 @@ public:
     template<class...Ps>
     T* push_construct(Ps&&... ps) {
         uints id;
-        bool isnew;
-        T* p = base::add_uninit(&isnew, &id);
+        T* p = base::add_uninit(nullptr, &id);
 
-        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, isnew, std::forward<Ps>(ps)...);
+        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, true, std::forward<Ps>(ps)...);
 
-        //T* p = base::push_construct(std::forward<Ps>(ps)...);
-        return insert_value_(p, uint(id));
+        //if this fails, multikey is off and same key item exists
+        T* r = insert_value_(p, uint(id));
+        if (!r)
+            base::del_item(id);
+
+        return r;
     }
 
     ///Insert a new uninitialized slot for the key
@@ -298,17 +301,21 @@ public:
         memset(_buckets.ptr(), 0xff, _buckets.byte_size());
     }
 
-    void reserve(uints nitems) {
-        uints os = _buckets.size();
+    void reserve(uint nitems) {
+        if (nitems < 32)
+            nitems = 32;
+
+        uint os = _buckets.size();
         if (nitems <= os)
             return;
 
-        _buckets.addc(nitems - os, true);
         base::reserve(nitems);
+        resize(nitems, UMAX32);
     }
 
     void swap(slothash& other) {
         base::swap(other);
+        std::swap(_shift, other._shift);
         _buckets.swap(other._buckets);
     }
 
@@ -318,14 +325,20 @@ public:
 
 protected:
 
+    static uint bucket_from_hash(uint64 hash, uint shift) {
+        //fibonacci hashing
+        hash ^= hash >> shift;
+        return uint((11400714819323198485llu * hash) >> shift);
+    }
+
     template<class FKEY = KEY>
     uint bucket(const FKEY& k) const {
-        return uint(_HASHFUNC(k) % _buckets.size());
+        return bucket_from_hash(_HASHFUNC(k), _shift);
     }
 
     template<>
     uint bucket<tokenhash>(const tokenhash& key) const {
-        return uint(key.hash() % _buckets.size());
+        return bucket_from_hash(key.hash(), _shift);
     }
 
     ///Find first node that matches the key
@@ -343,6 +356,8 @@ protected:
         return n;
     }
 
+    //@return ref to bucket or seqtable slot where the key would be found or written
+    //@note if return value points to UINT32, the key was not found
     template<class FKEY = KEY>
     uint* find_object_entry(uint bucket, const FKEY& k)
     {
@@ -360,41 +375,50 @@ protected:
     template<class FKEY = KEY>
     bool find_or_insert_value_slot_uninit_(const FKEY& key, uint* pid)
     {
-        uint b = bucket(key);
-        uint id = find_object(b, key);
+        uint64 hash = _HASHFUNC(key);
+        uint b = bucket_from_hash(hash, _shift);
 
-        bool isnew = id == UMAX32;
+        uint* fid = find_object_entry(b, key);
+
+        bool isnew = *fid == UMAX32;
         if (isnew) {
+            if (_buckets.size() <= base::count()) {
+                resize(_buckets.size() + 1, UMAX32);
+                b = bucket_from_hash(hash, _shift);
+                fid = find_object_entry(b, key);
+            }
+
             uints ids;
             T* p = base::add_uninit(0, &ids);
-            id = uint(ids);
 
-            seqtable()[id] = _buckets[b];
-            _buckets[b] = id;
+            seqtable()[ids] = *fid;
+            *fid = uint(ids);
         }
 
-        *pid = id;
+        *pid = *fid;
 
         return isnew;
     }
 
     ///Find uint* where the new id should be written
+    //@param skip_id id of newly created object that should be skipped in case of resize, or UMAX32
     template<class FKEY = KEY>
-    uint* get_object_entry(const FKEY& key)
+    uint* get_object_entry(const FKEY& key, uint skip_id)
     {
+        if (_buckets.size() <= base::count())
+            resize(_buckets.size() + 1, skip_id);
+
         uint b = bucket(key);
         uint* fid = find_object_entry(b, key);
 
         bool isnew = *fid == UMAX32;
-        return isnew
-            ? &_buckets[b]          //new key, add to the beginning of the bucket
-            : (MULTIKEY ? fid : 0);
+        return isnew || MULTIKEY ? fid : 0;
     }
 
     template<class FKEY = KEY>
     T* init_value_slot_(uint id, const FKEY& key)
     {
-        uint* fid = get_object_entry(key);
+        uint* fid = get_object_entry(key, id);
         if (!fid)
             return 0;   //item with the same key exists, not a multi-key map
 
@@ -415,7 +439,7 @@ protected:
     template<class FKEY = KEY>
     T* insert_value_slot_uninit_(const FKEY& key, bool* isnew)
     {
-        uint* fid = get_object_entry(key);
+        uint* fid = get_object_entry(key, UMAX32);
         if (!fid)
             return 0;
 
@@ -442,13 +466,50 @@ protected:
         return p;
     }
 
+
+    //@return true if the underlying array was resized
+    //@param skip_id id of newly created object that should be skipped in case of resize, or UMAX32
+    bool resize(uint bucketn, uint skip_id)
+    {
+        uint shift = 64 - int_high_pow2(bucketn);
+
+        if (shift < _shift)
+        {
+            //reindex objects
+            //clear both buckets index and sequaray
+            uint nb = 1 << (64 - shift);
+            _buckets.calloc(nb, true);
+
+            dynarray<uint>& st = seqtable();
+            ::memset(st.ptr(), 0xff, st.byte_size());
+
+            _shift = shift;
+
+            base::for_each([&](const T& val, uints id) {
+                if (id != skip_id) {
+                    const KEY& key = _EXTRACTOR(val);
+                    uint b = bucket(key);
+
+                    uint* n = find_object_entry(b, key);
+
+                    st[id] = *n;
+                    *n = uint(id);
+                }
+            });
+
+            return true;
+        }
+
+        return false;
+    }
+
 private:
 
     EXTRACTOR _EXTRACTOR;
     HASHFUNC _HASHFUNC;
 
-    coid::dynarray<uint> _buckets;      //< table with ids of first objects belonging to the given hash socket
-    //coid::dynarray<uint>* _seqtable;    //< table with ids pointing to the next object in hash socket chain
+    coid::dynarray32<uint> _buckets;    //< table with ids of first objects belonging to the given hash socket
+    uint _shift = 64;
 };
 
 

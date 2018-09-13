@@ -38,6 +38,10 @@ using namespace coid;
 struct value {
     charstr key;
 
+    value(charstr&& val) {
+        key.takeover(val);
+    }
+
     operator token() const { return key; }
 };
 
@@ -97,12 +101,15 @@ int main( int argc, char* argv[] )
         static_assert( std::is_const<std::remove_reference_t<taxi::arg<0>>>::value && taxi::arity::value > 1, "fail" );
 
 
-        slothash<value, token> hash;
-        bool isnew;
-        hash.find_or_insert_value_slot("foo", &isnew);
-        hash.find_or_insert_value_slot("foo", &isnew);
-        hash.find_or_insert_value_slot("bar", &isnew);
+        slothash<value, token> hash(32);
 
+        for (int i = 0; i < 32; ++i) {
+            hash.push_construct(charstr("key") + i);
+        }
+
+        hash.push_construct("foo");
+        DASSERT(!hash.push_construct("foo"));
+        hash.push_construct("bar");
 
         slotalloc_tracking<value> ring;
     }
