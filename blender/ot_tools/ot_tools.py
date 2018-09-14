@@ -799,7 +799,9 @@ def add_control_properties_to_selected_bones(context):
         b['single_bone_max'] = 0.0
         b['single_bone_step'] = 0.0
         b['single_bone_channel'] = 0
-
+        b['single_bone_handles'] = ''
+        b['single_bone_action'] = ''
+        
 def add_lod_curve_properties_to_selected_nodes(context):
     if not context.selected_objects:
         return
