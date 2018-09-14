@@ -204,8 +204,8 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
         Class& cls = file.classes[c];
 
         //ig
-        uints ni = cls.iface.size();
-        for (uint i = 0; i < ni; ++i)
+        int ni = (int)cls.iface.size();
+        for (int i = 0; i < ni; ++i)
         {
             Interface& ifc = cls.iface[i];
 

@@ -140,6 +140,7 @@ public:
 private:
     dynarray<Node*> _table;
     uints _nelem;
+    uint _shift;
 
     typedef hashtable<VAL, HASHFUNC, EQFUNC, GETKEYFUNC, ALLOC>  _Self;
 
@@ -158,9 +159,15 @@ protected:
     GETKEYFUNC  _GETKEYFUNC;
     ALLOC<Node> _ALLOC;
 
-    uints bucket(const LOOKUP& v) const { return _HASHFUNC(v) % _table.size(); }
-    uints bucketn(const LOOKUP& v, uints n) const { return _HASHFUNC(v) % n; }
+    uints bucket(const LOOKUP& v, uint shift) const {
+        return bucket_from_hash(_HASHFUNC(v), shift);
+    }
 
+    static uints bucket_from_hash(uint64 hash, uint shift) {
+        //fibonacci hashing
+        hash ^= hash >> shift;
+        return uints((11400714819323198485llu * hash) >> shift);
+    }
 
 public:
 
@@ -362,9 +369,9 @@ public:
 protected:
 
     ///Find first node that matches the key, provided hash value is given
-    Node* find_node(uint hash, const LOOKUP& k) const
+    Node* find_node(uint64 hash, const LOOKUP& k) const
     {
-        uints h = hash % _table.size();
+        uints h = bucket_from_hash(hash, _shift);
         Node* n = (Node*)_table[h];
         while (n)
         {
@@ -378,7 +385,7 @@ protected:
     ///Find first node that matches the key
     Node* find_node(const LOOKUP& k) const
     {
-        uints h = bucket(k);
+        uints h = bucket(k, _shift);
         Node* n = (Node*)_table[h];
         while (n)
         {
@@ -392,7 +399,7 @@ protected:
     ///Find first node that matches the key
     Node* find_node(const LOOKUP& k, uints& slot) const
     {
-        slot = bucket(k);
+        slot = bucket(k, _shift);
         Node* n = (Node*)_table[slot];
         while (n)
         {
@@ -404,10 +411,10 @@ protected:
     }
 
     ///Find first node that matches the key
-    Node** find_socket(const LOOKUP& k) const
+    Node** find_socket_ext(const dynarray<Node*>& a, uint shift, const LOOKUP& k) const
     {
-        uints h = bucket(k);
-        Node** n = (Node**)&_table[h];
+        uints h = bucket(k, shift);
+        Node** n = (Node**)&a[h];
         while (*n)
         {
             if (_EQFUNC(_GETKEYFUNC((*n)->_val), k))
@@ -418,17 +425,8 @@ protected:
     }
 
     ///Find first node that matches the key
-    Node** find_socket(dynarray<Node*>& a, const LOOKUP& k) const
-    {
-        uints h = bucketn(k, a.size());
-        Node** n = (Node**)&a[h];
-        while (*n)
-        {
-            if (_EQFUNC(_GETKEYFUNC((*n)->_val), k))
-                return n;
-            n = &(*n)->_next;
-        }
-        return n;
+    Node** find_socket(const LOOKUP& k) const {
+        return find_socket_ext(_table, _shift, k);
     }
 
     ///Delete all records that match the key
@@ -456,7 +454,7 @@ protected:
     Node** get_socket(const Node* n) const
     {
         if (!n)  return 0;
-        uints h = bucket(_GETKEYFUNC(n->_val));
+        uints h = bucket(_GETKEYFUNC(n->_val), _shift);
 
         Node** pn = (Node**)&_table[h];
         while (*pn)
@@ -510,7 +508,7 @@ public:
     {
         if (!cn)  return 0;
 
-        uints h = bucket(_GETKEYFUNC(cn->_val));
+        uints h = bucket(_GETKEYFUNC(cn->_val), _shift);
         DASSERTX(_table[h] != 0, "probably mixed keys and different hash functions used");
 
         return get_nonempty(++h);
@@ -690,7 +688,10 @@ public:
         uints ts = _table.size();
         if (bucketn > ts)
         {
-            uints nb = nearest_high_pow2(bucketn);
+            uint8 shift = int_high_pow2(bucketn);
+            uints nb = uints(1) << shift;
+
+            shift = 64 - shift;
 
             dynarray<Node*> temp;
             temp.need_newc(nb);
@@ -703,7 +704,7 @@ public:
                 {
                     //n->_next points to an old location, rebase
                     Node* t = n->_next;
-                    Node** pn = find_socket(temp, _GETKEYFUNC(n->_val));
+                    Node** pn = find_socket_ext(temp, shift, _GETKEYFUNC(n->_val));
 
                     n->_next = *pn;
                     *pn = n;
@@ -711,6 +712,8 @@ public:
                     n = t;
                 }
             }
+
+            _shift = shift;
 
             std::swap(temp, _table);
             return true;
@@ -799,19 +802,10 @@ public:
         _GETKEYFUNC(gkf)
     {
         _nelem = 0;
-        _table.need_newc(reserve);
         _ALLOC.reserve(reserve);
+        resize(reserve);
     }
-    /*
-        hashtable( uints n, const HASHFUNC& hf, const EQFUNC& eqf )
-        :
-            _HASHFUNC(hf),
-            _EQFUNC(eqf),
-            _GETKEYFUNC( _Select_Itself<VAL>() )
-        {
-            _table.need_newc(64);
-        }
-    */
+
     hashtable(const hashtable& ht)
         :
         _HASHFUNC(ht._HASHFUNC),
@@ -836,7 +830,8 @@ private:
     void copy_from(const _Self& ht)
     {
         uints n = ht._table.size();
-        _table.need_newc(n);
+        _table.reset();
+        resize(n);
         _ALLOC.reserve(n);
 
         for (uints h = 0; h < n; ++h)
