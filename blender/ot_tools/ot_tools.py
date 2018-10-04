@@ -338,6 +338,20 @@ class ObjectControls(bpy.types.Panel):
         col.alignment = 'EXPAND'
         row = col.row()
         row.operator("view3d.ot_add_lod_curve_properties")
+        
+class CollisionMeshControls(bpy.types.Panel):
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_category = "OT tools"
+    bl_label = "Collision mesh"
+    
+    def draw(self, context):
+        layout = self.layout
+        
+        col = layout.column()
+        col.alignment = 'EXPAND'
+        row = col.row()
+        row.operator("view3d.ot_add_collision_mesh_properties")
 
 class AddControlProperties(bpy.types.Operator):
     '''Add single bone control custom properties to all selected bones'''
@@ -369,6 +383,22 @@ class AddLodCurveProperties(bpy.types.Operator):
         
     def execute(self, context):
         add_lod_curve_properties_to_selected_nodes(context)
+        return {'FINISHED'}
+        
+class AddCollisionMeshProperties(bpy.types.Operator):
+    '''Add collision mesh custom properties to all selected objects'''
+    bl_idname = "view3d.ot_add_collision_mesh_properties"
+    bl_label = "Add collision shape properties"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "TOOLS"
+    bl_category = "OT tools"
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+        
+    def execute(self, context):
+        add_collision_mesh_properties_to_selected_objects(context)
         return {'FINISHED'}
     
 class VegetationPanel(bpy.types.Panel):
@@ -802,6 +832,19 @@ def add_control_properties_to_selected_bones(context):
         b['single_bone_handles'] = ''
         b['single_bone_action'] = ''
         
+def add_collision_mesh_properties_to_selected_objects(context):
+    if not context.selected_objects:
+        return
+    
+    obj = context.object
+    
+    if obj.type != 'MESH':
+        return
+     
+    for o in context.selected_objects:
+        o['exclude_terrain'] = False
+        o['exclude_particles'] = False
+        
 def add_lod_curve_properties_to_selected_nodes(context):
     if not context.selected_objects:
         return
@@ -1216,6 +1259,8 @@ def register():
     bpy.utils.register_class(AddLodCurveProperties)
     bpy.utils.register_class(OtherToolsPanel)
     bpy.utils.register_class(OtherToolsSaveSelectedObjectNames)
+    bpy.utils.register_class(CollisionMeshControls)
+    bpy.utils.register_class(AddCollisionMeshProperties)
     
     if not hasattr(bpy.types.Object,'ot_vertex_groups') or not hasattr(bpy.types.Object,'ot_vertex_group_idx'):
         bpy.types.Object.ot_vertex_groups = bpy.props.CollectionProperty(type=OtVtxGroupItem,name='Outerra vertex groups');
@@ -1251,6 +1296,8 @@ def unregister():
     bpy.utils.unregister_class(AddLodCurveProperties)
     bpy.utils.unregister_class(OtherToolsPanel)
     bpy.utils.unregister_class(OtherToolsSaveSelectedObjectNames)
+    bpy.utils.unregister_class(CollisionMeshControls)
+    bpy.utils.unregister_class(AddCollisionMeshProperties)
     
 if __name__ == "__main__":
     register()
