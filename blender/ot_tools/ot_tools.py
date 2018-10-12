@@ -843,7 +843,6 @@ def add_collision_mesh_properties_to_selected_objects(context):
      
     for o in context.selected_objects:
         o['exclude_terrain'] = False
-        o['exclude_particles'] = False
         
 def add_lod_curve_properties_to_selected_nodes(context):
     if not context.selected_objects:
