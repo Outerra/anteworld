@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="glm::detail::tvec2&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">float2 {{ {x},   {y} }}</DisplayString>
+		<DisplayString Condition="sizeof($T1)==8">double2 {{ {x},   {y} }}</DisplayString>
+		<Expand>
+			<Item Name="x">x</Item>
+			<Item Name="y">y</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tvec3&lt;*&gt;">
+		<DisplayString Condition="sizeof($T1)==4">float3 {{ {x},   {y},   {z} }}</DisplayString>
+		<DisplayString Condition="sizeof($T1)==8">double3 {{ {x},   {y},   {z} }}</DisplayString>
+		<Expand>
+			<Item Name="x">x</Item>
+			<Item Name="y">y</Item>
+			<Item Name="z">z</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tvec4&lt;*&gt;">
+		<DisplayString Condition="sizeof($T1)==4">float4 {{ {x},   {y},   {z},   {w} }}</DisplayString>
+		<DisplayString Condition="sizeof($T1)==8">double4 {{ {x},   {y},   {z},   {w} }}</DisplayString>
+		<Expand>
+			<Item Name="x">x</Item>
+			<Item Name="y">y</Item>
+			<Item Name="z">z</Item>
+			<Item Name="w">w</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat4x4&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float4x4 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double4x4 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}     {value[3].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}     {value[3].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}     {value[2].z}     {value[3].z}</DisplayString></Synthetic>
+            <Synthetic Name="[row 3]"><DisplayString> {value[0].w}     {value[1].w}     {value[2].w}     {value[3].w}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat4x3&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float3x4 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double3x4 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}     {value[3].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}     {value[3].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}     {value[2].z}     {value[3].z}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat4x2&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float2x4 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double2x4 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}     {value[3].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}     {value[3].y}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat3x4&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float4x3 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double4x3 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}     {value[2].z}</DisplayString></Synthetic>
+            <Synthetic Name="[row 3]"><DisplayString> {value[0].w}     {value[1].w}     {value[2].w}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat3x3&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float3x3 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double3x3 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}     {value[2].z}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+    
+	<Type Name="glm::detail::tmat3x2&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float2x3 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double2x3 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}     {value[2].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}     {value[2].y}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat2x4&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float4x2 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double4x2 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}</DisplayString></Synthetic>
+            <Synthetic Name="[row 3]"><DisplayString> {value[0].w}     {value[1].w}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tmat2x3&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float3x2 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double3x2 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}</DisplayString></Synthetic>
+            <Synthetic Name="[row 2]"><DisplayString> {value[0].z}     {value[1].z}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+    
+	<Type Name="glm::detail::tmat2x2&lt;*&gt;">
+        <DisplayString Condition="sizeof($T1)==4">{{ float2x2 }}</DisplayString>
+        <DisplayString Condition="sizeof($T1)==8">{{ double2x2 }}</DisplayString>
+		<Expand>
+            <Synthetic Name="[row 0]"><DisplayString> {value[0].x}     {value[1].x}</DisplayString></Synthetic>
+            <Synthetic Name="[row 1]"><DisplayString> {value[0].y}     {value[1].y}</DisplayString></Synthetic>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tquat&lt;*&gt;">
+		<DisplayString Condition="sizeof($T1)==4">quat {{ {x},   {y},   {z},   {w} }}</DisplayString>
+		<DisplayString Condition="sizeof($T1)==8">dquat {{ {x},   {y},   {z},   {w} }}</DisplayString>
+		<Expand>
+			<Item Name="x">x</Item>
+			<Item Name="y">y</Item>
+			<Item Name="z">z</Item>
+			<Item Name="w">w</Item>
+		</Expand>
+	</Type>
+
+	<Type Name="glm::detail::tdualquat&lt;*&gt;">
+		<DisplayString>real {{ {real.x},   {real.y},   {real.z},   {real.w} }},  dual {{ {dual.x},   {dual.y},   {dual.z},   {dual.w} }}</DisplayString>
+		<Expand>
+			<Item Name="real">real</Item>
+			<Item Name="dual">dual</Item>
+		</Expand>
+	</Type>
+</AutoVisualizer>
