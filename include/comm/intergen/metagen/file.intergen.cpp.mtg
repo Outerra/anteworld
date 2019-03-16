@@ -18,12 +18,11 @@ static_assert(intergen_interface::VERSION == $version$, "interface must be rebui
 using namespace coid;
 
 $-[class iface.empty!]$
-static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from policy_intrusive_base");
-static_assert( std::is_base_of<policy_intrusive_base, $nss rest="::" after="::"$$class$>::value, "class '$class$' must be derived from policy_intrusive_base");
+static_assert( std::is_base_of<policy_intrusive_base, ::$ns rest="::" after="::"$$class$>::value, "class '$class$' must be derived from policy_intrusive_base");
 
 $-[iface]$
 ////////////////////////////////////////////////////////////////////////////////
-// interface $name$ of class $..class$
+// interface $[ns]$$@value$::$[/ns]$$name$ of class $..class$
 $[ns]$
 namespace $@value$ {
 $-[/ns]$
@@ -47,7 +46,7 @@ $-[method !static?]$
  $-(if hasifc?)$
         _vtable1[$@order$] = reinterpret_cast<ifn_t>(static_cast<$return.type$(policy_intrusive_base::*)($[args rest=","]$$type$$size$$[/args]$)$(if const?)$const$(/if)$>(&$name$__ifc_wrapper));
  $-(elif)$
-        _vtable1[$@order$] = reinterpret_cast<ifn_t>(static_cast<$return.type$(policy_intrusive_base::*)($[args rest=","]$$type$$size$$[/args]$)$(if const?)$const$(/if)$>(&$....ns$::$....class$::$intname$));
+        _vtable1[$@order$] = reinterpret_cast<ifn_t>(static_cast<$return.type$(policy_intrusive_base::*)($[args rest=","]$$type$$size$$[/args]$)$(if const?)$const$(/if)$>(&::$....ns rest="::" after="::"$$....class$::$intname$));
  $-(/if)$
 $-[/method]-$
 
@@ -98,13 +97,42 @@ $-[/method]-$
 
         return _vtable2;
     }
+$-(if varname?)$
+
+    bool assign_safe(intergen_interface* p, iref<$name$>* pout)
+    {
+        ::$..ns rest="::" after="::"$$..class$* hostptr = host<::$..ns rest="::" after="::"$$..class$>();
+        if (!hostptr)
+            return false;
+
+        coid::clean_ptr<intergen_interface>& ifcvar = hostptr->$varname$;
+        coid::comm_mutex& mx = share_lock();
+        if (ifcvar == p)
+            return true;
+
+        GUARDTHIS(mx);
+        //assign only if nobody assigned before us
+        bool succ = !ifcvar || !p;
+        if (succ) {
+            ifcvar = p;
+            _cleaner = p ? &_cleaner_callback : 0;
+        }
+        else if (pout)
+            pout->add_refcount(static_cast<$name$*>(ifcvar.get()));
+
+        return succ;
+    }
+$-(/if)$
 
 protected:
 
-    COIDNEWDELETE("$[ns]$$@value$::$[/ns]$$name$_dispatcher");
+    COIDNEWDELETE($name$_dispatcher);
 
-    $name$_dispatcher()
-    {}
+    $name$_dispatcher() {
+    }
+    
+    virtual ~$name$_dispatcher() {
+    }
 
     bool intergen_bind_capture( coid::binstring* capture, uint instid ) override
     {
@@ -141,20 +169,19 @@ $-(if varname?)$
 
     ///Cleanup routine called from ~$name$()
     static void _cleaner_callback( $name$* m, intergen_interface* ifc ) {
-        $..ns default=" "$::$..class$* host = m->host<$..ns$::$..class$>();
-        if (host) host->$varname$.assign_safe(ifc);
+        static_cast<$name$_dispatcher*>(m)->assign_safe(ifc, 0);
     }
 $-(/if)$
 $-(if virtual!)$
 
-    static iref<$name$> _generic_interface_creator($..ns default=" "$::$..class$* host, $name$* __here__)
+    static iref<$name$> _generic_interface_creator(::$..ns rest="::" after="::"$$..class$* host, $name$* __here__)
     {
         iref<$name$> rval;
 
         $--(if varname?)$
         //an active interface (with events)
         if (host->$varname$ && !__here__)
-            rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
+            rval = intergen_active_interface(host);
 
         if (rval.is_empty()) {
             //interface not taken from host
@@ -168,12 +195,8 @@ $-(if virtual!)$
 
             //try assigning to the host (MT guard)
             // if that fails, the interface will be passive (no events)
-            if (host->$varname$.assign_safe(rval.get()))
-                static_cast<$name$_dispatcher*>(rval.get())->_cleaner = &_cleaner_callback;
-            else if (!__here__)
-                rval.create(static_cast<$name$_dispatcher*>(host->$varname$.get()));
+            dispatcher->assign_safe(rval.get(), __here__ ? 0 : &rval);
         }
-
         $-(elif)$
         //a passive interface (no events)
         $name$_dispatcher* dispatcher = __here__
@@ -204,7 +227,7 @@ public:
 $-[method static? !ifccr?]$
     static iref<$..name$> $name$( $..name$* __here__$[args]$, $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$ )
     {
-        iref<$....ns default=" "$::$....class$> __host__ = $....ns$::$....class$::$intname$($[args rest=", "]$$name$$[/args]$);
+        iref<::$....ns rest="::" after="::"$$....class$> __host__ = ::$....ns rest="::" after="::"$$....class$::$intname$($[args rest=", "]$$name$$[/args]$);
         if (!__host__)
             return 0;
         return _generic_interface_creator(__host__.get(), __here__);
@@ -228,7 +251,7 @@ $-[/method]$
 $-[method static? ifccr?]$
         interface_register::register_interface_creator(
             "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc",
-            on ? (void*)&$....ns$::$....class$::$name$ : nullptr);
+            on ? (void*)&::$....ns rest="::" after="::"$$....class$::$name$ : nullptr);
 $-[/method]$
     }
 };
@@ -237,7 +260,19 @@ coid::binstring* $name$_dispatcher::_capture = 0;
 uint16 $name$_dispatcher::_instid = 0xffffU;
 intergen_interface::ifn_t* $name$_dispatcher::_vtable2 = 0;
 intergen_interface::ifn_t* $name$_dispatcher::_vtable1 = 0;
+$-(if varname?)$
 
+iref<$name$> $name$::intergen_active_interface(::$classnsx rest="::" after="::"$$class$* host)
+{
+    coid::comm_mutex& mx = share_lock();
+    
+    GUARDTHIS(mx);
+    iref<$name$> rval;
+    rval.add_refcount(static_cast<$name$*>(host->$varname$.get()));
+    
+    return rval;
+}
+$-(/if)$
 
 //auto-register the available interface creators
 LOCAL_SINGLETON_DEF(ifc_autoregger) $name$_autoregger = new ifc_autoregger(&$name$_dispatcher::register_interfaces);
@@ -260,7 +295,7 @@ $[/..nss]-$
 $-[event !implicit?]$
 $return.type$ $....class$::$intname$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
 {
-	if (!$..varname$) $(if default_event_body?)${ $default_event_body$ }$(elif)$
+    if (!$..varname$) $(if default_event_body?)${ $default_event_body$ }$(elif)$
         throw coid::exception() << "$name$" << " handler not implemented";$(/if)$
     else
         return $..varname$->iface<$..ns rest="::" after="::"$$..name$>()->$name$($[args rest=", "]$$name$$[/args]$);

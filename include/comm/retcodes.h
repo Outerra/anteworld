@@ -40,11 +40,7 @@
 #define __COID_COMM_RETCODES__HEADER_FILE__
 
 #include "namespace.h"
-
-#include <string.h>
 #include "comm.h"
-
-//#include <assert.h>
 
 COID_NAMESPACE_BEGIN
 

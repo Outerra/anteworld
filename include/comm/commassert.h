@@ -40,7 +40,6 @@
 
 #include "namespace.h"
 #include "retcodes.h"
-#include <limits>
 
 /** \file assert.h
     This header defines various assert macros. The assert macros normally log
@@ -57,10 +56,24 @@
 */
 
 ////////////////////////////////////////////////////////////////////////////////
+COID_NAMESPACE_BEGIN
+
+struct enter_single_thread {
+    enter_single_thread(volatile uint& tid);
+    ~enter_single_thread();
+
+private:
+
+    volatile uint& _tid;
+};
+
+COID_NAMESPACE_END
+
+////////////////////////////////////////////////////////////////////////////////
 #ifdef SYSTYPE_MSVC
 #define XASSERT(e)                  if(__assert_e) __debugbreak()
 #else
-#include <assert.h>
+#include <cassert>
 #define XASSERT                     assert(__assert_e);
 #endif
 
@@ -86,6 +99,7 @@
 //@{ Debug-only assertions, release build doesn't see anything from it
 #define DASSERT(expr)               XASSERTE(expr) coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
 #define DASSERTX(expr,txt)          XASSERTE(expr) coid::__rassert(coid::opt_string() << txt,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT(ersEXCEPTION #expr); } while(0)
+#define DASSERT_ONCE(expr)          do{ static bool once = false; if(expr || once) break;  coid::opcd __assert_e = coid::__rassert(0,ersEXCEPTION,__FILE__,__LINE__,__FUNCTION__,#expr); once = true; XASSERT(ersEXCEPTION #expr); } while(0)
 
 ///Log-only
 #define DASSERTL(expr)              XASSERTE(expr) coid::__rassert(0,0,__FILE__,__LINE__,__FUNCTION__,#expr); } while(0)
@@ -108,6 +122,7 @@
 
 #define DASSERT(expr)
 #define DASSERTX(expr,txt)
+#define DASSERT_ONCE(expr)
 
 #define DASSERTE(expr,exc)
 #define DASSERTEX(expr,exc,txt)
@@ -132,17 +147,16 @@ COID_NAMESPACE_BEGIN
 class opt_string;
 opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, const char* function, const char* expr );
 
-///Downcast value of integral type, checking for overflow and underflow
-//@return saturated cast value
+///Downcast value of integral type, asserting on overflow and underflow
+//@return cast value
 template <class T, class S>
-inline T assert_cast(S v) {
+inline T down_cast(S v) {
     const T vmin = std::numeric_limits<T>::min();
     const T vmax = std::numeric_limits<T>::max();
 
     DASSERT(v >= vmin && v <= vmax);
-    return v < vmin ? vmin : (v > vmax ? vmax : T(v));
+    return T(v);
 }
-
 
 struct opcd;
 struct token;

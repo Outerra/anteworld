@@ -289,15 +289,29 @@ struct range
     const T* begin() const { return _ptr; }
     const T* end() const { return _pte; }
 
+private:
+
+    ///Helper function for for_each to allow calling with optional index argument
+    template<class Fn>
+    using has_index = std::integral_constant<bool, !(closure_traits<Fn>::arity::value <= 1)>;
+
+public:
 
     ///Invoke functor on each element
     //@note handles the case when current element is deleted from the array
     template<typename Func>
-    void for_each(Func f)
+    void for_each(Func fn)
     {
         uints n = size();
         for (uints i = 0; i < n; ++i) {
-            f(_ptr[i]);
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                fn(_ptr[i], i);
+            else
+                fn(_ptr[i]);
+#else
+            fn(_ptr[i]);
+#endif
             if (n > size()) {    //deleted element, ensure continuing with the next
                 --i;
                 n = size();
@@ -308,11 +322,18 @@ struct range
     ///Invoke functor on each element
     //@note handles the case when current element is deleted from the array
     template<typename Func>
-    void for_each(Func f) const
+    void for_each(Func fn) const
     {
         uints n = size();
         for (uints i = 0; i < n; ++i) {
-            f(_ptr[i]);
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                fn(_ptr[i], i);
+            else
+                fn(_ptr[i]);
+#else
+            fn(_ptr[i]);
+#endif
             if (n > size()) {    //deleted element, ensure continuing with the next
                 --i;
                 n = size();
@@ -323,11 +344,23 @@ struct range
     ///Find first element for which the predicate returns true
     //@return pointer to the element or null
     template<typename Func>
-    T* find_if(Func f) const
+    T* find_if(Func fn) const
     {
         uints n = size();
-        for (uints i = 0; i < n; ++i)
-            if (f(_ptr[i])) return _ptr + i;
+        for (uints i = 0; i < n; ++i) {
+            bool rv;
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                rv = fn(_ptr[i], i);
+            else
+                rv = fn(_ptr[i]);
+#else
+            rv = fn(_ptr[i]);
+#endif
+            if (rv)
+                return _ptr + i;
+        }
+
         return 0;
     }
 

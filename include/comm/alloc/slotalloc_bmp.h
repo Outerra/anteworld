@@ -153,7 +153,7 @@ public:
         return (b - _bmp.ptr()) * 32 + index;
     }
 
-    uint size() const { return _items.size(); }
+    uints size() const { return _items.size(); }
 
 };
 

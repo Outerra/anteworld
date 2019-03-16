@@ -130,7 +130,7 @@ struct closure_traits_base
 {
     using arity = std::integral_constant<size_t, sizeof...(Args) >;
     using is_variadic = std::integral_constant<bool, Variadic>;
-    using is_const    = std::integral_constant<bool, Const>;
+    using is_const = std::integral_constant<bool, Const>;
     using returns_void = std::is_void<R>;
 
     using result_type = R;
@@ -143,11 +143,11 @@ struct closure_traits_base
     template <typename Fn>
     struct callable : callbase
     {
-        COIDNEWDELETE("callable");
+        COIDNEWDELETE(callable);
 
         callable(const Fn& fn) : fn(fn) {}
 
-        R operator()( Args ...args ) const override final {
+        R operator()(Args ...args) const override final {
             return fn(std::forward<Args>(args)...);
         }
 
@@ -165,39 +165,50 @@ struct closure_traits_base
 
     struct function
     {
+        template <typename Rx, typename... Argsx>
+        function(Rx (*fn)(Argsx...)) : c(0) {
+            if (fn)
+                c = new callable<decltype(fn)>(fn);
+        }
+
         template <typename Fn>
-        function( const Fn& fn ) : c(0) { c = new callable<Fn>(fn); }
+        function(const Fn& fn) : c(0) {
+            c = new callable<Fn>(fn);
+        }
 
         function() : c(0) {}
         function(nullptr_t) : c(0) {}
 
-        function( const function& other ) : c(0) {
-            if(other.c)
+        function(const function& other) : c(0) {
+            if (other.c)
                 c = other.c->clone();
         }
 
-        function( function&& other ) : c(0) {
+        function(function&& other) : c(0) {
             c = other.c;
             other.c = 0;
         }
 
-        ~function() { if(c) delete c; }
+        ~function() { if (c) delete c; }
 
         function& operator = (const function& other) {
-            if(c) delete c;
-            if(other.c)
+            if (c) {
+                delete c;
+                c = 0;
+            }
+            if (other.c)
                 c = other.c->clone();
             return *this;
         }
 
         function& operator = (function&& other) {
-            if(c) delete c;
+            if (c) delete c;
             c = other.c;
             other.c = 0;
             return *this;
         }
 
-        R operator()( Args ...args ) const {
+        R operator()(Args ...args) const {
             return (*c)(std::forward<Args>(args)...);
         }
 

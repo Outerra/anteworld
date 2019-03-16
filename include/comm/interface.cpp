@@ -41,10 +41,11 @@ class interface_register_impl
     charstr _root_path;
     interface_register::fn_log_t _fn_log;
     interface_register::fn_acc_t _fn_acc;
+    interface_register::fn_getlog_t _fn_getlog;
 
 public:
 
-    COIDNEWDELETE("interface_register_impl");
+    COIDNEWDELETE(interface_register_impl);
 
     typedef interface_register::creator
         creator;
@@ -55,6 +56,7 @@ public:
         : _mx(500, false)
         , _fn_log(0)
         , _fn_acc(0)
+        , _fn_getlog(0)
     {}
 
     virtual ~interface_register_impl()
@@ -83,7 +85,7 @@ public:
         token ns = tmp;
         token modulename = ns.cut_right_back('*', token::cut_trait_remove_sep_default_empty());
         token wrapper = ns.cut_right_back('@', token::cut_trait_remove_sep_default_empty());
-        token classname = ns.cut_right_back("::", false);
+        token classname = ns.cut_right_back("::"_T, false);
         token creatorname = classname.cut_right_back('.', token::cut_trait_remove_sep_default_empty());
         token script = wrapper.cut_right('.', token::cut_trait_remove_sep_default_empty());
 
@@ -167,9 +169,8 @@ public:
     {
         //interface creator names:
         // [ns1::[ns2:: ...]]::class.creator
-        static token SEP = "::";
         token ns = name;
-        token classname = ns.cut_right_group_back(SEP);
+        token classname = ns.cut_right_group_back("::"_T);
         token creatorname = classname.cut_right('.', token::cut_trait_remove_sep_default_empty());
 
         GUARDTHIS(_mx);
@@ -201,9 +202,8 @@ public:
     {
         //interface creator names:
         // [ns1::[ns2:: ...]]::class.creator
-        static token SEP = "::";
         token ns = name;
-        token classname = ns.cut_right_group_back(SEP);
+        token classname = ns.cut_right_group_back("::"_T);
         token creatorname = classname.cut_right('.', token::cut_trait_remove_sep_default_empty());
 
         GUARDTHIS(_mx);
@@ -221,7 +221,7 @@ public:
                 continue;
 
             token ins = i->ns;
-            if (!script.is_null() && (!ins.consume_end(script) || !ins.consume_end("::")))
+            if (!script.is_null() && (!ins.consume_end(script) || !ins.consume_end("::"_T)))
                 continue;
 
             if (ns && ins != ns)
@@ -267,9 +267,8 @@ public:
 
     virtual dynarray<interface_register::creator>& get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
     {
-        static token SEP = "::";
         token ns = iface;
-        token classname = ns.cut_right_group_back(SEP);
+        token classname = ns.cut_right_group_back("::"_T);
 
         GUARDTHIS(_mx);
 
@@ -299,6 +298,7 @@ public:
 
     virtual interface_register::fn_log_t fn_log() final { return _fn_log; }
     virtual interface_register::fn_acc_t fn_acc() final { return _fn_acc; }
+    virtual interface_register::fn_getlog_t fn_getlog() final { return _fn_getlog; }
 
     virtual interface_register::wrapper_fn find_wrapper(const token& ifcname) const final
     {
@@ -309,7 +309,7 @@ public:
         return en ? (interface_register::wrapper_fn)en->creator_ptr : 0;
     }
 
-    virtual void setup(const token& path, interface_register::fn_log_t logfn, interface_register::fn_acc_t access)
+    virtual void setup(const token& path, interface_register::fn_log_t logfn, interface_register::fn_acc_t access, interface_register::fn_getlog_t getlogfn)
     {
         if (!_root_path) {
             _root_path = path;
@@ -321,6 +321,10 @@ public:
 
         if (access)
             _fn_acc = access;
+
+        if (getlogfn) {
+            _fn_getlog = getlogfn;
+        }
     }
 
     virtual bool check_version(int ver) const {
@@ -334,20 +338,20 @@ public:
         DASSERT(!_root_path.is_empty());
 
         bool relative = !slash && !directory::is_absolute_path(incpath);
+        bool relsub = false;
 
         if (relative)
         {
             if (!current_dir(curpath, dst) || !directory::compact_path(dst, '/'))
                 return false;
 
-            uint psize = dst.len();
-
-            if (!directory::append_path(dst, incpath, relpath == 0))
+            int rv = directory::append_path(dst, incpath, relpath == 0);
+            if (!rv)
                 return false;
 
             //relative paths below curpath are always allowed, not checked
-            if (!relpath)
-                return true;
+            if (!relpath || rv < 0)
+                relsub = true;
         }
         else {
             //absolute
@@ -368,6 +372,9 @@ public:
         if (relpath)
             *relpath = rpath;
 
+        if (relsub)
+            return true;
+
         return _fn_acc ? _fn_acc(rpath) : true;
     }
 
@@ -378,10 +385,10 @@ private:
         if (directory::is_absolute_path(curpath))
             dst = curpath;
         else {
-            curpath.consume_icase("file:///");
+            curpath.consume_icase("file:///"_T);
             dst = _root_path;
 
-            return directory::append_path(dst, curpath, true);
+            return directory::append_path(dst, curpath, true) != 0;
         }
 
         return true;
@@ -393,7 +400,7 @@ void* interface_register::get_interface_creator(const token& ifcname)
 {
     interface_register_impl& reg = interface_register_impl::get();
     if (!reg.check_version(intergen_interface::VERSION)) {
-        ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
+        ref<logmsg> msg = canlog(coid::log::error, "ifcreg"_T, 0);
         msg->str() << "mismatched intergen version for " << ifcname << "(v" << intergen_interface::VERSION << ')';
         //print requires VS2015
         //print(coid::log::error, "ifcreg", "mismatched intergen version for {}", ifcname);
@@ -425,17 +432,30 @@ ref<logmsg> interface_register::canlog(log::type type, const tokenhash& hash, co
     if (canlogfn)
         msg = canlogfn(type, hash, inst);
     else
-        msg = SINGLETON(stdoutlogger).create_msg(type, hash, inst);
+        msg = getlog()->create_msg(type, hash, inst);
 
     return msg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void interface_register::setup(const token& path, fn_log_t log, fn_acc_t access)
+logger* interface_register::getlog()
+{
+    fn_getlog_t getlogfn = interface_register_impl::get().fn_getlog();
+
+    if (getlogfn) {
+        return getlogfn();
+    }
+    else {
+        return &SINGLETON(stdoutlogger);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void interface_register::setup(const token& path, fn_log_t log, fn_acc_t access, fn_getlog_t getlog)
 {
     interface_register_impl& reg = interface_register_impl::get();
 
-    reg.setup(path, log, access);
+    reg.setup(path, log, access,getlog);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +528,7 @@ bool interface_register::register_interface_creator(const token& ifcname, void* 
     if (!reg.check_version(intergen_interface::VERSION)) {
         if (creator_ptr) {
             //print(coid::log::error, "ifcreg", "declined interface registration for {}, mismatched intergen version", ifcname);
-            ref<logmsg> msg = canlog(coid::log::error, "ifcreg", 0);
+            ref<logmsg> msg = canlog(coid::log::error, "ifcreg"_T, 0);
             msg->str() << "declined interface registration for " << ifcname
                 << ", mismatched intergen version (v" << intergen_interface::VERSION << ')';
         }

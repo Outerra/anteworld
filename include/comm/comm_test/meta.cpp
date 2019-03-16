@@ -1,9 +1,9 @@
 
-#include "comm/binstream/filestream.h"
-#include "comm/binstream/binstreambuf.h"
-#include "comm/metastream/metastream.h"
-#include "comm/metastream/fmtstreamcxx.h"
-#include "comm/metastream/fmtstreamxml2.h"
+#include "../binstream/filestream.h"
+#include "../binstream/binstreambuf.h"
+#include "../metastream/metastream.h"
+#include "../metastream/fmtstreamcxx.h"
+#include "../metastream/fmtstreamxml2.h"
 //#include "metagen.h"
 
 COID_NAMESPACE_BEGIN

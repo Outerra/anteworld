@@ -19,9 +19,9 @@ class main
 public:
 
     //@param scriptpath path to js script to bind to
-    static iref<ns::main> create( const script_handle& script, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
+    static iref<ns::main> create( const ::js::script_handle& script, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
     {
-        typedef iref<ns::main> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
+        typedef iref<ns::main> (*fn_bind)(const ::js::script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create@creator.js";
 
@@ -36,9 +36,9 @@ public:
     }
 
     //@param scriptpath path to js script to bind to
-    static iref<ns::main> create_special( const script_handle& script, int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e = -1, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
+    static iref<ns::main> create_special( const ::js::script_handle& script, int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e = -1, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
     {
-        typedef iref<ns::main> (*fn_bind)(const script_handle&, int, iref<ns::other>, int&, iref<ns::other>&, int, const coid::token&, v8::Handle<v8::Context>*);
+        typedef iref<ns::main> (*fn_bind)(const ::js::script_handle&, int, iref<ns::other>, int&, iref<ns::other>&, int, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create_special@creator.js";
 
@@ -53,9 +53,9 @@ public:
     }
 
     //@param scriptpath path to js script to bind to
-    static iref<ns::main> create_wp( const script_handle& script, int a, int& b, int& c, int d = -1, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
+    static iref<ns::main> create_wp( const ::js::script_handle& script, int a, int& b, int& c, int d = -1, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
     {
-        typedef iref<ns::main> (*fn_bind)(const script_handle&, int, int&, int&, int, const coid::token&, v8::Handle<v8::Context>*);
+        typedef iref<ns::main> (*fn_bind)(const ::js::script_handle&, int, int&, int&, int, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create_wp@creator.js";
 

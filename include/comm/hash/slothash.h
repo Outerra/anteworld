@@ -17,7 +17,7 @@
 *
 * The Initial Developer of the Original Code is
 * Outerra.
-* Portions created by the Initial Developer are Copyright (C) 2017
+* Portions created by the Initial Developer are Copyright (C) 2017-2018
 * the Initial Developer. All Rights Reserved.
 *
 * Contributor(s):
@@ -196,12 +196,13 @@ public:
     template<class...Ps>
     T* push_construct(Ps&&... ps) {
         uints id;
-        T* p = base::add_uninit(nullptr, &id);
+        bool isnew;
+        T* p = base::add_uninit(&isnew, &id);
 
-        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, true, std::forward<Ps>(ps)...);
+        base::construct_object(p, !isnew, std::forward<Ps>(ps)...);
 
         //if this fails, multikey is off and same key item exists
-        T* r = insert_value_(p, uint(id));
+        T* r = insert_value_(p, down_cast<uint>(id));
         if (!r)
             base::del_item(id);
 
@@ -221,7 +222,7 @@ public:
             //destroy old hash links
             destroy_value_(id);
 
-        slotalloc_detail::constructor<base::POOL, T>::construct_object(p, isnew, std::forward<Ps>(ps)...);
+        base::construct_object(p, !isnew, std::forward<Ps>(ps)...);
 
         return insert_value_(p, id);
     }
@@ -235,7 +236,7 @@ public:
         bool isnew;
         T* p = insert_value_slot_uninit_(key, &isnew);
         if (p)
-            slotalloc_detail::constructor<base::POOL, T>::copy_object(p, isnew, val);
+            base::copy_object(p, !isnew, val);
         return p;
     }
 
@@ -247,7 +248,7 @@ public:
         bool isnew;
         T* p = insert_value_slot_uninit_(key, &isnew);
         if (p)
-            slotalloc_detail::constructor<base::POOL, T>::copy_object(p, isnew, std::forward<T>(val));
+            base::copy_object(p, !isnew, std::forward<T>(val));
         return p;
     }
 
@@ -477,11 +478,12 @@ protected:
         {
             //reindex objects
             //clear both buckets index and sequaray
-            uint nb = 1 << (64 - shift);
+            uint nb = 1U << (64 - shift);
             _buckets.calloc(nb, true);
 
             dynarray<uint>& st = seqtable();
-            ::memset(st.ptr(), 0xff, st.byte_size());
+            uints na = stdmax(base::preallocated_count(), nb);    //make sure seqtable won't get rebased
+            st.calloc(na, true);
 
             _shift = shift;
 

@@ -48,10 +48,10 @@ COID_NAMESPACE_BEGIN
 
 
 ////////////////////////////////////////////////////////////////////////////////
-template<class KEYSTORE, class KEYLOOKUP=KEYSTORE>
-struct equal_to	: public std::binary_function<KEYSTORE, KEYLOOKUP, bool>
+template<class KEYSTORE, class KEYLOOKUP = KEYSTORE>
+struct equal_to
 {
-	bool operator()(const KEYSTORE& _Left, const KEYLOOKUP& _Right) const
+    bool operator()(const KEYSTORE& _Left, const KEYLOOKUP& _Right) const
     {
         return (_Left == _Right);
     }
@@ -61,62 +61,62 @@ struct equal_to	: public std::binary_function<KEYSTORE, KEYLOOKUP, bool>
 //uint hash(const KEY& key);
 
 ////////////////////////////////////////////////////////////////////////////////
-template<class KEY, bool INSENSITIVE=false> struct hasher
+template<class KEY, bool INSENSITIVE = false> struct hasher
 {
     typedef KEY     key_type;
 
     template<class FKEY>
-    uint operator()(const FKEY& k) const {
+    auto operator()(const FKEY& k) const -> decltype(hash(k)) {
         return hash(k);
     }
 };
 
 ///FNV-1a hash
-inline uint __coid_hash_c_string( const char* s, uint seed = 2166136261u )
+inline uint __coid_hash_c_string(const char* s, uint seed = 2166136261u)
 {
-    for( ; *s; ++s)
-        seed = (seed ^ *s)*16777619u;
+    for (; *s; ++s)
+        seed = (seed ^ *s) * 16777619u;
 
     return seed;
 }
 
 
-inline uint __coid_hash_string( const char* s, uints n, uint seed = 2166136261u )
+inline uint __coid_hash_string(const char* s, uints n, uint seed = 2166136261u)
 {
     //for( ; n>0; ++s,--n)
     //    seed = (seed ^ *s)*16777619u;
 
     //unrolled
-    for(uints i=0; i < (n&-2); i+=2) {
-        seed = (seed ^ s[i])   * 16777619u;
-        seed = (seed ^ s[i+1]) * 16777619u;
+    for (uints i = 0; i < (n&-2); i += 2) {
+        seed = (seed ^ s[i]) * 16777619u;
+        seed = (seed ^ s[i + 1]) * 16777619u;
     }
-    if(n&1)
-        seed = (seed ^ s[n-1])*16777619u;
+    if (n & 1)
+        seed = (seed ^ s[n - 1]) * 16777619u;
 
     return seed;
 }
 
-inline uint __coid_hash_c_string_insensitive( const char* s, uint seed = 2166136261u )
+inline uint __coid_hash_c_string_insensitive(const char* s, uint seed = 2166136261u)
 {
-    for( ; *s; ++s)
-        seed = (seed ^ ::tolower(*s))*16777619u;
+    for (; *s; ++s)
+        seed = (seed ^ ::tolower(*s)) * 16777619u;
 
     return seed;
 }
 
 
-inline uint __coid_hash_string_insensitive( const char* s, uints n, uint seed = 2166136261u )
+inline uint __coid_hash_string_insensitive(const char* s, uints n, uint seed = 2166136261u)
 {
-    for( ; n>0; ++s,--n)
-        seed = (seed ^ ::tolower(*s))*16777619u;
+    for (; n > 0; ++s, --n)
+        seed = (seed ^ ::tolower(*s)) * 16777619u;
 
     return seed;
 }
 
-inline uint __coid_hash_string( char c, uint seed = 2166136261u )
+inline uint __coid_hash_string(char c, uint seed = 2166136261u)
 {
-    return (seed ^ c)*16777619u;
+    return (seed ^ c) * 16777619u;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +142,8 @@ template<bool INSENSITIVE> struct hasher<const char*, INSENSITIVE>
 
 #define DIRECT_HASH_FUNC(TYPE) template<> struct hasher<TYPE> {\
     typedef TYPE key_type;\
-    uint operator()(TYPE x) const { return uint(16777619u * (uints)x); } }
+    typedef typename std::conditional<(sizeof(TYPE) > sizeof(uint)), uint64, uint>::type index_type;\
+    index_type operator()(TYPE x) const { return (index_type)x; } }
 
 DIRECT_HASH_FUNC(bool);
 DIRECT_HASH_FUNC(uint8);
@@ -155,15 +156,7 @@ DIRECT_HASH_FUNC(int64);
 DIRECT_HASH_FUNC(uint64);
 DIRECT_HASH_FUNC(char);
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-DIRECT_HASH_FUNC(ints);
-DIRECT_HASH_FUNC(uints);
-# else //SYSTYPE_64
-DIRECT_HASH_FUNC(int);
-DIRECT_HASH_FUNC(uint);
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
 DIRECT_HASH_FUNC(long);
 DIRECT_HASH_FUNC(ulong);
 #endif
@@ -172,28 +165,28 @@ DIRECT_HASH_FUNC(ulong);
 //String literal hashing
 
 template<size_t I>
-inline coid_constexpr uint literal_hash( const char* str ) {
-    return (literal_hash<I-1>(str) ^ str[I-1]) * 16777619ULL;
+inline coid_constexpr uint literal_hash(const char* str) {
+    return (literal_hash<I - 1>(str) ^ str[I - 1]) * 16777619ULL;
 }
- 
+
 template<>
-inline coid_constexpr uint literal_hash<0>( const char* str ) {
+inline coid_constexpr uint literal_hash<0>(const char* str) {
     return 2166136261U;
 }
 
 template<size_t N>
-inline coid_constexpr uint literal_hash( const char (&str)[N] ) {
-    return literal_hash<N-1>(str);
+inline coid_constexpr uint literal_hash(const char(&str)[N]) {
+    return literal_hash<N - 1>(str);
 }
 
 template<size_t N>
-inline coid_constexpr uint literal_hash( char (&str)[N] ) {
-    return literal_hash<N-1>(str);
+inline coid_constexpr uint literal_hash(char(&str)[N]) {
+    return literal_hash<N - 1>(str);
 }
 
-uint string_hash( const token& tok );
+uint string_hash(const token& tok);
 
-inline uint string_hash( const char* czstr ) {
+inline uint string_hash(const char* czstr) {
     return __coid_hash_c_string(czstr);
 }
 

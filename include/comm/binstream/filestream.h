@@ -65,7 +65,7 @@ class filestream : public binstream
 {
 public:
 
-    COIDNEWDELETE("coid::filestream");
+    COIDNEWDELETE(filestream);
 
     virtual uint binstream_attributes( bool in0out1 ) const override
     {

@@ -239,7 +239,7 @@ protected:
 
 	typedef policy_shared<T> this_t;
 
-    COIDNEWDELETE("policy_shared");
+    COIDNEWDELETE(policy_shared);
 
 	virtual ~policy_shared() { if( _obj ) delete _obj; _obj=0; }
 

@@ -36,11 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#include <sys/types.h>
-#include <memory.h>
-//#include <sys/cdefs.h>
-//#include <sys/time.h>
-//#include <sys/systm.h>
+#include <cstring>
 
 #include "sha1.h"
 #include "../net_ul.h"

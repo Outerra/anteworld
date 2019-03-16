@@ -53,7 +53,7 @@
 
 #include "namespace.h"
 
-#include <memory.h> // to allow <,> comparisons
+#include <cstring> // to allow <,> comparisons
 
 ////////////////////////////////////////////////////////////////////////////////
 //						Configuration options

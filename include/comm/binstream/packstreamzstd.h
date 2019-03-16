@@ -106,7 +106,9 @@ public:
         if (len == 0)
             return 0;
 
-        uints size = _zstd.pack_stream(p, len, *_out);
+        ints size = _zstd.pack_stream(p, len, *_out);
+        if (size < 0)
+            return ersFAILED;
         len -= size;
         
         return 0;
@@ -118,7 +120,9 @@ public:
         if (len == 0)
             return 0;
 
-        uints size = _zstd.unpack_stream(*_in, p, len);
+        ints size = _zstd.unpack_stream(*_in, p, len);
+        if (size < 0)
+            return ersFAILED;
         len -= size;
 
         return 0;

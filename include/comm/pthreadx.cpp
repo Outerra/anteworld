@@ -92,6 +92,23 @@ thread thread::create_new( fnc_entry fn, void* arg, void* context, const token& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void thread::set_affinity_mask(uint64 mask)
+{
+#ifdef SYSTYPE_WIN
+    SetThreadAffinityMask(GetCurrentThread(), mask);
+#else
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    for (uint i = 0; i < 64; ++i) {
+        if (mask & ((uint64)1 << i)) {
+            CPU_SET(i, &set);
+        }
+    }
+    pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 thread thread::create_new( const std::function<void*()>& fn, void* context, const token& name )
 {
     return SINGLETON(thread_manager).thread_create(fn, context, name);

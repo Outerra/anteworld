@@ -181,15 +181,7 @@ public:
 
     binstream& operator << (char x)             { return xwrite(&x, bstype::t_type<char>() ); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    binstream& operator << (ints x )            { return xwrite(&x, bstype::t_type<int>() ); }
-    binstream& operator << (uints x )           { return xwrite(&x, bstype::t_type<uint>() ); }
-# else //SYSTYPE_64
-    binstream& operator << (int x )             { return xwrite(&x, bstype::t_type<int>() ); }
-    binstream& operator << (uint x )            { return xwrite(&x, bstype::t_type<uint>() ); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     binstream& operator << (long x )            { return xwrite(&x, bstype::t_type<long>() ); }
     binstream& operator << (ulong x )           { return xwrite(&x, bstype::t_type<ulong>() ); }
 #endif
@@ -275,15 +267,7 @@ public:
 
     binstream& operator >> (char& x )           { return xread(&x, bstype::t_type<char>() ); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    binstream& operator >> (ints& x )           { return xread(&x, bstype::t_type<int>() ); }
-    binstream& operator >> (uints& x )          { return xread(&x, bstype::t_type<uint>() ); }
-# else //SYSTYPE_64
-    binstream& operator >> (int& x )            { return xread(&x, bstype::t_type<int>() ); }
-    binstream& operator >> (uint& x )           { return xread(&x, bstype::t_type<uint>() ); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     binstream& operator >> (long& x )           { return xread(&x, bstype::t_type<long>() ); }
     binstream& operator >> (ulong& x )          { return xread(&x, bstype::t_type<ulong>() ); }
 #endif

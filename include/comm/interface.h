@@ -70,8 +70,9 @@ public:
 
     typedef ref<logmsg>(*fn_log_t)(log::type, const tokenhash&, const void*);
     typedef bool(*fn_acc_t)(const token&);
+    typedef logger*(*fn_getlog_t)();
 
-    static void setup(const token& path, fn_log_t log, fn_acc_t access);
+    static void setup(const token& path, fn_log_t log, fn_acc_t access, fn_getlog_t getlogfn);
 
     typedef iref<intergen_interface>(*wrapper_fn)(void*, intergen_interface*);
 
@@ -126,6 +127,7 @@ public:
     static dynarray<creator>& find_interface_creators(const regex& str, dynarray<creator>& dst);
 
     static ref<logmsg> canlog(log::type type, const tokenhash& hash, const void* inst = 0);
+    static logger* getlog();
 
 #ifdef COID_VARIADIC_TEMPLATES
 

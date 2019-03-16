@@ -41,7 +41,7 @@
 #include "namespace.h"
 
 #include "comm.h"
-#include <time.h>
+#include <ctime>
 
 COID_NAMESPACE_BEGIN
 

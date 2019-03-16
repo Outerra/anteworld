@@ -49,7 +49,7 @@ COID_NAMESPACE_BEGIN
 ///Packer/unpacker for ZSTD
 struct packer_zstd
 {
-    COIDNEWDELETE("packer_zstd");
+    COIDNEWDELETE(packer_zstd);
 
     packer_zstd() : _cstream(0), _dstream(0), _offset(0), _eof(false)
     {}
@@ -288,12 +288,14 @@ struct packer_zstd
 
 protected:
 
+    struct zstd {};
+
     static void* _alloc(void* opaque, size_t size) {
-        return tracked_alloc("zstd", size);
+        return tracked_alloc(&typeid(zstd), size);
     }
 
     static void _free(void* opaque, void* address) {
-        return tracked_free("zstd", address);
+        return tracked_free(&typeid(zstd), address);
     }
 
 

@@ -569,7 +569,7 @@ void abort_routine();
     #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#include <tchar.h>
+//#include <tchar.h>
 #define HAVE_MMAP 1
 #define HAVE_MORECORE 0
 #define LACKS_UNISTD_H

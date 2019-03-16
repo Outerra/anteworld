@@ -155,10 +155,10 @@ public:
         else if (!meta_insert(typeid(T).name(), sizeof(T), false)) {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -186,10 +186,10 @@ public:
             {
                 fn();
 
-                _last_var = smap().pop();
+                _last_var = _smap->pop();
                 md = _last_var->desc;
 
-                _current_var = smap().last();
+                _current_var = _smap->last();
 
                 meta_exit();
             }
@@ -230,10 +230,10 @@ public:
             {
                 fnrefl();
 
-                _last_var = smap().pop();
+                _last_var = _smap->pop();
                 md = _last_var->desc;
 
-                _current_var = smap().last();
+                _current_var = _smap->last();
 
                 meta_exit();
             }
@@ -244,7 +244,7 @@ public:
             MetaDesc::Var var;
             var.desc = &desc;
             _current_var = &var;
-            
+
             fnstream();
 
             md->streaming_type = desc.children[0].desc;
@@ -274,10 +274,10 @@ public:
         {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -301,10 +301,10 @@ public:
         {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -375,7 +375,7 @@ public:
         return used;
     }
 
-    ///Define a fixed size array member variable 
+    ///Define a fixed size array member variable
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     template<typename T, size_t N>
@@ -761,6 +761,7 @@ public:
 
         _dometa = false;
         _fmtstreamwr = _fmtstreamrd = 0;
+        _smap = 0;
     }
 
     ///Bind the same stream to both input and output
@@ -924,7 +925,7 @@ public:
         return *this;
     }
 
-    ///Used in metastream operators to define primitive types 
+    ///Used in metastream operators to define primitive types
     template<class T>
     metastream& meta_base_type(const char* type_name, T& v)
     {
@@ -1281,6 +1282,8 @@ public:
         _cur_variable_offset = 0;
         _rvarname.reset();
 
+        smap_init();
+
         _err.reset();
     }
 
@@ -1333,15 +1336,7 @@ public:
 
     metastream& operator || (char&a) { return meta_base_type("char", a); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    metastream& operator || (ints&a) { return meta_base_type("int", a); }
-    metastream& operator || (uints&a) { return meta_base_type("uint", a); }
-# else //SYSTYPE_64
-    metastream& operator || (int&a) { return meta_base_type("int", a); }
-    metastream& operator || (uint&a) { return meta_base_type("uint", a); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     metastream& operator || (long&a) { return meta_base_type("long", a); }
     metastream& operator || (ulong&a) { return meta_base_type("ulong", a); }
 #endif
@@ -1490,7 +1485,7 @@ protected:
 
     MetaDesc* meta_find(const token& name)//, bool* is_plain = 0)
     {
-        MetaDesc* d = smap().find(name);
+        MetaDesc* d = _smap->find(name);
         if (!d)
             return d;
 
@@ -1508,8 +1503,7 @@ protected:
         if (md)
             return md;
 
-        auto& sm = smap();
-        md = sm.create(
+        md = _smap->create(
             name,
             plain ? type::plain_compound() : type(),
             _cur_stream_fn);
@@ -1517,7 +1511,7 @@ protected:
         md->type_size = size;
 
         _current_var = meta_fill_parent_variable(md);
-        sm.push(_current_var);
+        _smap->push(_current_var);
 
         return 0;
     }
@@ -1526,7 +1520,7 @@ public:
 
     template<class T>
     static const MetaDesc* meta_find_type() {
-        return smap().find(typeid(T).name());
+        return smap_tls().find(typeid(T).name());
     }
 
     template<class T>
@@ -1731,16 +1725,15 @@ public:
         DASSERT(!embedded || n != UMAXS);
         DASSERT(n != 0);
 
-        auto& sm = smap();
-        MetaDesc* d = sm.find(type_name);
+        MetaDesc* d = _smap->find(type_name);
 
         if (!d) {
-            d = sm.create(type_name, bstype::kind(), _cur_stream_fn);
+            d = _smap->create(type_name, bstype::kind(), _cur_stream_fn);
             d->array_size = n;
             d->type_size = type_size;
             d->is_array_type = true;
             d->embedded = embedded;
-            d->raw_pointer_offset = assert_cast<int>(raw_pointer_offset);
+            d->raw_pointer_offset = down_cast<int>(raw_pointer_offset);
             d->fnptr = fnptr;
             d->fncount = fncount;
             d->fnpush = fnpush;
@@ -1748,7 +1741,7 @@ public:
             d->streaming_type = d;
 
             _current_var = meta_fill_parent_variable(d);
-            sm.push(_current_var);
+            _smap->push(_current_var);
 
             return d;
         }
@@ -1761,7 +1754,7 @@ public:
             meta_exit();
         }
 
-        //MetaDesc* d = smap().create_array_desc(n, _cur_stream_fn);
+        //MetaDesc* d = _smap->create_array_desc(n, _cur_stream_fn);
         return 0;
     }
 
@@ -1818,7 +1811,7 @@ public:
         type t = bstype::t_type<T>();
         DASSERT(t.is_primitive());
 
-        MetaDesc* d = smap().find_or_create(type_name, t, _cur_stream_fn);
+        MetaDesc* d = _smap->find_or_create(type_name, t, _cur_stream_fn);
 
         _last_var = meta_fill_parent_variable(d);
         d->streaming_type = d;
@@ -1830,11 +1823,9 @@ public:
     ///Get back from multiple array decl around current type
     void meta_exit()
     {
-        auto& sm = smap();
-
         while (_current_var && _current_var->desc->is_array()) {
-            _last_var = sm.pop();
-            _current_var = sm.last();
+            _last_var = _smap->pop();
+            _current_var = _smap->last();
         }
     }
 
@@ -1858,9 +1849,9 @@ public:
         return mtd;
     }
 
-    const MetaDesc* get_type_info(const token& type) const { return smap().find(type); }
+    const MetaDesc* get_type_info(const token& type) const { return _smap->find(type); }
 
-    void get_type_info_all(dynarray<const MetaDesc*>& dst) { return smap().get_all_types(dst); }
+    void get_type_info_all(dynarray<const MetaDesc*>& dst) { return _smap->get_all_types(dst); }
 
 private:
 
@@ -1899,7 +1890,7 @@ private:
 
         MetaDesc::Var* last() const { MetaDesc::Var** p = _stack.last();  return p ? *p : 0; }
         MetaDesc::Var* pop() { MetaDesc::Var* p;  return _stack.pop(p) ? p : 0; }
-        
+
         void push(MetaDesc::Var* v) {
             _stack.push(v);
         }
@@ -1915,7 +1906,11 @@ private:
         void* pimpl;
     };
 
-    static structure_map& smap() {
+    void smap_init() {
+        _smap = &smap_tls();
+    }
+
+    static structure_map& smap_tls() {
         THREAD_LOCAL_SINGLETON_DEF(structure_map) _map;
         return *_map;
     }
@@ -1928,7 +1923,6 @@ private:
     MetaDesc::Var _root;
     MetaDesc::Var* _current_var;
     MetaDesc::Var* _last_var;
-    //MetaDesc* _streamdesc = 0;
 
     token _cur_variable_name;
     MetaDesc::stream_func _cur_stream_fn;
@@ -2009,7 +2003,7 @@ private:
             return r;
         }
 
-        ///Set address (offset) at the current offset 
+        ///Set address (offset) at the current offset
         void set_addr(uints v) {
             DASSERT(v % sizeof(uints) == 0);
             *(uints*)(buf->ptr() + offs) = v - offs;
@@ -2156,6 +2150,8 @@ private:
     MetaDesc::Var* _cachedefval;        //< variable whose default value is currently being read
     MetaDesc::Var* _cachevar;           //< variable being currently cached from input
     MetaDesc::Var* _cacheskip;          //< set if the variable was not present in input (can be filled with default) or has been already cached
+
+    structure_map* _smap;
 
 private:
 
@@ -2408,7 +2404,7 @@ protected:
 
 
     ///This is called from internal binstream when a primitive data or control token is
-    /// written. Possible type can be a primitive one, T_STRUCTBGN or T_STRUCTEND, 
+    /// written. Possible type can be a primitive one, T_STRUCTBGN or T_STRUCTEND,
     /// or array cotrol tokens
     opcd data_write(const void* p, type t)
     {

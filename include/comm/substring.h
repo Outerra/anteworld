@@ -38,7 +38,8 @@
 #include "namespace.h"
 #include "commassert.h"
 
-#include <ctype.h>
+#include <cctype>
+#include <cstring>
 
 COID_NAMESPACE_BEGIN
 
@@ -58,7 +59,7 @@ class substring
     uints _len;
 public:
 
-    substring()                                          : _shf(0) { set(0, false); }
+    substring()                                          : _shf(0), _icase(0) { set(0, false); }
     substring( const char* subs, uints len, bool icase ) : _shf(0) { set(subs, len, icase); }
     substring( const token& tok, bool icase )            : _shf(0) { set(tok, icase); }
     substring( char k, bool icase )                      : _shf(0) { set(k, icase); }

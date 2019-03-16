@@ -355,7 +355,7 @@ Reinst::OP regex_compiler::bldcclass(bool icase)
                 if(p[1] > np[1])
                     np[1] = p[1];
             } else {
-                ucs4* np = _yyclassp->spans.add(2);
+                np = _yyclassp->spans.add(2);
                 np[0] = p[0];
                 np[1] = p[1];
             }

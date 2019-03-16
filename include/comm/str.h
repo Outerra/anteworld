@@ -44,9 +44,8 @@
 #include "binstream/bstype.h"
 #include "hash/hashfunc.h"
 
- //#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstring>
+#include <ctime>
 #include <functional>
 
 #include "token.h"
@@ -65,7 +64,7 @@ class charstr
 
 public:
 
-    COIDNEWDELETE("charstr");
+    COIDNEWDELETE(charstr);
 
     struct output_iterator : std::iterator<std::output_iterator_tag, char>
     {
@@ -222,18 +221,10 @@ public:
     explicit charstr(int64 i) { append_num(10, i); }
     explicit charstr(uint64 i) { append_num(10, i); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    explicit charstr(ints i) { append_num(10, (ints)i); }
-    explicit charstr(uints i) { append_num(10, (uints)i); }
-# else //SYSTYPE_64
-    explicit charstr(int i) { append_num(10, i); }
-    explicit charstr(uint i) { append_num(10, i); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     explicit charstr(long i) { append_num(10, (ints)i); }
     explicit charstr(ulong i) { append_num(10, (uints)i); }
-#endif //SYSTYPE_WIN
+#endif
 
     explicit charstr(float d) { operator += (d); }
     explicit charstr(double d) { operator += (d); }
@@ -452,18 +443,10 @@ public:
     charstr& operator = (int64 i) { reset(); append_num(10, i);       return *this; }
     charstr& operator = (uint64 i) { reset(); append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator = (ints i) { reset(); append_num(10, (ints)i);  return *this; }
-    charstr& operator = (uints i) { reset(); append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator = (int i) { reset(); append_num(10, i); return *this; }
-    charstr& operator = (uint i) { reset(); append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator = (long i) { reset(); append_num(10, (ints)i);  return *this; }
     charstr& operator = (ulong i) { reset(); append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator = (float d) { reset(); return operator += (d); }
     charstr& operator = (double d) { reset(); return operator += (d); }
@@ -550,18 +533,10 @@ public:
     charstr& operator += (int64 i) { append_num(10, i);       return *this; }
     charstr& operator += (uint64 i) { append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator += (ints i) { append_num(10, (ints)i);  return *this; }
-    charstr& operator += (uints i) { append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator += (int i) { append_num(10, i); return *this; }
-    charstr& operator += (uint i) { append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator += (long i) { append_num(10, (ints)i);  return *this; }
     charstr& operator += (ulong i) { append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator += (float d) { append_float(d, 6); return *this; }
     charstr& operator += (double d) { append_float(d, 10); return *this; }
@@ -606,18 +581,10 @@ public:
     charstr& operator << (int64 i) { append_num(10, i);       return *this; }
     charstr& operator << (uint64 i) { append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator << (ints i) { append_num(10, (ints)i);  return *this; }
-    charstr& operator << (uints i) { append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator << (int i) { append_num(10, i); return *this; }
-    charstr& operator << (uint i) { append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator << (long i) { append_num(10, (ints)i);  return *this; }
     charstr& operator << (ulong i) { append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator << (float d) { return operator += (d); }
     charstr& operator << (double d) { return operator += (d); }
@@ -1343,6 +1310,22 @@ public:
 
         if(p - ps)
             add_from(ps, p - ps);
+
+        return *this;
+    }
+
+    ///Replace all non-alphanumeric characters
+    charstr& replace_non_alphanum(char replacement)
+    {
+        for (char* p = (char*) ptr(), *pe = (char*) ptre(); p < pe; ++p) {
+            uchar c = *p;
+            
+            if ((c >= 'A') && (c <= 'Z') || (c >= 'a') && (c <= 'z') || (c >= '0') && (c <= '9')) {
+                continue;
+            }
+
+            *p = replacement;
+        }
 
         return *this;
     }
@@ -2362,7 +2345,7 @@ template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
 {
     typedef charstr key_type;
 
-    size_t operator() (const charstr& str) const
+    uint operator() (const charstr& str) const
     {
         return INSENSITIVE
             ? __coid_hash_string(str.ptr(), str.len())
@@ -2372,7 +2355,7 @@ template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
 
 ///Equality operator for hashes with token keys
 template<>
-struct equal_to<charstr, token> : public std::binary_function<charstr, token, bool>
+struct equal_to<charstr, token>
 {
     typedef token key_type;
 
@@ -2383,7 +2366,7 @@ struct equal_to<charstr, token> : public std::binary_function<charstr, token, bo
 };
 
 ///Case-insensitive equality operators for hashes with token keys
-struct equal_to_insensitive : public std::binary_function<charstr, token, bool>
+struct equal_to_insensitive
 {
     typedef token key_type;
 

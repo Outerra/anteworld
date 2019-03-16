@@ -36,7 +36,7 @@
 * ***** END LICENSE BLOCK ***** */
 
 #include "timer.h"
-#include <time.h>
+#include <ctime>
 
 #ifdef SYSTYPE_MSVC
 

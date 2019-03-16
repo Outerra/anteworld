@@ -94,18 +94,10 @@ struct exception : public std::exception
     exception& operator << (int64 i)            { S2D(); _dtext.append_num(10,i);       return *this; }
     exception& operator << (uint64 i)           { S2D(); _dtext.append_num(10,i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    exception& operator << (ints i)             { S2D(); _dtext.append_num(10,(ints)i);  return *this; }
-    exception& operator << (uints i)            { S2D(); _dtext.append_num(10,(uints)i); return *this; }
-# else //SYSTYPE_64
-    exception& operator << (int i)              { S2D(); _dtext.append_num(10,i); return *this; }
-    exception& operator << (uint i)             { S2D(); _dtext.append_num(10,i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     exception& operator << (long i)             { S2D(); _dtext.append_num(10,(ints)i);  return *this; }
     exception& operator << (ulong i)            { S2D(); _dtext.append_num(10,(uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     exception& operator << (double d)           { S2D(); _dtext += (d); return *this; }
 

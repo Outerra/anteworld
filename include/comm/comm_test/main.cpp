@@ -3,6 +3,7 @@
 #include "../radix.h"
 #include "../trait.h"
 #include "../hash/slothash.h"
+#include "../function.h"
 //#include "ig_test.h"
 
 namespace coid {
@@ -45,11 +46,94 @@ struct value {
     operator token() const { return key; }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+void lambda_test()
+{
+    dynarray<value> data;
+    data.push_construct("abc");
+    data.push_construct("def");
+
+    data.for_each([](value& v) {
+        v.key = "abc";
+    });
+
+    data.for_each([](const value& v) {
+        charstr tmp = v.key;
+    });
+
+    data.for_each([](value& v, uints id) {
+        v.key = "abc";
+        v.key += id;
+    });
+
+    data.for_each([](const value& v, uints id) {
+        charstr tmp = v.key;
+        tmp += id;
+    });
+}
+
+void lambda_slotalloc_test()
+{
+    slotalloc_tracking<value> data;
+    data.push_construct("abc");
+    data.push_construct("def");
+
+    value* p1 = data.find_if([](const value& v) {
+        return v.key == "abc";
+    });
+    DASSERT(p1->key == "abc");
+
+    value* p2 = data.find_if([](const value& v, uints id) {
+        return v.key == "def";
+    });
+    DASSERT(p2->key == "def");
+
+
+    data.for_each([](value& v) {
+        v.key = "abc";
+    });
+
+    data.for_each([](const value& v) {
+        charstr tmp = v.key;
+    });
+
+    data.for_each([](value& v, uints id) {
+        v.key = "abc";
+        v.key += id;
+    });
+
+    data.for_each([](const value& v, uints id) {
+        charstr tmp = v.key;
+        tmp += id;
+    });
+
+    //with modification tracking
+
+    data.for_each([](value& v) -> bool {
+        v.key = "abc";
+        return true;
+    });
+
+    data.for_each([](value& v, uints id) -> bool {
+        v.key = "abc";
+        v.key += id;
+        return true;
+    });
+}
+
+void fntest(void(*pfn)(charstr&))
+{
+    function<void(charstr&)> fn = pfn;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char* argv[] )
 {
+    fntest(0);
+
     std_test();
+
+    lambda_test();
 
     test_job_queue();
 
@@ -100,7 +184,7 @@ int main( int argc, char* argv[] )
         static_assert( std::is_const<std::remove_reference_t<taxx::arg<0>>>::value && taxx::arity::value == 1, "fail" );
         static_assert( std::is_const<std::remove_reference_t<taxi::arg<0>>>::value && taxi::arity::value > 1, "fail" );
 
-
+#ifdef COID_CONSTEXPR_IF
         slothash<value, token> hash(32);
 
         for (int i = 0; i < 32; ++i) {
@@ -112,6 +196,7 @@ int main( int argc, char* argv[] )
         hash.push_construct("bar");
 
         slotalloc_tracking<value> ring;
+#endif
     }
 
     {

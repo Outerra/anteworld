@@ -23,11 +23,13 @@ namespace coid {
         public:\
         static bool write( v8::Handle<v8::Value> src, T##4& r ) {\
             if(!src->IsObject()) return false;\
-            v8::Local<v8::Object> v = src->ToObject();\
-            v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value());\
-            v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value());\
-            v8::Handle<v8::Value> vz = v->Get(v8::symbol("z")); r.z = vz->IsUndefined() ? T(0) : T(vz->V8T##Value());\
-            v8::Handle<v8::Value> vw = v->Get(v8::symbol("w")); r.w = vw->IsUndefined() ? T(0) : T(vw->V8T##Value());\
+            V8_DECL_ISO(iso);\
+            v8::Local<v8::Object> v = src->ToObject(V8_OPTARG1(iso));\
+            v8::Local<v8::Context> ctx V8_CUR_CTX_INIT(iso);\
+            v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vz = v->Get(v8::symbol("z")); r.z = vz->IsUndefined() ? T(0) : T(vz->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vw = v->Get(v8::symbol("w")); r.w = vw->IsUndefined() ? T(0) : T(vw->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
             return true;\
         }\
     };\
@@ -45,10 +47,12 @@ namespace coid {
         public:\
         static bool write( v8::Handle<v8::Value> src, T##3& r ) {\
             if(!src->IsObject()) return false;\
-            v8::Local<v8::Object> v = src->ToObject();\
-            v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value());\
-            v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value());\
-            v8::Handle<v8::Value> vz = v->Get(v8::symbol("z")); r.z = vz->IsUndefined() ? T(0) : T(vz->V8T##Value());\
+            V8_DECL_ISO(iso);\
+            v8::Local<v8::Object> v = src->ToObject(V8_OPTARG1(iso));\
+            v8::Local<v8::Context> ctx V8_CUR_CTX_INIT(iso);\
+            v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vz = v->Get(v8::symbol("z")); r.z = vz->IsUndefined() ? T(0) : T(vz->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
             return true;\
         }\
     };\
@@ -63,14 +67,16 @@ namespace coid {
     };\
     template<> class from_v8<T##2> {\
         public:\
-    static bool write( v8::Handle<v8::Value> src, T##2& r ) {\
-        if(!src->IsObject()) return false;\
-        v8::Local<v8::Object> v = src->ToObject();\
-        v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value());\
-        v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value());\
-        return true;\
-    }\
-};
+        static bool write( v8::Handle<v8::Value> src, T##2& r ) {\
+            if(!src->IsObject()) return false;\
+            V8_DECL_ISO(iso);\
+            v8::Local<v8::Object> v = src->ToObject(V8_OPTARG1(iso));\
+            v8::Local<v8::Context> ctx V8_CUR_CTX_INIT(iso);\
+            v8::Handle<v8::Value> vx = v->Get(v8::symbol("x")); r.x = vx->IsUndefined() ? T(0) : T(vx->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            v8::Handle<v8::Value> vy = v->Get(v8::symbol("y")); r.y = vy->IsUndefined() ? T(0) : T(vy->V8T##Value(V8_OPTARG1(ctx)) V8_FROMJUST);\
+            return true;\
+        }\
+    };
 
 
 V8_STREAMER_VEC(double, Number, double);

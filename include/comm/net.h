@@ -43,7 +43,7 @@
 #include "net_ul.h"
 #include "commtypes.h"
 #include "binstream/binstream.h"
-#include <errno.h>
+#include <cerrno>
 
 #include "str.h"
 

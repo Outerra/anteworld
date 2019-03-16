@@ -122,6 +122,8 @@ public:
     ///Spawn new thread, returning the thread object
     static thread create_new( fnc_entry f, void* arg, void* context=0, const token& name = token() );
 
+    // sets a processor affinity mask for current thread
+    static void set_affinity_mask(uint64 mask);
 
     //@{ Static methods dealing with the thread currently running
 

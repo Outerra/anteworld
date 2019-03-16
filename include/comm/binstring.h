@@ -57,7 +57,7 @@ class binstring
 {
 public:
 
-    COIDNEWDELETE("binstring");
+    COIDNEWDELETE(binstring);
 
     binstring()
         : _offset(0), _packing(UMAX32)

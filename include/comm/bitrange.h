@@ -179,19 +179,6 @@ inline uint8 population_count(uint16 val) { return uint8(__popcnt16(val)); }
 inline uint8 population_count(uint32 val) { return uint8(__popcnt(val)); }
 inline uint8 population_count(uint64 val) { return uint8(__popcnt64(val)); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-inline uint8 population_count(ints val) { return population_count(uint32(val)); }
-inline uint8 population_count(uints val) { return population_count(uint32(val)); }
-# else //SYSTYPE_64
-inline uint8 population_count(int val) { return population_count(uint32(val)); }
-inline uint8 population_count(uint val) { return population_count(uint32(val)); }
-# endif
-#elif defined(SYSTYPE_32)
-inline uint8 population_count(long val) { return population_count(uint32(val)); }
-inline uint8 population_count(ulong val) { return population_count(uint32(val)); }
-#endif //SYSTYPE_WIN
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1800

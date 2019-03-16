@@ -42,44 +42,69 @@
 #include "_malloc.h"
 #include <algorithm>
 #include <cstddef>
+#include <typeinfo>
 
+namespace coid {
 
 #if defined(_DEBUG) || COID_USE_MEMTRACK
 
-#define MEMTRACK_ALLOC(name, size) coid::memtrack_alloc(name, size)
-#define MEMTRACK_FREE(name, size) coid::memtrack_free(name, size)
+//fwd
+void memtrack_alloc(const std::type_info* tracking, size_t size);
+void memtrack_free(const std::type_info* tracking, size_t size);
+
+template <class T>
+inline void dbg_memtrack_alloc(size_t size) { coid::memtrack_alloc(&typeid(T), size); }
+
+template <class T>
+inline void dbg_memtrack_free(size_t size) { coid::memtrack_free(&typeid(T), size); }
+
+inline void dbg_memtrack_alloc(const std::type_info* tracking, size_t size) {
+    coid::memtrack_alloc(tracking, size);
+}
+
+inline void dbg_memtrack_free(const std::type_info* tracking, size_t size) {
+    coid::memtrack_free(tracking, size);
+}
 
 #define MEMTRACK_ENABLED
 
 #else
 
-#define MEMTRACK_ALLOC(name, size)
-#define MEMTRACK_FREE(name, size)
+template <class T>
+inline void dbg_memtrack_alloc(size_t size) {}
+
+template <class T>
+inline void dbg_memtrack_free(size_t size) {}
+
+inline void dbg_memtrack_alloc(const std::type_info* tracking, size_t size) {}
+inline void dbg_memtrack_free(const std::type_info* tracking, size_t size) {}
 
 #endif
 
+} //namespace coid
 
-#define COIDNEWDELETE(name) \
+
+#define COIDNEWDELETE(T) \
     void* operator new( size_t size ) { \
         void* p=::dlmalloc(size); \
         if(p==0) throw std::bad_alloc(); \
-        MEMTRACK_ALLOC(name, dlmalloc_usable_size(p)); \
+        coid::dbg_memtrack_alloc<T>(dlmalloc_usable_size(p)); \
         return p; } \
     void* operator new( size_t, void* p ) { return p; } \
     void operator delete(void* p) { \
-        MEMTRACK_FREE(name, dlmalloc_usable_size(p)); \
+        coid::dbg_memtrack_free<T>(dlmalloc_usable_size(p)); \
         ::dlfree(p); } \
     void operator delete(void*, void*)  { }
 
-#define COIDNEWDELETE_ALIGN(name,alignment) \
+#define COIDNEWDELETE_ALIGN(T, alignment) \
     void* operator new( size_t size ) { \
         void* p=::dlmemalign(alignment,size); \
         if(p==0) throw std::bad_alloc(); \
-        MEMTRACK_ALLOC(name, dlmalloc_usable_size(p)); \
+        coid::dbg_memtrack_alloc<T>(dlmalloc_usable_size(p)); \
         return p; } \
     void* operator new( size_t, void* p ) { return p; } \
     void operator delete(void* p) { \
-        MEMTRACK_FREE(name, dlmalloc_usable_size(p)); \
+        coid::dbg_memtrack_free<T>(dlmalloc_usable_size(p)); \
         ::dlfree(p); } \
     void operator delete(void*, void*)  { }
 
@@ -121,12 +146,12 @@ struct memtrack {
 ///Track allocation request for name
 //@param name allocation name, unique pointer
 //@param size allocated size
-void memtrack_alloc( const char* name, size_t size );
+void memtrack_alloc( const std::type_info* tracking, size_t size );
 
 ///Track allocation request for name
 //@param name allocation name, unique pointer
 //@param size freed size
-void memtrack_free( const char* name, size_t size );
+void memtrack_free( const std::type_info* tracking, size_t size );
 
 ///List allocation request statistics since the last call
 //@param dst pointer to a buffer to receive the allocation lists
@@ -145,25 +170,26 @@ void memtrack_dump( const char* file, bool diff );
 void memtrack_reset();
 
 ///Enable/disable tracking
-void memtrack_enable( bool en );
+//@return previous state
+bool memtrack_enable( bool en );
 
 void memtrack_shutdown();
 
 
 ///Allocate tracked memory
-inline void* tracked_alloc(const char* name, size_t size)
+inline void* tracked_alloc(const std::type_info* tracking, size_t size)
 {
     void* p = ::dlmalloc(size);
     if (p)
-        memtrack_alloc(name, dlmalloc_usable_size(p));
+        memtrack_alloc(tracking, dlmalloc_usable_size(p));
     return p;
 }
 
 ///Free tracked memory
-inline void tracked_free(const char* name, void* p)
+inline void tracked_free(const std::type_info* tracking, void* p)
 {
     if (p)
-        memtrack_free("zstd", dlmalloc_usable_size(p));
+        memtrack_free(tracking, dlmalloc_usable_size(p));
     ::dlfree(p);
 }
 

@@ -94,7 +94,7 @@ public:
     friend binstream& operator << TEMPLFRIEND(binstream &out, const str_ptr<T> &obj);
 #endif
 
-	bool is_set() const		    { return _p != 0; }
+    bool is_set() const		    { return _p != 0; }
 };
 
 template <class T>
@@ -138,24 +138,17 @@ public:
         return *this;
     }
 
-    ///Assign if empty
-    bool assign_safe(const T* p) {
-        static coid::comm_mutex _mux(500, false);
-        if (_p == p)
-            return true;
-
-        _mux.lock();
-        //assign only if nobody assigned before us
-        bool succ = !_p || !p;
-        if (succ)
-            _p = (T*)p;
-        _mux.unlock();
-        return succ;
-    }
-
     bool is_set() const { return _p != 0; }
 
     T* get() const { return _p; }
+
+private:
+
+    template <typename D>
+    static comm_mutex& mux() {
+        static coid::comm_mutex _mux(500, false);   //mutex specialized for D class
+        return _mux;
+    }
 };
 
 
@@ -173,9 +166,9 @@ class local
 public:
     local()  {_p=0;}
     ~local() {if(_p)  {delete _p;  _p=0;} }
-    
+
     local(T* p) {_p= p;}
-    
+
     local( local&& p )
     {
         _p = p._p;//new T(*p._p);
@@ -230,7 +223,7 @@ public:
     friend binstream& operator >> TEMPLFRIEND(binstream &in, local<T> &loca);
 #endif
 
-	bool is_set() const		{ return _p != 0; }
+    bool is_set() const		{ return _p != 0; }
 
     T* eject() { T* tmp=_p; _p=0; return tmp; }
     void destroy ()

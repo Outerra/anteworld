@@ -74,12 +74,14 @@ public:
 
     template<class T>
     static iref<T> create( T* _subclass_ );
+
     static iref<main> create_special( int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e = -1 ) {
         return create_special<main>(0, a, b, c, d, e);
     }
 
     template<class T>
     static iref<T> create_special( T* _subclass_, int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e = -1 );
+
     static iref<main> create_wp( int a, int& b, int& c, int d = -1 ) {
         return create_wp<main>(0, a, b, c, d);
     }
@@ -93,7 +95,14 @@ public:
         if (_cleaner) _cleaner(this,0);
     }
 
-    static const int HASHID = 3170672600;
+    ///Interface revision hash
+    static const int HASHID = 3187450219;
+    
+    ///Interface name (full ns::class string)
+    static const coid::tokenhash& IFCNAME() {
+        static const coid::tokenhash _name = "ns::main";
+        return _name;
+    }
 
     int intergen_hash_id() const override final { return HASHID; }
 
@@ -102,19 +111,20 @@ public:
     }
 
     const coid::tokenhash& intergen_interface_name() const override final {
-        static const coid::tokenhash _name = "ns::main";
-        return _name;
+        return IFCNAME();
     }
 
     static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ns::main.create@3170672600");
+        static const coid::token _dc("ns::main.create@3187450219");
         static const coid::token _djs("ns::main@wrapper.js");
+        static const coid::token _djsc("ns::main@wrapper.jsc");
         static const coid::token _dlua("ns::main@wrapper.lua");
         static const coid::token _dnone;
 
         switch(bck) {
         case IFC_BACKEND_CXX: return _dc;
         case IFC_BACKEND_JS:  return _djs;
+        case IFC_BACKEND_JSC:  return _djsc;
         case IFC_BACKEND_LUA: return _dlua;
         default: return _dnone;
         }
@@ -134,6 +144,7 @@ public:
     void* intergen_wrapper( EBackend bck ) const override final {
         switch(bck) {
         case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
+        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
         case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
         default: return 0;
         }
@@ -143,6 +154,26 @@ public:
 
     const coid::token& intergen_default_creator( EBackend bck ) const override final {
         return intergen_default_creator_static(bck);
+    }
+
+    ///Client registrator
+    template<class C>
+    static int register_client()
+    {
+        static_assert(std::is_base_of<main, C>::value, "not a base class");
+
+        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
+        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+
+        coid::token type = typeid(C).name();
+        type.consume("class ");
+        type.consume("struct ");
+
+        coid::charstr tmp = "ns::main";
+        tmp << "@client-3187450219" << '.' << type;
+
+        coid::interface_register::register_interface_creator(tmp, cc);
+        return 0;
     }
 
 protected:
@@ -161,17 +192,20 @@ inline iref<T> main::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(main*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create@3170672600";
+    static const coid::token ifckey = "ns::main.create@3187450219";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("create", "ns::main.create", "@3187450219");
+        return 0;
+    }
 
     return create(_subclass_);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 inline iref<T> main::create_special( T* _subclass_, int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e )
@@ -179,17 +213,20 @@ inline iref<T> main::create_special( T* _subclass_, int a, iref<ns::other> b, in
     typedef iref<T> (*fn_creator)(main*, int, iref<ns::other>, int&, iref<ns::other>&, int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create_special@3170672600";
+    static const coid::token ifckey = "ns::main.create_special@3187450219";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("create_special", "ns::main.create_special", "@3187450219");
+        return 0;
+    }
 
     return create(_subclass_, a, b, c, d, e);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 inline iref<T> main::create_wp( T* _subclass_, int a, int& b, int& c, int d )
@@ -197,14 +234,16 @@ inline iref<T> main::create_wp( T* _subclass_, int a, int& b, int& c, int d )
     typedef iref<T> (*fn_creator)(main*, int, int&, int&, int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ns::main.create_wp@3170672600";
+    static const coid::token ifckey = "ns::main.create_wp@3187450219";
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
-    if (!create)
-        throw coid::exception("interface creator inaccessible: ") << ifckey;
+    if (!create) {
+        log_mismatch("create_wp", "ns::main.create_wp", "@3187450219");
+        return 0;
+    }
 
     return create(_subclass_, a, b, c, d);
 }

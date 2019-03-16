@@ -276,7 +276,8 @@ public:
     //@param dst path to append to, also receives the result
     //@param path relative path to append; an absolute path replaces the content of dst
     //@param keep_below if true, only allows relative paths that cannot get out of the input path
-    static bool append_path(charstr& dst, token path, bool keep_below = false);
+    //@return >0 ok, 0 error, <0 if path is ok but possibly outside of input directory
+    static int append_path(charstr& dst, token path, bool keep_below = false);
 
     static bool is_absolute_path(const token& path);
 

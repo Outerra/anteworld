@@ -145,16 +145,6 @@ inline coid::uint64 dec(volatile coid::uint64 * ptr) {
 
 #endif
 
-#ifdef SYSTYPE_32
-inline coid::uints inc(volatile coid::uints * ptr) {
-    return inc(reinterpret_cast<volatile coid::int32*>(ptr));
-}
-
-inline coid::uints dec(volatile coid::uints * ptr) {
-    return dec(reinterpret_cast<volatile coid::int32*>(ptr));
-}
-#endif
-
 
 inline coid::int32 add(volatile coid::int32 * ptr, const coid::int32 val)
 {
@@ -321,14 +311,6 @@ inline coid::uint64 exchange(volatile coid::uint64 * ptr, const coid::uint64 val
 }
 #endif
 
-#ifdef SYSTYPE_32
-inline coid::uints exchange(volatile coid::uints * ptr, const coid::uints val)
-{
-    return exchange(reinterpret_cast<volatile coid::uint32*>(ptr), val);
-}
-#endif
-
-
 // AND
 
 #ifdef SYSTYPE_64
@@ -384,13 +366,6 @@ inline coid::uint16 aand(volatile coid::uint16 * ptr, const coid::uint16 val) {
 inline coid::uint8 aand(volatile coid::uint8 * ptr, const coid::uint8 val) {
     return aand(reinterpret_cast<volatile coid::int8*>(ptr), val);
 }
-
-#ifdef SYSTYPE_32
-inline coid::uints aand(volatile coid::uints * ptr, const coid::uints val) {
-    return aand(reinterpret_cast<volatile int32*>(ptr), val);
-}
-#endif
-
 
 // OR
 
@@ -448,13 +423,6 @@ inline coid::uint8 aor(volatile coid::uint8 * ptr, const coid::uint8 val) {
     return aor(reinterpret_cast<volatile coid::int8*>(ptr), val);
 }
 
-#ifdef SYSTYPE_32
-inline coid::uints aor(volatile coid::uints * ptr, const coid::uints val) {
-    return aor(reinterpret_cast<volatile int32*>(ptr), val);
-}
-#endif
-
-
 // XOR
 
 #ifdef SYSTYPE_64
@@ -510,12 +478,6 @@ inline coid::uint16 axor(volatile coid::uint16 * ptr, const coid::uint16 val) {
 inline coid::uint8 axor(volatile coid::uint8 * ptr, const coid::uint8 val) {
     return axor(reinterpret_cast<volatile coid::int8*>(ptr), val);
 }
-
-#ifdef SYSTYPE_32
-inline coid::uints axor(volatile coid::uints * ptr, const coid::uints val) {
-    return axor(reinterpret_cast<volatile int32*>(ptr), val);
-}
-#endif
 
 } // end of namespace atomic
 

@@ -50,6 +50,10 @@
 
 COID_NAMESPACE_BEGIN
 
+#if defined(COID_CONSTEXPR_IF) && !defined(__cpp_if_constexpr)
+#error Please enable C++17 language standard (/std:c++17) in project settings for VS2017+ projects
+#endif
+
 //helper insert/delete fnc
 template <class T> T* __move(ints nitemsfwd, T* ptr, uints nitems) {
     if (nitems)
@@ -108,7 +112,7 @@ public:
     typedef COUNT               count_t;
     typedef A                   allocator_type;
 
-    COIDNEWDELETE("dynarray");
+    COIDNEWDELETE(dynarray);
 
     dynarray() : _ptr(0) {
         A::instance();
@@ -320,7 +324,7 @@ public:
     {
         if (size() != a.size())  return false;
         for (uints i = 0; i < size(); ++i)
-            if (_ptr[i] != a._ptr[i])  return false;
+            if (!(_ptr[i] == a._ptr[i]))  return false;
         return true;
     }
 
@@ -379,6 +383,10 @@ protected:
     //@{Helper functions for for_each to allow calling with optional index argument
     ///Functor argument type reference or pointer
     template<class Fn>
+    using has_index = std::integral_constant<bool, !(closure_traits<Fn>::arity::value <= 1)>;
+
+#ifndef COID_CONSTEXPR_IF
+    template<class Fn>
     using arg0 = typename std::remove_reference<typename closure_traits<Fn>::template arg<0>>::type;
 
     template<class Fn>
@@ -390,9 +398,6 @@ protected:
 
     template<class Fn>
     using is_const = std::is_const<arg0<Fn>>;
-
-    template<class Fn>
-    using has_index = std::integral_constant<bool, !(closure_traits<Fn>::arity::value <= 1)>;
 
     template<class Fn>
     using result_type = typename closure_traits<Fn>::result_type;
@@ -424,6 +429,7 @@ protected:
     {
         return fn(v, index);
     }
+#endif
     //@}
 
 public:
@@ -437,7 +443,14 @@ public:
         count_t n = size();
         for (count_t i = 0; i < n; ++i) {
             T& v = const_cast<T&>(_ptr[i]);
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                fn(v, i);
+            else
+                fn(v);
+#else
             funccall(fn, v, i);
+#endif
 
             count_t nn = size();
             if (n > nn) {
@@ -458,7 +471,17 @@ public:
         count_t n = size();
         for (count_t i = 0; i < n; ++i) {
             T& v = const_cast<T&>(_ptr[i]);
-            if (funccall(fn, v, i)) return _ptr + i;
+            bool rv;
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                rv = fn(v, i);
+            else
+                rv = fn(v);
+#else
+            rv = funccall(fn, v, i);
+#endif
+            if (rv)
+                return _ptr + i;
         }
         return 0;
     }
