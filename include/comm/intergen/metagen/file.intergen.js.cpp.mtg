@@ -775,7 +775,6 @@ $-(if hasprops?)$
 
 #ifdef V8_MAJOR_VERSION
         v8::NamedPropertyHandlerConfiguration conf(&_getter, &_setter);
-        conf.flags = v8::PropertyHandlerFlags::kNonMasking;
         ot->SetHandler(conf);
 #else
         ot->SetNamedPropertyHandler(&_getter, &_setter);
