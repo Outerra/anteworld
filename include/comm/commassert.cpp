@@ -58,7 +58,7 @@ enter_single_thread::~enter_single_thread()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, const char* function, const char* expr )
+bool __rassert( const opt_string& txt, const char* file, int line, const char* function, const char* expr )
 {
     zstring* z = txt.get();
 
@@ -68,8 +68,7 @@ opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, con
         << '\r' //forces log flush
     );
 
-    opcd e = __assert_throws ? exc : opcd(0);
-    return e;
+    return __assert_throws;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -128,7 +128,7 @@ public:
 
     template<class T>
     void write_to_offset( uints offset, const T& v ) {
-        DASSERT( offset + sizeof(T) <= _tstr.size() );
+        DASSERTN( offset + sizeof(T) <= _tstr.size() );
         *(T*)(_tstr.ptr() + offset) = v;
     }
 
@@ -358,7 +358,7 @@ protected:
     template<class S>
     uints write_size( uints size ) {
         static_assert( std::is_unsigned<S>::value, "unsigned type expected" );
-        DASSERT( size <= std::numeric_limits<S>::max() );
+        DASSERTN( size <= std::numeric_limits<S>::max() );
         size = std::min(size, (uints)std::numeric_limits<S>::max());
         *pad_alloc<S>() = S(size);
         return size;

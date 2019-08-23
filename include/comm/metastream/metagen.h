@@ -735,19 +735,23 @@ class metagen //: public binstream
         bool write_special_value(metagen& mg, const token& attrib, Varx& v) const
         {
             if (attrib == "@index") {
+                //current element index for arrays
                 DASSERT(v.is_array_element());
                 if (v.is_array_element())
                     mg.write_as_string(v.index);
             }
             else if (attrib == "@order") {
+                //current filtered element index for arrays
                 DASSERT(v.is_array_element());
                 if (v.is_array_element())
                     mg.write_as_string(v.order);
             }
             else if (attrib == "@value") {
+                //current element value
                 v.write_var(mg, &attr, escape);
             }
             else if (attrib == "@size") {
+                //array size
                 if (v.is_array())
                     mg.write_as_string(v.array_size());
             }

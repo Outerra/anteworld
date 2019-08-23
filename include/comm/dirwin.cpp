@@ -281,7 +281,7 @@ const directory::xstat* directory::next()
     }
 
     _curpath.resize(_baselen);
-    _curpath << &*dir.name;
+    _curpath << token::from_cstring(dir.name);
     if (_stat64(_curpath.ptr(), &_st) == 0)
         return &_st;
 

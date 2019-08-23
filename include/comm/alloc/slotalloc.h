@@ -402,7 +402,7 @@ public:
         if (clear_bit(id))
             --_count;
         else
-            DASSERT(0);
+            DASSERTN(0);
     }
 
     ///Del range of objects
@@ -453,7 +453,7 @@ public:
         if (clear_bit(id))
             --_count;
         else
-            DASSERT(0);
+            DASSERTN(0);
     }
 
 
@@ -1590,9 +1590,9 @@ private:
         uint_type const* bm = _allocated.ptr();
         uint_type const* em = _allocated.ptre();
         uint_type const* pm = bm;
-        uints id;
+        uints id = 0;
 
-        for (; pp < ep; ++pp, pm += page::NMASK)
+        for (; pp != ep; ++pp, pm += page::NMASK)
         {
             uint_type const* epm = em - pm > page::NMASK
                 ? pm + page::NMASK

@@ -126,9 +126,16 @@ void fntest(void(*pfn)(charstr&))
     function<void(charstr&)> fn = pfn;
 }
 
+void constexpr_test()
+{
+    constexpr token name = "salama"_T;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char* argv[] )
 {
+    test_malloc();
+
     fntest(0);
 
     std_test();
@@ -229,17 +236,16 @@ int main( int argc, char* argv[] )
         txt.nth_char(txt.append_num_metric(8901234, 9, ALIGN_NUM_CENTER), 'm');
         txt << "\n";
     }
- 
+
     uint64 stuff[] = {7000, 45, 2324, 11, 0, 222};
     radixi<uint64, uint, uint64> rx;
     const uint* idx = rx.sort(true, stuff, sizeof(stuff)/sizeof(stuff[0]));
 
     //coid::test();
-    //test_malloc();
 
     metastream_test4();
     //metastream_test2();
-	//float_test();
+    //float_test();
 
     //main_atomic(argc, argv);
     //coid::test();

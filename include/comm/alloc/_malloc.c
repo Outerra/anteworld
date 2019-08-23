@@ -1348,6 +1348,8 @@ DLMALLOC_EXPORT int mspace_track_large_chunks(mspace msp, int enable);
 */
 DLMALLOC_EXPORT void* mspace_malloc(mspace msp, size_t bytes);
 
+DLMALLOC_EXPORT void* mspace_malloc_virtual(mspace msp, size_t bytes);
+
 /*
   mspace_free behaves as free, but operates within
   the given space.
@@ -1420,6 +1422,12 @@ DLMALLOC_EXPORT struct mallinfo mspace_mallinfo(mspace msp);
   malloc_usable_size(void* p) behaves the same as malloc_usable_size;
 */
 DLMALLOC_EXPORT size_t mspace_usable_size(const void* mem);
+
+/*
+  malloc_virtual_size(void* p) returns virtual block size if it was
+  previously allocated via mspace_malloc_virtual, otherwise 0
+*/
+DLMALLOC_EXPORT size_t mspace_virtual_size(const void* mem);
 
 /*
   mspace_malloc_stats behaves as malloc_stats, but reports
@@ -1686,7 +1694,7 @@ static int dev_zero_fd = -1; /* Cached file descriptor for /dev/zero. */
             mmap(0, (s), MMAP_PROT, MMAP_FLAGS, dev_zero_fd, 0))
 #endif /* MAP_ANONYMOUS */
 
-#define DIRECT_MMAP_DEFAULT(s) MMAP_DEFAULT(s)
+#define DIRECT_MMAP_DEFAULT(s,cs,p) MMAP_DEFAULT(s,cs,p)
 
 #else /* WIN32 */
 
@@ -1696,11 +1704,27 @@ static FORCEINLINE void* win32mmap(size_t size) {
   return (ptr != 0)? ptr: MFAIL;
 }
 
-/* For direct MMAP, use MEM_TOP_DOWN to minimize interference */
-static FORCEINLINE void* win32direct_mmap(size_t size) {
-  void* ptr = VirtualAlloc(0, size, MEM_RESERVE|MEM_COMMIT|MEM_TOP_DOWN,
-                           PAGE_READWRITE);
+/* For direct MMAP, use MEM_TOP_DOWN to minimize interference [REMOVED] */
+static FORCEINLINE void* win32direct_mmap(size_t size, size_t commit_size, void* ptr) {
+  if (commit_size == 0)
+    commit_size = size;
+  if (ptr != 0) {
+    ptr = VirtualAlloc(ptr, commit_size, MEM_COMMIT, PAGE_READWRITE);
+  }
+  else if (commit_size < size) {
+    ptr = VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
+    if (ptr)
+      VirtualAlloc(ptr, commit_size, MEM_COMMIT, PAGE_READWRITE);
+  }
+  else {
+    ptr = VirtualAlloc(0, size, MEM_RESERVE|MEM_COMMIT,//|MEM_TOP_DOWN,
+                       PAGE_READWRITE);
+  }
   return (ptr != 0)? ptr: MFAIL;
+}
+
+static FORCEINLINE void* win32mmap_commit(void* ptr, size_t commit_size) {
+    return VirtualAlloc(ptr, commit_size, MEM_COMMIT, PAGE_READWRITE);
 }
 
 /* This function supports releasing coalesed segments */
@@ -1723,7 +1747,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 
 #define MMAP_DEFAULT(s)             win32mmap(s)
 #define MUNMAP_DEFAULT(a, s)        win32munmap((a), (s))
-#define DIRECT_MMAP_DEFAULT(s)      win32direct_mmap(s)
+#define DIRECT_MMAP_DEFAULT(s,cs,p) win32direct_mmap(s,cs,p)
 #endif /* WIN32 */
 #endif /* HAVE_MMAP */
 
@@ -1763,9 +1787,9 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
         #define CALL_MUNMAP(a, s)   MUNMAP_DEFAULT((a), (s))
     #endif /* MUNMAP */
     #ifdef DIRECT_MMAP
-        #define CALL_DIRECT_MMAP(s) DIRECT_MMAP(s)
+        #define CALL_DIRECT_MMAP(s,cs,p) DIRECT_MMAP(s,cs,p)
     #else /* DIRECT_MMAP */
-        #define CALL_DIRECT_MMAP(s) DIRECT_MMAP_DEFAULT(s)
+        #define CALL_DIRECT_MMAP(s,cs,p) DIRECT_MMAP_DEFAULT(s,cs,p)
     #endif /* DIRECT_MMAP */
 #else  /* HAVE_MMAP */
     #define USE_MMAP_BIT            (SIZE_T_ZERO)
@@ -1773,7 +1797,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
     #define MMAP(s)                 MFAIL
     #define MUNMAP(a, s)            (-1)
     #define DIRECT_MMAP(s)          MFAIL
-    #define CALL_DIRECT_MMAP(s)     DIRECT_MMAP(s)
+    #define CALL_DIRECT_MMAP(s,cs,p)  DIRECT_MMAP(s,cs,p)
     #define CALL_MMAP(s)            MMAP(s)
     #define CALL_MUNMAP(a, s)       MUNMAP((a), (s))
 #endif /* HAVE_MMAP */
@@ -2315,9 +2339,33 @@ typedef unsigned int flag_t;           /* The type of various bit flag sets */
 #define set_free_with_pinuse(p, s, n)\
   (clear_pinuse(n), set_size_and_pinuse_of_free_chunk(p, s))
 
+/* page-align a size */
+#define page_align(S)\
+ (((S) + (mparams.page_size - SIZE_T_ONE)) & ~(mparams.page_size - SIZE_T_ONE))
+
+/* granularity-align a size */
+#define granularity_align(S)\
+  (((S) + (mparams.granularity - SIZE_T_ONE))\
+   & ~(mparams.granularity - SIZE_T_ONE))
+
+
+/* For mmap, use granularity alignment on windows, else page-align */
+#ifdef WIN32
+#define mmap_align(S) granularity_align(S)
+#define mmap_align_down(S) ((S) & ~(mparams.granularity - SIZE_T_ONE))
+#else
+#define mmap_align(S) page_align(S)
+#define mmap_align_down(S) ((S) & ~(mparams.page_size - SIZE_T_ONE))
+#endif
+
 /* Get the internal overhead associated with chunk p */
+#ifdef WIN32
 #define overhead_for(p)\
- (is_mmapped(p)? MMAP_CHUNK_OVERHEAD : CHUNK_OVERHEAD)
+ (is_mmapped(p) ? MMAP_CHUNK_OVERHEAD + (p->prev_foot & (mparams.granularity - SIZE_T_ONE)) : CHUNK_OVERHEAD)
+#else
+#define overhead_for(p)\
+ (is_mmapped(p) ? MMAP_CHUNK_OVERHEAD + (p->prev_foot & (mparams.page_size - SIZE_T_ONE)) : CHUNK_OVERHEAD)
+#endif
 
 /* Return true if malloced space is not necessarily cleared */
 #if MMAP_CLEARS
@@ -2692,23 +2740,6 @@ static struct malloc_state _gm_;
  ((M)->mflags = (L)?\
   ((M)->mflags | USE_LOCK_BIT) :\
   ((M)->mflags & ~USE_LOCK_BIT))
-
-/* page-align a size */
-#define page_align(S)\
- (((S) + (mparams.page_size - SIZE_T_ONE)) & ~(mparams.page_size - SIZE_T_ONE))
-
-/* granularity-align a size */
-#define granularity_align(S)\
-  (((S) + (mparams.granularity - SIZE_T_ONE))\
-   & ~(mparams.granularity - SIZE_T_ONE))
-
-
-/* For mmap, use granularity alignment on windows, else page-align */
-#ifdef WIN32
-#define mmap_align(S) granularity_align(S)
-#else
-#define mmap_align(S) page_align(S)
-#endif
 
 /* For sys_alloc, enough padding to ensure can malloc request on success */
 #define SYS_ALLOC_PADDING(m) (TOP_FOOT_SIZE(m) + MALLOC_ALIGNMENT)
@@ -3268,7 +3299,7 @@ static void do_check_top_chunk(mstate m, mchunkptr p) {
 /* Check properties of (inuse) mmapped chunks */
 static void do_check_mmapped_chunk(mstate m, mchunkptr p) {
   size_t  sz = chunksize(p);
-  size_t len = (sz + p->prev_foot + m->modalign + MMAP_FOOT_PAD);
+  size_t len = (sz + MALLOC_ALIGNMENT + MMAP_FOOT_PAD);
   assert(is_mmapped(p));
   assert(use_mmap(m));
   assert((is_aligned(chunk2mem(p), m->modalign)) || (p->head == FENCEPOST_HEAD));
@@ -3864,17 +3895,18 @@ void unlink_chunk(mstate M, mchunkptr P, size_t S) {
 
 /* Malloc using mmap */
 static void* mmap_alloc(mstate m, size_t nb) {
-  size_t mmsize = mmap_align(nb + m->modalign + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
+  size_t mmsize = mmap_align(nb /*+ m->modalign*/ + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
   if (m->footprint_limit != 0) {
     size_t fp = m->footprint + mmsize;
     if (fp <= m->footprint || fp > m->footprint_limit)
       return 0;
   }
   if (mmsize > nb) {     /* Check for wrap around 0 */
-    char* mm = (char*)(CALL_DIRECT_MMAP(mmsize));
+    char* mm = (char*)(CALL_DIRECT_MMAP(mmsize, 0, 0));
     if (mm != CMFAIL) {
       size_t offset = align_offset(chunk2mem(mm), m->modalign);
-      size_t psize = mmsize - offset - m->modalign - MMAP_FOOT_PAD;
+      size_t psize = mmsize - MALLOC_ALIGNMENT - MMAP_FOOT_PAD;
+      assert((psize & FLAG_BITS) == 0);
       mchunkptr p = (mchunkptr)(mm + offset);
       p->prev_foot = offset;
       p->head = psize;
@@ -3894,6 +3926,44 @@ static void* mmap_alloc(mstate m, size_t nb) {
   return 0;
 }
 
+/* Alloc a reserved virtual memory block.
+   prev_foot contains the reserved memory + alignment offset on lower bits
+*/
+
+static void* mmap_alloc_virtual(mstate m, size_t nb) {
+  size_t mmsize = mmap_align(nb + /*m->modalign +*/ TWO_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
+  //if (m->footprint_limit != 0) {
+  //  size_t fp = m->footprint + mmsize;
+  //  if (fp <= m->footprint || fp > m->footprint_limit)
+  //    return 0;
+  //}
+  if (mmsize > nb) {     /* Check for wrap around 0 */
+    size_t commit_size = mparams.page_size;
+    char* mm = (char*)(CALL_DIRECT_MMAP(mmsize, commit_size, 0));
+    if (mm != CMFAIL) {
+      size_t offset = align_offset(chunk2mem(mm), m->modalign);
+      size_t psize = mmsize /*- offset - m->modalign*/;// - MMAP_FOOT_PAD;
+      assert((psize & FLAG_BITS) == 0);
+      mchunkptr p = (mchunkptr)(mm + offset);
+      p->prev_foot = mmsize + offset;
+      p->head = commit_size;// - offset;
+      set_flag4(p);
+      //mark_inuse_foot(m, p, psize);
+      //chunk_plus_offset(p, psize)->head = FENCEPOST_HEAD;
+      //chunk_plus_offset(p, psize+SIZE_T_SIZE)->head = 0;
+
+      //if (m->least_addr == 0 || mm < m->least_addr)
+      //  m->least_addr = mm;
+      //if ((m->footprint += mmsize) > m->max_footprint)
+      //  m->max_footprint = m->footprint;
+      assert(is_aligned(chunk2mem(p), m->modalign));
+      //check_mmapped_chunk(m, p);
+      return chunk2mem(p);
+    }
+  }
+  return 0;
+}
+
 /* Realloc using mmap */
 static mchunkptr mmap_resize(mstate m, mchunkptr oldp, size_t nb, int flags) {
   size_t oldsize = chunksize(oldp);
@@ -3906,13 +3976,13 @@ static mchunkptr mmap_resize(mstate m, mchunkptr oldp, size_t nb, int flags) {
     return oldp;
   else {
     size_t offset = oldp->prev_foot;
-    size_t oldmmsize = oldsize + offset + m->modalign + MMAP_FOOT_PAD;
+    size_t oldmmsize = oldsize + offset /*+ m->modalign*/ + MMAP_FOOT_PAD;
     size_t newmmsize = mmap_align(nb + SIX_SIZE_T_SIZES + CHUNK_ALIGN_MASK);
     char* cp = (char*)CALL_MREMAP((char*)oldp - offset,
                                   oldmmsize, newmmsize, flags);
     if (cp != CMFAIL) {
       mchunkptr newp = (mchunkptr)(cp + offset);
-      size_t psize = newmmsize - offset - m->modalign - MMAP_FOOT_PAD;
+      size_t psize = newmmsize /*- offset - m->modalign*/ - MMAP_FOOT_PAD;
       newp->head = psize;
       mark_inuse_foot(m, newp, psize);
       chunk_plus_offset(newp, psize)->head = FENCEPOST_HEAD;
@@ -4748,7 +4818,7 @@ void dlfree(void* mem) {
         if (!pinuse(p)) {
           size_t prevsize = p->prev_foot;
           if (is_mmapped(p)) {
-            psize += prevsize + fm->modalign + MMAP_FOOT_PAD;
+            psize += prevsize /*+ fm->modalign*/ + MMAP_FOOT_PAD;
             if (CALL_MUNMAP((char*)p - prevsize, psize) == 0)
               fm->footprint -= psize;
             goto postaction;
@@ -5542,6 +5612,16 @@ size_t destroy_mspace(mspace msp) {
   return freed;
 }
 
+void* mspace_malloc_virtual(mspace msp, size_t bytes) {
+    mstate ms = (mstate)msp;
+    if (!ok_magic(ms)) {
+        USAGE_ERROR_ACTION(ms, ms);
+        return 0;
+    }
+
+    return mmap_alloc_virtual(ms, bytes);
+}
+
 /*
   mspace versions of routines are near-clones of the global
   versions. This is not so nice but better than the alternatives.
@@ -5667,6 +5747,15 @@ void* mspace_malloc(mspace msp, size_t bytes) {
 void mspace_free(/*mspace msp,*/ void* mem) {
   if (mem != 0) {
     mchunkptr p  = mem2chunk(mem);
+
+    if (flag4inuse(p)) {
+        //a virtual memory block
+        size_t psize = mmap_align_down(p->prev_foot);
+        size_t offset = p->prev_foot - psize;
+        CALL_MUNMAP((char*)p - offset, psize);
+        return;
+    }
+
 #if FOOTERS
     mstate fm = get_mstate_for(p);
     //(void)msp; /* placate people compiling -Wunused */
@@ -5685,7 +5774,7 @@ void mspace_free(/*mspace msp,*/ void* mem) {
         if (!pinuse(p)) {
           size_t prevsize = p->prev_foot;
           if (is_mmapped(p)) {
-            psize += prevsize + fm->modalign + MMAP_FOOT_PAD;
+            psize += prevsize /*+ fm->modalign*/ + MMAP_FOOT_PAD;
             if (CALL_MUNMAP((char*)p - prevsize, psize) == 0)
               fm->footprint -= psize;
             goto postaction;
@@ -5801,6 +5890,12 @@ void* mspace_realloc(mspace msp, void* oldmem, size_t bytes) {
   else {
     size_t nb = request2size(bytes);
     mchunkptr oldp = mem2chunk(oldmem);
+
+    if (flag4inuse(oldp)) {
+      /* virtual mmap block */
+      return mspace_realloc_in_place(oldmem, bytes);
+    }
+
 #if ! FOOTERS
     mstate m = (mstate)msp;
 #else /* FOOTERS */
@@ -5839,6 +5934,21 @@ void* mspace_realloc_in_place(/*mspace msp,*/ void* oldmem, size_t bytes) {
     else {
       size_t nb = request2size(bytes);
       mchunkptr oldp = mem2chunk(oldmem);
+
+      if (flag4inuse(oldp)) {
+        /* virtual block can realloc within its reserved space */
+        size_t psize = mmap_align_down(oldp->prev_foot);
+        size_t offset = oldp->prev_foot - psize;
+
+        if (nb <= psize - offset - MMAP_CHUNK_OVERHEAD) {
+          nb -= offset;
+          oldp->head = nb | (oldp->head & FLAG_BITS);
+          CALL_DIRECT_MMAP(0, nb + MMAP_CHUNK_OVERHEAD, oldp);
+          return oldmem;
+        }
+        return 0;
+      }
+
 #if ! FOOTERS
       mstate m = (mstate)msp;
 #else /* FOOTERS */
@@ -6015,6 +6125,18 @@ size_t mspace_usable_size(const void* mem) {
     mchunkptr p = mem2chunk(mem);
     if (is_inuse(p))
       return chunksize(p) - overhead_for(p);
+  }
+  return 0;
+}
+
+size_t mspace_virtual_size(const void* mem) {
+  if (mem != 0) {
+    mchunkptr p = mem2chunk(mem);
+    if (flag4inuse(p)) {
+      size_t psize = mmap_align_down(p->prev_foot);
+      size_t offset = p->prev_foot - psize;
+      return psize - offset - MMAP_CHUNK_OVERHEAD;
+    }
   }
   return 0;
 }

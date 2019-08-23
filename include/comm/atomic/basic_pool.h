@@ -74,7 +74,9 @@ public:
         {}
 
         // is a MUST because we need atomicity on pointers...
-        ptr_t(const ptr_t &p) { *this = p; }
+        ptr_t(const ptr_t &p) : _ptr(0), _tag(0) {
+            *this = p;
+        }
 
         void operator = (const ptr_t &p) {
 #ifdef SYSTYPE_64

@@ -221,6 +221,11 @@ __declspec(dllimport) proc_t __stdcall GetProcAddress (
     const char* procname
     );
 
+extern "C"
+_declspec(dllimport) void* __stdcall GetModuleHandleA(const char * lpModuleName
+);
+
+
 typedef global_singleton_manager* (*ireg_t)();
 
 #define MAKESTR(x) STR(x)
@@ -239,7 +244,7 @@ global_singleton_manager& global_singleton_manager::get_global()
     if(!_this) {
         //retrieve process-wide singleton from exported fn
         const char* s = MAKESTR(GLOBAL_SINGLETON_REGISTRAR);
-        ireg_t p = (ireg_t)GetProcAddress(0, s);
+        ireg_t p = (ireg_t)GetProcAddress(GetModuleHandleA(NULL), s);
         if(!p) {
             //entry point for global singleton not found in exe
             //probably a 3rd party exe

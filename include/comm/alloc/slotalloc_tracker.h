@@ -115,7 +115,7 @@ struct changeset
     //@return bitplane mask for use with for_each_modified
     static uint bitplane_mask(int bitplane1, int bitplane2)
     {
-        DASSERT(bitplane1 >= bitplane2);
+        DASSERTN(bitplane1 >= bitplane2);
         return ((2U << bitplane1) - 1U)
             && ~((2U << bitplane2) - 1U);
     }
@@ -317,18 +317,18 @@ template<class T>
 struct constructor<false, T>
 {
     static T* copy_object(T* dst, bool isold, const T& v) {
-        DASSERT(!isold);
+        DASSERTN(!isold);
         return new(dst) T(v);
     }
 
     static T* copy_object(T* dst, bool isold, T&& v) {
-        DASSERT(!isold);
+        DASSERTN(!isold);
         return new(dst) T(std::forward<T>(v));
     }
 
     template<class...Ps>
     static T* construct_object(T* dst, bool isold, Ps&&... ps) {
-        DASSERT(!isold);
+        DASSERTN(!isold);
         return new(dst) T(std::forward<Ps>(ps)...);
     }
 };

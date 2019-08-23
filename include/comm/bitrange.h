@@ -81,10 +81,10 @@ inline void _BitScanReverse64(ulong* idx, uint64 v) {
 //@{
 //@return position of the lowest or highest bit set
 //@note return value is undefined when the input is 0
-inline uint8 lsb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
-inline uint8 lsb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
-inline uint8 msb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
-inline uint8 msb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
+inline uint8 lsb_bit_set(uint v)    { DASSERTN(v); ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
+inline uint8 lsb_bit_set(uint64 v)  { DASSERTN(v); ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
+inline uint8 msb_bit_set(uint v)    { DASSERTN(v); ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
+inline uint8 msb_bit_set(uint64 v)  { DASSERTN(v); ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
 //@}
 
 #ifdef SYSTYPE_32

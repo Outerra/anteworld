@@ -101,7 +101,8 @@ namespace v8 {
         return T::New(iso ? iso : Isolate::GetCurrent(), p1);
     }
 
-    inline void throw_js( Isolate* iso, v8::Local<v8::Value> (*err)(v8::Local<v8::String>), const coid::token& s ) {
+    ///Queue JS exception, to be handled when returning back to JS lib
+    inline void queue_js_exception( Isolate* iso, v8::Local<v8::Value> (*err)(v8::Local<v8::String>), const coid::token& s ) {
         iso->ThrowException((*err)(v8::String::NewFromUtf8(iso, s.ptr(), v8::String::kNormalString, s.len())));
     }
 
@@ -148,7 +149,7 @@ namespace v8 {
     template<class T, class P1>
     inline auto new_object( const P1& p1, Isolate* iso = 0 ) -> decltype(T::New(p1)) { return T::New(p1); }
 
-    inline Handle<Value> throw_js( Isolate* iso, Local<Value> (*err)(Handle<String>), const coid::token& s ) {
+    inline Handle<Value> queue_js_exception( Isolate* iso, Local<Value> (*err)(Handle<String>), const coid::token& s ) {
         return ThrowException(err(String::New(s.ptr(), s.len())));
     }
 

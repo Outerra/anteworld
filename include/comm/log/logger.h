@@ -127,6 +127,10 @@ void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... 
 #define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::error, src ); if(q) {q->str() << msg; }} while(0)
 //@}
 
+///Create a perf object that logs the time while the scope exists
+#define coidlog_perf_scope(src, msg) \
+   ref<coid::logmsg> perf##line = coid::canlog(coid::log::perf, src); if(perf##line) perf##line->str() << msg
+
 ///Log fatal error and throw exception with the same message
 #define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
 
@@ -157,12 +161,13 @@ protected:
 
     friend class policy_msg;
 
-    logger* _logger;
+    logger* _logger = 0;
     ref<logger_file> _logger_file;
 
     tokenhash _hash;
-    log::type _type;
+    log::type _type = log::none;
     charstr _str;
+    uint64 _time = 0;
 
 public:
 
@@ -239,6 +244,12 @@ public:
     log::type get_type() const { return _type; }
 
 	void set_type(log::type t) { _type = t; }
+
+    void set_time(uint64 ns) {
+        _time = ns;
+    }
+
+    int64 get_time() const { return _time; }
 
     void set_hash(const tokenhash& hash) { _hash = hash; }
     const tokenhash& get_hash() { return _hash; }

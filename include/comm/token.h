@@ -83,11 +83,11 @@ struct token
     const char* _ptr;                   //< ptr to the beginning of current string part
     const char* _pte;                   //< pointer past the end
 
-    token()
+    constexpr token()
         : _ptr(0), _pte(0)
     {}
 
-    token(std::nullptr_t)
+    constexpr token(std::nullptr_t)
         : _ptr(0), _pte(0)
     {}
 
@@ -101,13 +101,15 @@ struct token
     ///String literal constructor, optimization to have fast literal strings available as tokens
     //@note tries to detect and if passed in a char array instead of string literal, by checking if the last char is 0
     // and the preceding char is not 0
-    // Call token(&*array) to force treating the array as a zero-terminated string
+    // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
     token(const char(&str)[N])
         : _ptr(str), _pte(str + N - 1)
     {
+#if defined(_DEBUG) || defined(COID_TOKEN_LITERAL_CHECK)
         //correct if invoked on char arrays
         fix_literal_length();
+#endif
     }
 
     ///Character array constructor
@@ -125,23 +127,37 @@ struct token
 
     token(const charstr& str);
 
-    token(const char* ptr, uints len)
+    constexpr token(const char* ptr, uints len)
         : _ptr(ptr), _pte(ptr + len)
     {}
 
-    token(char* ptr, uints len)
+    constexpr token(char* ptr, uints len)
         : _ptr(ptr), _pte(ptr + len)
     {}
 
-    token(const char* ptr, const char* ptre)
-        : _ptr(ptr), _pte(ptre)
+    constexpr token(const char* ptr, const char* ptre)
+        : _ptr(ptr), _pte(ptre < ptr ? ptr : ptre)
     {}
 
-    token(char* ptr, char* ptre)
-        : _ptr(ptr), _pte(ptre)
+    constexpr token(char* ptr, char* ptre)
+        : _ptr(ptr), _pte(ptre < ptr ? ptr : ptre)
     {}
 
-    static token from_cstring(const char* czstr, uints maxlen = UMAXS)
+    template <int N>
+    static token from_cstring(char(&str)[N])
+    {
+        return token(str, str ? strnlen(str, N) : 0);
+    }
+
+    template <int N>
+    static token from_cstring(const char(&str)[N])
+    {
+        return token(str, str ? strnlen(str, N) : 0);
+    }
+
+    ///From const char*, artificially lowered precedence to allow catching literals above
+    template<typename T>
+    static token from_cstring(T czstr, uints maxlen = UMAXS)
     {
         return token(czstr, czstr ? strnlen(czstr, maxlen) : 0);
     }
@@ -191,6 +207,9 @@ struct token
 
     const char* ptr() const { return _ptr; }
     const char* ptre() const { return _pte; }
+
+    const char* begin() const { return _ptr; }
+    const char* end() const { return _pte; }
 
     ///Return length of token
     uint len() const { return uint(_pte - _ptr); }
@@ -564,7 +583,7 @@ struct token
     //@return pointer past the end
     const char* set(const char* str, uints len)
     {
-        DASSERT(len <= UMAX32);
+        DASSERTN(len <= UMAX32);
         _ptr = str;
         _pte = str + len;
         return _pte;
@@ -2604,13 +2623,12 @@ private:
 
     void fix_literal_length()
     {
-#if defined(_DEBUG) || defined(COID_TOKEN_LITERAL_CHECK)
         //if 0 is not at _pte or there's a zero before, recount
         if (*_pte != 0 || (_pte > _ptr && _pte[-1] == 0))
         {
             //an assert here means token is likely being constructed from
             // a character array, but detected as a string literal
-            // please add &* before such strings to avoid the need for this fix (preferred, to avoid extra checks)
+            // please use token::from_cstring on such strings to avoid the need for this fix (preferred, to avoid extra checks)
             // or define COID_TOKEN_LITERAL_CHECK to handle it silently
 #ifndef COID_TOKEN_LITERAL_CHECK
             RASSERT(0);
@@ -2620,7 +2638,6 @@ private:
             for (; p < _pte && *p; ++p);
             _pte = p;
         }
-#endif
     }
 };
 
@@ -2668,7 +2685,7 @@ public:
     ///String literal constructor, optimization to have fast literal strings available as tokens
     //@note tries to detect and if passed in a char array instead of string literal, by checking if the last char is 0
     // and the preceding char is not 0
-    // Call token(&*array) to force treating the array as a zero-terminated string
+    // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
     tokenhash(const char(&str)[N])
         : token(str), _hash(literal_hash(str))
@@ -2718,7 +2735,7 @@ public:
     ///String literal constructor, optimization to have fast literal strings available as tokens
     //@note tries to detect and if passed in a char array instead of string literal, by checking if the last char is 0
     // and the preceding char is not 0
-    // Call token(&*array) to force treating the array as a zero-terminated string
+    // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
     token_literal(const char(&str)[N])
         : token(str)
@@ -2837,7 +2854,7 @@ COID_NAMESPACE_END
 #ifdef COID_USER_DEFINED_LITERALS
 
 ///String literal returning token (_T suffix)
-inline const coid::token operator "" _T(const char* s, size_t len)
+inline coid_constexpr coid::token operator "" _T(const char* s, size_t len)
 {
     return coid::token(s, len);
 }

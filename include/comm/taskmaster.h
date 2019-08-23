@@ -69,6 +69,11 @@ COID_NAMESPACE_BEGIN
 class taskmaster
 {
 public:
+    struct critical_section
+    {
+        volatile int32 value = 0;
+    };
+
     struct signal_handle
     {
         enum 
@@ -189,6 +194,45 @@ public:
             ++_qsize;
         }
         _cv.notify_one();
+    }
+
+
+    /// Enter critical section; no two threads can be in the same critical section at the same time
+    /// other threads process other tasks while waiting to enter critical section
+    //@param spin_count number of spins before trying to process other tasks
+    //@note never call enter(A) enter(B) exit(A) exit(B) in that order, since it can cause 
+    // deadlock thanks to taskmaster's nature
+    void enter_critical_section(critical_section& critical_section, int spin_count = 1024)
+    {
+        for(;;) {
+            for(int i = 0; i < spin_count; ++i) {
+                if (critical_section.value == 0 && atomic::cas(&critical_section.value, 1, 0) == 0) {
+                    return;
+                }
+            }
+
+            invoker_base* task = 0;
+            const int order = get_order();
+            for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads && order != -1);
+                if (can_run && _ready_jobs[prio].pop(task)) {
+                    --_qsize;
+                    run_task(task, get_order());
+                    break;
+                }
+            }
+            if (!task)
+                thread::wait(0);
+        }
+    }
+
+
+    /// Leave critical section
+    //@note only thread which entered the critical section can leave it
+    void leave_critical_section(critical_section& critical_section)
+    {
+        const int32 prev = atomic::cas(&critical_section.value, 0, 1);
+        DASSERTN(prev == 1);
     }
 
 
@@ -483,7 +527,7 @@ private:
 
     bool is_signaled(signal_handle handle, bool lock)
     {
-        DASSERT(handle.is_valid());
+        DASSERT_RET(handle.is_valid(), false);
 
         signal& s = _signal_pool[handle.index()];
         

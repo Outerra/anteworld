@@ -191,7 +191,7 @@ void metastream_test4()
     auto a = m.get_type_desc<dynarray<token>>();
     auto x = m.get_type_desc<aaa>();
 
-    DASSERT(0);
+    //DASSERT(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

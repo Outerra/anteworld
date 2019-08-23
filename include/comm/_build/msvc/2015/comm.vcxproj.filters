@@ -402,4 +402,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\taskmaster.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
+  </ItemGroup>
 </Project>

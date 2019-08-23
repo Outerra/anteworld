@@ -63,7 +63,7 @@ struct File
             m.member("HDR",p.hdrname);           //< file name without extension, uppercase
             m.member("class",p.classes);
             m.member("irefargs",p.irefargs);
-            m.member("version",version);
+            m.nonmember("version",version);
         });
     }
 

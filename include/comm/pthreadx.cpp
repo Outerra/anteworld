@@ -199,6 +199,12 @@ void thread::join( thread_t tid )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void thread::set_name(const coid::token& name)
+{
+    SINGLETON(thread_manager).thread_name(self(), name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool thread::exists( thread_t tid )
 {
     return SINGLETON(thread_manager).thread_exists(tid);

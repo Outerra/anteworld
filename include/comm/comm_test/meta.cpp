@@ -8,10 +8,22 @@
 
 COID_NAMESPACE_BEGIN
 
+struct Foo
+{
+    int x = 0;
+
+    friend metastream& operator || (metastream& m, Foo& v) {
+        return m.operator_indirect(v,
+            [&](coid::charstr && s) { v.x = s.toint(); },
+            [&]() -> coid::charstr { return coid::charstr(v.x); });
+    }
+};
+
 struct FooA
 {
     int i;
     float f;
+    Foo fo;
 
     FooA() {}
     FooA( int i, float f ) { set(i,f); }
@@ -28,6 +40,7 @@ struct FooA
         {
             m.member("i", s.i, 4);
             m.member("f", s.f, 3.3f);
+            m.member("fo", s.fo, Foo());
         });
     }
 };
@@ -102,7 +115,7 @@ static const char* teststr =
 "a = 100,\n"
 "b = 200,\n"
 "fx = { j=1 fa={i=-1 f=-.77} }\n"
-"af = [  { j=10 fa={i=1 f=3.140}}\n"
+"af = [  { j=10 fa={i=1 f=3.140 fo=\"4\"}}\n"
 "        { j=11 fa={i=2 f=4.140}}\n"
 "        { j=12 fa={i=3 f=5.140}} ],\n"
 "flag = true\n"

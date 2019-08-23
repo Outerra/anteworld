@@ -397,7 +397,7 @@ private:
                 dataidx = 0;
             }
 
-            DASSERT( totalbits <= UMAX32 );
+            DASSERTN( totalbits <= UMAX32 );
 
             bin << (uint)totalbits;
             uints bytes = align_to_chunks((uints)totalbits, 8);

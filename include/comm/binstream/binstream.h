@@ -80,7 +80,7 @@ inline bstype::pointer<T> pointer(T* co& p) {
     virtual opcd close( bool linger=false );
     virtual bool is_open() const = 0;
     virtual opcd bind( binstream& bin, int io );
-    
+
     virtual void flush() = 0;
     virtual void acknowledge( bool eat=false ) = 0;
 
@@ -118,7 +118,7 @@ public:
         fATTR_IO_FORMATTING             = 0x02,
         fATTR_OUTPUT_FORMATTING         = 0x02,     //< formatting stream wrapper (text)
         fATTR_INPUT_FORMATTING          = 0x02,     //< parsing stream wrapper
-        
+
         fATTR_SIMPLEX                   = 0x04,     //< cannot simultaneously use input and output
         fATTR_HANDSHAKING               = 0x08,     //< uses flush/acknowledge semantic
 
@@ -154,10 +154,10 @@ public:
 //@{ Primitive operators for extracting data from binstream.
     binstream& operator << (opcd x)
     {
-		if( !x._ptr )
-			xwrite( &x._ptr, bstype::t_type<opcd>() );
-		else
-			xwrite( x._ptr, bstype::t_type<opcd>() );
+        if( !x._ptr )
+            xwrite( &x._ptr, bstype::t_type<opcd>() );
+        else
+            xwrite( x._ptr, bstype::t_type<opcd>() );
         return *this;
     }
 
@@ -199,7 +199,7 @@ public:
     }
 
     ///Append formatted floating point value
-    //@param nfrac number of decimal places: >0 maximum, <0 precisely -nfrac places 
+    //@param nfrac number of decimal places: >0 maximum, <0 precisely -nfrac places
     //@param WIDTH total width
     //@note used by text formatting streams, writes as a raw token
     template<int WIDTH, int ALIGN>
@@ -299,12 +299,12 @@ public:
     {
         ushort e;
         xread( &e, bstype::t_type<opcd>() );
-		x.set(e);
+        x.set(e);
         return *this;
     }
     //@}
 
-    ///Read error code from binstream. Also translates binstream errors to 
+    ///Read error code from binstream. Also translates binstream errors to
     opcd read_error()
     {
         ushort ec;
@@ -591,7 +591,7 @@ public:
     {
         opcd e;
         uints n=0;
-		const uints BLOCKSIZE = 4096;
+        const uints BLOCKSIZE = 32768;
         uchar buf[BLOCKSIZE];
 
         if( blocksize > BLOCKSIZE )
@@ -599,12 +599,12 @@ public:
 
         for( ;; )
         {
-			uints len = dlen>blocksize ? blocksize : dlen;
+            uints len = dlen>blocksize ? blocksize : dlen;
             uints oen = len;
 
             e = read_raw_full( buf, len );
             uints size = oen - len;
-			dlen -= size;
+            dlen -= size;
 
             uints alen = size;
             bin.write_raw( buf, alen );
@@ -622,17 +622,17 @@ public:
 
     ///Transfer the content of source binstream to this binstream
     //@param blocksize hint about size of the memory block used for copying
-	virtual opcd transfer_from( binstream& src, uints datasize=UMAXS, uints* size_read=0, uints blocksize = 4096 )
-	{
-		return src.copy_to(*this, datasize, size_read, blocksize);
-	}
+    virtual opcd transfer_from( binstream& src, uints datasize=UMAXS, uints* size_read=0, uints blocksize = 32768 )
+    {
+        return src.copy_to(*this, datasize, size_read, blocksize);
+    }
 
     ///Transfer the content of this binstream to the destination binstream
     //@param blocksize hint about size of the memory block used for copying
-	virtual opcd transfer_to( binstream& dst, uints datasize=UMAXS, uints* size_written=0, uints blocksize = 4096 )
-	{
-		return copy_to(dst, datasize, size_written, blocksize);
-	}
+    virtual opcd transfer_to( binstream& dst, uints datasize=UMAXS, uints* size_written=0, uints blocksize = 32768)
+    {
+        return copy_to(dst, datasize, size_written, blocksize);
+    }
 
 
 
@@ -903,7 +903,7 @@ public:
     ///Peek at the output if writing is possible
     virtual opcd peek_write( uint timeout ) = 0;
 
-	////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
     ///Read until @p ss substring is read or @p max_size bytes received
     virtual opcd read_until( const substring& ss, binstream* bout, uints max_size=UMAXS ) = 0;
 
@@ -967,7 +967,7 @@ public:
     ///Reset the binstream to the initial state for writing. Does nothing on stateless binstreams.
     virtual void reset_write() = 0;
 
-    ///Set read and write operation timeout value. Various, mainly network binstreams use it to return 
+    ///Set read and write operation timeout value. Various, mainly network binstreams use it to return
     /// ersTIMEOUT error or throw the ersTIMEOUT opcd object
     virtual opcd set_timeout( uint ms )
     {
@@ -986,7 +986,7 @@ public:
         stream. For example, some protocol may require the size of body written in a header, before
         the body alone, but the size may not be known in advance. So one could remember the position
         where the size should be written with get_size(), write a placeholder data there. Before
-        writing the body remember the offset with get_size(), write the body itself and compute the 
+        writing the body remember the offset with get_size(), write the body itself and compute the
         size by subtracting the starting offset from current get_size() value.
         Afterwards use overwrite_raw to write actual size at the placeholder position.
     **/
@@ -1010,6 +1010,16 @@ public:
     }
 
     //@}
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    virtual uint64 get_read_pos() const { return UMAX64; }
+    virtual uint64 get_write_pos() const { return UMAX64; }
+
+    virtual bool set_read_pos(uint64 pos) { return false; }
+    virtual bool set_write_pos(uint64 pos) { return false; }
+
 
 
     static void* bufcpy( void* dst, const void* src, uints count )
@@ -1048,7 +1058,7 @@ struct opcd_formatter
         if( size <= n + 3 + et.len() ) {
             ::memcpy( buf+n, " : ", 3 );
             et.copy_to( buf+n+3, size-3-n );
-            n += 3 + et.len();
+            n += 3 + et.lens();
         }
 
         return n;

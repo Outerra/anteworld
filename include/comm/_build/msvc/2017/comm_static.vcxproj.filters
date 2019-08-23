@@ -456,4 +456,7 @@
   <ItemGroup>
     <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\cpp.hint" />
+  </ItemGroup>
 </Project>

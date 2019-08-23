@@ -667,6 +667,9 @@
     <ClInclude Include="..\..\..\txtconv.h" />
     <ClInclude Include="..\..\..\version.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

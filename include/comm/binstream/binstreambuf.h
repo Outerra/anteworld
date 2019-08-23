@@ -345,20 +345,20 @@ public:
         _bgi=0;
     }
 
-    uint64 get_read_pos() const         { return _bgi; }
-    uint64 get_write_pos() const        { return _buf.size(); }
+    uint64 get_read_pos() const override { return _bgi; }
+    uint64 get_write_pos() const override { return _buf.size(); }
 
-    bool set_read_pos( uint64 pos )     {
+    bool set_read_pos(uint64 pos) override {
         bool over = pos > _buf.size();
-        if(over)
+        if (over)
             pos = _buf.size();
 
         _bgi = uints(pos);
         return !over;
     }
 
-    bool set_write_pos( uint64 pos )     {
-        if(pos > UMAXS)
+    bool set_write_pos(uint64 pos) override {
+        if (pos > UMAXS)
             return false;
 
         _buf.realloc(uints(pos));

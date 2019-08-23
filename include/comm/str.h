@@ -92,7 +92,7 @@ public:
     ///String literal constructor, optimization to have fast literal strings available as tokens
     //@note tries to detect and if passed in a char array instead of string literal, by checking if the last char is 0
     // and the preceding char is not 0
-    // Call token(&*array) to force treating the array as a zero-terminated string
+    // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
     charstr(const char(&str)[N])
     {
@@ -250,7 +250,7 @@ public:
             return czstr;
         }
 
-        DASSERT(slen <= UMAX32);
+        DASSERTN(slen <= UMAX32);
 
         assign(czstr, slen);
         return czstr + slen;
@@ -277,7 +277,7 @@ public:
         if(slen == 0)
             return czstr;
 
-        DASSERT(slen <= UMAX32);
+        DASSERTN(slen <= UMAX32);
 
         _append(czstr, slen);
         _tstr[len()] = 0;
@@ -286,7 +286,9 @@ public:
 
     const char* add_from_range(const char* strbgn, const char* strend)
     {
-        return add_from(strbgn, strend - strbgn);
+        return strend > strbgn
+            ? add_from(strbgn, strend - strbgn)
+            : strbgn;
     }
 
     ///Copy to buffer, terminate with zero
@@ -333,7 +335,7 @@ public:
         }
         else {
             uints ts = lens();
-            DASSERT(ts + length <= UMAX32);
+            DASSERTN(ts + length <= UMAX32);
 
             if((uints)length < ts)
             {
@@ -1928,7 +1930,7 @@ protected:
             return;
         }
 
-        DASSERT(len <= UMAX32);
+        DASSERTN(len <= UMAX32);
 
         char* p = _tstr.alloc(len + 1);
         xmemcpy(p, czstr, len);
@@ -1949,7 +1951,7 @@ protected:
             return 0;
         }
 
-        DASSERT(len <= UMAX32);
+        DASSERTN(len <= UMAX32);
 
         char* p = _tstr.alloc(len + 1);
         termzero();
@@ -2132,7 +2134,7 @@ protected:
     char* uniadd(uints n)
     {
         uints cn = _tstr.sizes();
-        DASSERT(cn + n <= UMAX32);
+        DASSERTN(cn + n <= UMAX32);
 
         char* p = (cn == 0)
             ? _tstr.add(n + 1)

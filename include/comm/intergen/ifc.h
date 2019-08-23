@@ -65,6 +65,7 @@ namespace coid {
 #define ifc_class_virtual(name,path)
 
 ///Interface function decoration keyword: such decorated method will be added into the interface
+//@example ifc_fn void fn(int a, ifc_out int& b);
 #define ifc_fn
 
 ///Interface function decoration keyword

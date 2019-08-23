@@ -197,7 +197,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_$name$$@index$( const v8::ARGUMENTS& args
     if (args.Length() < $ninargs_nondef$ || args.Length() > $ninargs$) { //in/inout arguments
         coid::charstr tmp = "Wrong number of arguments in ";
         tmp << "$..name$.$name$";
-        return v8::throw_js(iso, v8::Exception::SyntaxError, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::SyntaxError, tmp);
     }
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
@@ -216,7 +216,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_$name$$@index$( const v8::ARGUMENTS& args
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$.$name$";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
@@ -317,7 +317,7 @@ $(/if)-$
 #endif
 
     } catch(const coid::exception& e) {
-        return v8::throw_js(iso, &v8::Exception::TypeError, e.text());
+        return v8::queue_js_exception(iso, &v8::Exception::TypeError, e.text());
     }
 }
 
@@ -374,7 +374,7 @@ $-[args inarg?]$$(if volatile?)$
 $-[/args]$
 
     if (js_trycatch__.HasCaught())
-        ::js::script_handle::throw_js_error(js_trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$");
+        ::js::script_handle::throw_exception_from_js_error(js_trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$");
 // gather results
 $-(if !noutargs?)$
 
@@ -465,7 +465,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_evback_$name$$@index$( const v8::ARGUMENT
     if (ifc->_events[$@index$].IsEmpty() || ev__->IsUndefined()) {
         coid::charstr tmp = "Event not available: ";
         tmp << "$name$";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 $-(if ninargs.nonzero?)$
 
@@ -512,7 +512,7 @@ v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<V8_NAME> property, const v8:
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$[]";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
@@ -562,7 +562,7 @@ v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<V8_NAME> property, v8::Local
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$[] = ...";
-        return v8::throw_js(iso, v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
@@ -580,7 +580,7 @@ $-(/if)$
     }
     catch ( std::exception& e )
     {
-        v8::throw_js(iso,v8::Exception::Error,e.what());
+        v8::queue_js_exception(iso,v8::Exception::Error,e.what());
     }
 #ifdef V8_MAJOR_VERSION
     args.GetReturnValue().Set(value);
@@ -609,7 +609,7 @@ v8::CBK_RET $name$_js_dispatcher::v8log( const v8::ARGUMENTS& args )
 
             inst = ifc;
             if (!ifc)
-                return v8::throw_js(iso, &v8::Exception::ReferenceError, "Null interface object in $$log");
+                return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, "Null interface object in $$log");
         }
     }
 
@@ -630,7 +630,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
     v8::Isolate* iso = args.GetIsolate();
 
     if (args.Length() < 1)
-        return v8::throw_js(iso, &v8::Exception::Error, "Interface creator name missing");
+        return v8::queue_js_exception(iso, &v8::Exception::Error, "Interface creator name missing");
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::String::Utf8Value key(V8_OPTARG(iso) args[0]);
@@ -643,7 +643,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
     if (!get) {
         coid::charstr tmp = "interface creator ";
         tmp << tokey << " not found";
-        return v8::throw_js(iso, v8::Exception::Error, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::Error, tmp);
     }
 
     v8::Local<v8::Object> obj__ = args.Holder();
@@ -658,7 +658,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
 
     if (!ifc)
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, "Null interface object in $$query_interface");
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, "Null interface object in $$query_interface");
 
 #ifdef V8_MAJOR_VERSION
     args.GetReturnValue().Set(get(args, ifc));
@@ -673,7 +673,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface_global( const v8::ARGUMENTS&
     v8::Isolate* iso = args.GetIsolate();
 
     if (args.Length() < 1)
-        return v8::throw_js(iso, &v8::Exception::Error, "Interface creator name missing");
+        return v8::queue_js_exception(iso, &v8::Exception::Error, "Interface creator name missing");
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
     v8::String::Utf8Value key(V8_OPTARG(iso) args[0]);
@@ -686,7 +686,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface_global( const v8::ARGUMENTS&
     if (!get) {
         coid::charstr tmp = "interface creator ";
         tmp << tokey << " not found";
-        return v8::throw_js(iso, v8::Exception::Error, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::Error, tmp);
     }
 
 #ifdef V8_MAJOR_VERSION
@@ -775,6 +775,7 @@ $-(if hasprops?)$
 
 #ifdef V8_MAJOR_VERSION
         v8::NamedPropertyHandlerConfiguration conf(&_getter, &_setter);
+        conf.flags = v8::PropertyHandlerFlags::kNonMasking;
         ot->SetHandler(conf);
 #else
         ot->SetNamedPropertyHandler(&_getter, &_setter);
@@ -987,7 +988,7 @@ v8::Handle<v8::Value> $..name$_js_dispatcher::v8creator_$name$$@order$( const v8
     if (args.Length() < 1+$ninargs_nondef$ || args.Length() > 1+$ninargs$) { //fnc name + in/inout arguments
         coid::charstr tmp = "Wrong number of arguments in ";
         tmp << "$name$";
-        v8::throw_js(iso, &v8::Exception::Error, tmp);
+        v8::queue_js_exception(iso, &v8::Exception::Error, tmp);
         return V8_UNDEFINED(iso);
     }
 

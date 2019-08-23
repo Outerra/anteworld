@@ -92,6 +92,12 @@ struct comm_array_allocator
         SINGLETON(comm_array_mspace);
     }
 
+    ///Typed array reserve
+    template<class T>
+    static T* reserve(uints n, mspace m = 0) {
+        return (T*)reserve(n, sizeof(T), &typeid(T[]), m);
+    }
+
     ///Typed array alloc
     template<class T>
     static T* alloc( uints n, mspace m = 0 ) {
@@ -102,8 +108,15 @@ struct comm_array_allocator
     template<class T>
     static T* realloc( const T* p, uints n, mspace mn = 0 )
     {
-        if(!p)
+        if (!p)
             return alloc<T>(n, mn);
+
+        uints vs = mspace_virtual_size((uints*)p - 1);
+        if (vs > 0) {
+            //reserved virtual memory, will be reallocated in-place
+            T* pn = (T*)realloc_in_place(p, n, sizeof(T), &typeid(T[]));
+            return pn;
+        }
 
         mspace m = mspace_from_ptr((uints*)p - 1);
 
@@ -138,6 +151,24 @@ struct comm_array_allocator
     }
 
 
+    ///Untyped array reserve
+    static void* reserve(
+        uints n,
+        uints elemsize,
+        const std::type_info* tracking = 0,
+        mspace m = 0
+    )
+    {
+        uints* p = (uints*)::mspace_malloc_virtual(
+            m ? m : SINGLETON(comm_array_mspace).msp,
+            sizeof(uints) + n * elemsize);
+
+        dbg_memtrack_alloc(tracking, ::mspace_usable_size(p));
+
+        if (!p) throw std::bad_alloc();
+        p[0] = n;
+        return p + 1;
+    }
 
     ///Untyped array alloc
     static void* alloc(
@@ -233,7 +264,7 @@ struct comm_array_allocator
         mspace m = 0)
     {
         uints n = count(p);
-        DASSERT( n+nitems <= UMAXS );
+        DASSERTN( n+nitems <= UMAXS );
 
         if(!nitems)
             return const_cast<void*>(p);

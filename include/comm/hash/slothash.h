@@ -130,12 +130,14 @@ public:
     //@return found object or pointer to a newly created one
     //@note if isnew is true, caller has to set the object pointed to by the return value
     template<class FKEY = KEY>
-    T* find_or_insert_value_slot(const FKEY& key, bool* isnew = 0)
+    T* find_or_insert_value_slot(const FKEY& key, bool* isnew = 0, uint* pid = 0)
     {
         uint id;
         bool isnew_ = find_or_insert_value_slot_uninit_(key, &id);
         if (isnew)
             *isnew = isnew_;
+        if (pid)
+            *pid = id;
 
         return isnew_
             ? new(base::get_mutable_item(id)) T
@@ -148,12 +150,14 @@ public:
     //@return found object or pointer to a newly created one
     //@note if isnew is true, caller has to in-place construct the object pointed to by the return value
     template<class FKEY = KEY>
-    T* find_or_insert_value_slot_uninit(const FKEY& key, bool* isnew = 0)
+    T* find_or_insert_value_slot_uninit(const FKEY& key, bool* isnew = 0, uint* pid = 0)
     {
         uint id;
         bool isnew_ = find_or_insert_value_slot_uninit_(key, &id);
         if (isnew)
             *isnew = isnew_;
+        if (pid)
+            *pid = id;
 
         return base::get_mutable_item(id);
     }

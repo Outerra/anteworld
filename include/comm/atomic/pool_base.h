@@ -65,7 +65,7 @@ public:
     ///
 	virtual void _destroy() override
     { 
-        DASSERT(_pool!=0); 
+        DASSERTN(_pool!=0); 
         _obj->reset();
 		this_type* t = static_cast<this_type*>(this);
         _pool->release_instance(t); 
@@ -74,7 +74,7 @@ public:
     ///
 	static this_type* create( pool_type* po, bool nonew=false, bool* isnew=0 ) 
     { 
-        DASSERT(po!=0); 
+        DASSERTN(po!=0); 
         this_type* p=0;
 
         bool make = !po->create_instance(p) && !nonew;
@@ -119,7 +119,7 @@ public:
     ///
 	virtual void _destroy() override
     { 
-        DASSERT(_pool!=0); 
+        DASSERTN(_pool!=0); 
         static_cast<T*>(this)->reset();
         this_type* t = this;
         _pool->release_instance(t);
@@ -128,7 +128,7 @@ public:
     ///
 	static T* create(pool_type* po) 
     { 
-        DASSERT(po!=0); 
+        DASSERTN(po!=0); 
         this_type* p = 0;
 
         if( !po->create_instance(p) ) {

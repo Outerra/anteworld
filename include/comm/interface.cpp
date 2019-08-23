@@ -562,6 +562,10 @@ __declspec(dllimport) proc_t __stdcall GetProcAddress(
     const char* procname
 );
 
+extern "C"
+_declspec(dllimport) void* __stdcall GetModuleHandleA(const char * lpModuleName
+);
+
 typedef interface_register_impl* (*ireg_t)();
 
 #define MAKESTR(x) STR(x)
@@ -574,7 +578,7 @@ interface_register_impl& interface_register_impl::get()
 
     if (!_this) {
         const char* s = MAKESTR(INTERGEN_GLOBAL_REGISTRAR);
-        ireg_t p = (ireg_t)GetProcAddress(0, s);
+        ireg_t p = (ireg_t)GetProcAddress(GetModuleHandleA(NULL), s);
         if (!p) throw exception() << "no intergen entry point found";
         _this = p();
     }

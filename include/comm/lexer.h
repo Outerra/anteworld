@@ -15,7 +15,7 @@
  *
  * The Initial Developer of the Original Code is
  * Brano Kemen
- * Portions created by the Initial Developer are Copyright (C) 2006-2009
+ * Portions created by the Initial Developer are Copyright (C) 2006-2019
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -114,7 +114,7 @@ COID_NAMESPACE_BEGIN
     The lexer uses first group as the one containing ignored whitespace characters,
     unless you provide the next() method with different group id (or none) to ignore.
     **/
-class lexer
+    class lexer
 {
 public:
 
@@ -124,7 +124,7 @@ public:
     //@param dst destination string to fill
     virtual void on_error_prefix(bool rules, charstr& dst, int line)
     {
-        if(!rules)
+        if (!rules)
             dst << line << " : ";
     }
 
@@ -137,9 +137,9 @@ public:
         uint col;
         current_line(&text, &col);
 
-        if(!text.is_empty()) {
+        if (!text.is_empty()) {
             //limit to 80 characters max
-            if(text.len() > 80) {
+            if (text.len() > 80) {
                 int start = int_max(0, int(col - 40));
                 int end = int_min(int(text.len()), start + 80);
 
@@ -152,7 +152,7 @@ public:
             dst << "\n" << text;
             dst << "\n";
 
-            if(col < text.len()) {
+            if (col < text.len()) {
                 dst.appendn(col, ' ');
                 dst << "^\n";
             }
@@ -169,7 +169,7 @@ public:
             hash = (hash ^ (uint)c) + (hash << 26) + (hash >> 6);
         }
 
-        void reset()    { hash = 0; }
+        void reset() { hash = 0; }
     };
 
     enum { ID_KEYWORDS = 0x8000 };
@@ -178,7 +178,7 @@ public:
     struct lextoken
     {
         token   tok;                    //< value string, points to input string or to tokbuf
-        token   outok;                  //< value string, points to string includng its leading and trailing delimiters
+        token   outok;                  //< value string, points to a string including its leading and trailing delimiters
         int     id;                     //< token id (group type or string type)
         int     termid;                 //< terminator id, for strings or blocks with multiple trailing sequences, or keyword id for keywords
         int     state;                  //< >0 leading, <0 trailing, =0 chunked
@@ -187,15 +187,15 @@ public:
         bool icase;                     //< case-insensitive string
 
 
-        bool operator == (int i) const  { return i == id; }
+        bool operator == (int i) const { return i == id; }
         bool operator == (char c) const { return tok == c; }
         bool operator == (const token& t) const { return tok.cmpeqc(t, !icase); }
 
-        bool operator != (int i) const  { return i != id; }
+        bool operator != (int i) const { return i != id; }
         bool operator != (char c) const { return tok != c; }
         bool operator != (const token& t) const { return !tok.cmpeqc(t, !icase); }
 
-        operator token() const          { return tok; }
+        operator token() const { return tok; }
 
 
         typedef int lextoken::*unspecified_bool_type;
@@ -204,12 +204,12 @@ public:
         }
 
         //@return true if this is end-of-file token
-        bool end() const                { return id == 0; }
+        bool end() const { return id == 0; }
 
         //@return leading token of matched sequence, string or block
         const charstr& leading_token(lexer& lex) const {
             static charstr empty;
-            if(id >= 0) return empty;
+            if (id >= 0) return empty;
 
             const sequence* seq = lex._stbary[-id - 1];
             return seq->leading;
@@ -218,20 +218,20 @@ public:
         //@return trailing token of matched string or block
         const charstr& trailing_token(lexer& lex) const {
             static charstr empty;
-            if(id >= 0) return empty;
+            if (id >= 0) return empty;
 
             const sequence* seq = lex._stbary[-id - 1];
-            if(!seq->is_block() && !seq->is_string())
+            if (!seq->is_block() && !seq->is_string())
                 return empty;
 
             return static_cast<const stringorblock*>(seq)->trailing[termid].seq;
         }
 
         //@return true if this is leading token of specified sequence
-        bool leading(int i) const       { return state > 0 && id == i; }
+        bool leading(int i) const { return state > 0 && id == i; }
 
         //@return true if this is trailing token of specified sequence
-        bool trailing(int i) const      { return state < 0 && id == i; }
+        bool trailing(int i) const { return state < 0 && id == i; }
 
         //@return true if this is actually a string or block content (without the leading and trailing sequences)
         bool is_content() const {
@@ -241,7 +241,7 @@ public:
         ///Swap or assign token to the destination string
         void swap_to_string(charstr& buf)
         {
-            if(!tokbuf.is_empty())
+            if (!tokbuf.is_empty())
                 buf.swap(tokbuf);
             else
                 buf = tok;
@@ -250,13 +250,13 @@ public:
         ///Swap content 
         token swap_to_token_or_string(charstr& dstr)
         {
-            if(!tokbuf.is_empty())
+            if (!tokbuf.is_empty())
                 dstr.swap(tokbuf);
             return tok;
         }
 
         ///Return token
-        token value() const             { return tok; }
+        token value() const { return tok; }
 
         ///Return token including the leading and trailing sequences of strings and blocks
         token outer() const {
@@ -264,12 +264,12 @@ public:
         }
 
         ///Return pointer to the beginning of the current token
-        const char* ptr() const         { return tok.ptr(); }
+        const char* ptr() const { return tok.ptr(); }
 
         ///Return pointer to the end of the current token
-        const char* ptre() const        { return tok.ptre(); }
+        const char* ptre() const { return tok.ptre(); }
 
-        int group() const               { return id; }
+        int group() const { return id; }
 
         void upd_hash(uchar p) {
             hash.inc_char(p);
@@ -333,7 +333,7 @@ public:
         _abmap.alloc(256);
         _casemap.alloc(256);
 
-        for(uint i = 0; i < _abmap.size(); ++i) {
+        for (uint i = 0; i < _abmap.size(); ++i) {
             _abmap[i] = GROUP_UNASSIGNED;
             _casemap[i] = icase ? tolower(i) : i;
         }
@@ -367,13 +367,14 @@ public:
         _tok = tok;
 
         static const token BOM = "\xEF\xBB\xBF";
-        if(_utf8 && _tok.begins_with(BOM)) {
+        if (_utf8 && _tok.begins_with(BOM)) {
             _tok.shift_start(BOM.len());
         }
         _bomread = true;
 
         _orig = _tok;
         _last.tok.set_empty(_tok.ptr());
+        _last.outok = _last.tok;
         _lines_processed = _lines_last = _tok.ptr();
     }
 
@@ -399,6 +400,7 @@ public:
         _last.id = 0;
         _last.state = 0;
         _last.tok.set_null();
+        _last.outok = _last.tok;
         _last_string = -1;
         _err = 0;
         _errtext.reset();
@@ -424,22 +426,22 @@ public:
     {
         uint g = (uint)_grpary.size();
 
-        if(_entmap.find_value(name))
+        if (_entmap.find_value(name))
             __throw_entity_exists(name);
 
         group_rule* gr = new group_rule(name, (ushort)g, false);
         _entmap.insert_value(gr);
 
         uchar msk = (uchar)g;
-        if(!trailset.is_empty())
+        if (!trailset.is_empty())
             msk |= fGROUP_TRAILSET;
 
-        if(!process_set(set, msk, &lexer::fn_group))  return 0;
-        if(!trailset.is_empty())
+        if (!process_set(set, msk, &lexer::fn_group))  return 0;
+        if (!trailset.is_empty())
         {
             gr->bitmap = _ntrails;
             _trail.crealloc(_abmap.size());
-            if(!process_set(trailset, 1 << _ntrails++, &lexer::fn_trail))  return 0;
+            if (!process_set(trailset, 1 << _ntrails++, &lexer::fn_trail))  return 0;
         }
 
         *_grpary.add() = gr;
@@ -455,13 +457,13 @@ public:
     {
         uint g = (uint)_grpary.size();
 
-        if(_entmap.find_value(name))
+        if (_entmap.find_value(name))
             __throw_entity_exists(name);
 
         group_rule* gr = new group_rule(name, (ushort)g, true);
         _entmap.insert_value(gr);
 
-        if(!process_set(set, (uchar)g | fGROUP_SINGLE, &lexer::fn_group))  return 0;
+        if (!process_set(set, (uchar)g | fGROUP_SINGLE, &lexer::fn_group))  return 0;
 
         *_grpary.add() = gr;
         return g + 1;
@@ -478,10 +480,10 @@ public:
     /// one character group, or id of a sequence created, or 0 if already defined.
     int def_keyword(const token& kwd, uint keyword_group = 0)
     {
-        if(!homogenous(kwd))
+        if (!homogenous(kwd))
             return def_sequence("keywords", kwd);
 
-        if(_kwds.add(kwd, ID_KEYWORDS + keyword_group)) {
+        if (_kwds.add(kwd, ID_KEYWORDS + keyword_group)) {
             _abmap[(uchar)_casemap[kwd.first_char()]] |= fGROUP_KEYWORDS;
             return ID_KEYWORDS + keyword_group;
         }
@@ -503,7 +505,7 @@ public:
         token kwd;
         int grp = 0;
 
-        while(!(kwd = kwdlist.cut_left(sep)).is_empty())
+        while (!(kwd = kwdlist.cut_left(sep)).is_empty())
             grp = def_keyword(kwd, _nkwd_groups);
 
         ++_nkwd_groups;
@@ -518,7 +520,7 @@ public:
     {
         int grp = 0;
 
-        while(*kwdlist)
+        while (*kwdlist)
             grp = def_keyword(*kwdlist++, _nkwd_groups);
 
         ++_nkwd_groups;
@@ -529,14 +531,14 @@ public:
     //@return nonzero if token is a keyword from given keyword group, the return equals keyword id + 1
     int is_keyword(int kid, const token& tok) const
     {
-        DASSERT(kid >= ID_KEYWORDS  &&  kid < ID_KEYWORDS + (int)_nkwd_groups);
-        if(kid < ID_KEYWORDS || kid >= ID_KEYWORDS + (int)_nkwd_groups)
+        DASSERT(kid >= ID_KEYWORDS && kid < ID_KEYWORDS + (int)_nkwd_groups);
+        if (kid < ID_KEYWORDS || kid >= ID_KEYWORDS + (int)_nkwd_groups)
             return 0;
 
         int ord;
         int grp = _kwds.valid(tok, &ord);
 
-        if(grp != kid) return 0;
+        if (grp != kid) return 0;
         return 1 + ord;
     }
 
@@ -557,7 +559,7 @@ public:
         uint g = (uint)_escary.size();
 
         //only one escape rule of given name
-        if(_entmap.find_value(name))
+        if (_entmap.find_value(name))
             __throw_entity_exists(name);
 
         escape_rule* er = new escape_rule(name, (ushort)g);
@@ -583,7 +585,7 @@ public:
     bool def_escape_pair(int escrule, const token& code, const token& replacewith)
     {
         --escrule;
-        ASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
+        LASSERT_RETX(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
 
         //add escape pairs, longest codes first
         escpair* ep = _escary[escrule]->pairs.add_sort(code);
@@ -596,7 +598,7 @@ public:
     bool is_escaped_char(int escrule, char c)
     {
         --escrule;
-        ASSERT_RET(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
+        LASSERT_RETX(escrule >= 0 && escrule < (int)_escary.size(), false, "invalid rule id" << escrule);
 
         return _escary[escrule]->is_escaped_char(c);
     }
@@ -617,10 +619,10 @@ public:
         get_flags(name, &ign, &enb);
 
         entity* const* ens = _entmap.find_value(name);
-        if(ens && (*ens)->type != entity::STRING)
+        if (ens && (*ens)->type != entity::STRING)
             __throw_different_exists(name);
 
-        if(ens && ((string_rule*)*ens)->leading == leading) {
+        if (ens && ((string_rule*)*ens)->leading == leading) {
             //reuse, only the trailing mark is different
             g = add_trailing(((string_rule*)*ens), trailing);
             return -1 - g;
@@ -632,14 +634,14 @@ public:
         _root.ignore(sr->id, ign);
         _root.enable(sr->id, enb);
 
-        if(!escape.is_empty())
+        if (!escape.is_empty())
         {
             entity* const* en = _entmap.find_value(escape);
             sr->escrule = en ? reinterpret_cast<escape_rule*>(*en) : 0;
-            if(!sr->escrule)
+            if (!sr->escrule)
                 __throw_doesnt_exist(escape);
 
-            if(sr->escrule->type != entity::ESCAPE) {
+            if (sr->escrule->type != entity::ESCAPE) {
                 _err = lexception::ERR_ENTITY_BAD_TYPE;
 
                 on_error_prefix(true, _errtext, current_line());
@@ -653,7 +655,7 @@ public:
         add_trailing(sr, trailing);
 
         add_sequence(sr);
-        if(enb)
+        if (enb)
             __assert_reachable_sequence(sr);
 
         return -1 - g;
@@ -678,10 +680,10 @@ public:
         get_flags(name, &ign, &enb);
 
         entity* const* ens = _entmap.find_value(name);
-        if(ens && (*ens)->type != entity::BLOCK)
+        if (ens && (*ens)->type != entity::BLOCK)
             __throw_different_exists(name);
 
-        if(ens && ((block_rule*)*ens)->leading == leading) {
+        if (ens && ((block_rule*)*ens)->leading == leading) {
             //reuse, only trailing mark is different
             g = add_trailing(((block_rule*)*ens), trailing);
             return -1 - g;
@@ -693,18 +695,18 @@ public:
         _root.ignore(br->id, ign);
         _root.enable(br->id, enb);
 
-        for(;;)
+        for (;;)
         {
             token ne = nested.cut_left(' ');
-            if(ne.is_empty())  break;
+            if (ne.is_empty())  break;
 
-            if(ne == "*.") {
+            if (ne == "*.") {
                 //enable all global rules
                 br->stbenabled = UMAX64;
                 br->stbignored = _root.stbignored;
                 continue;
             }
-            if(ne == '*') {
+            if (ne == '*') {
                 //inherit all global rules
                 br->stbenabled = _root.stbenabled;
                 br->stbignored = _root.stbignored;
@@ -714,13 +716,13 @@ public:
             bool ignn, enbn;
             get_flags(ne, &ignn, &enbn);
 
-            if(ne.char_is_number(0))
+            if (ne.char_is_number(0))
             {
                 token net = ne;
 
                 //special case for cross-linked blocks, id of future block rule instead of the name
                 int rn = ne.touint_and_shift();
-                if(ne.len())
+                if (ne.len())
                     __throw_different_exists(net);
 
                 br->enable(rn, enbn);
@@ -737,7 +739,7 @@ public:
         add_trailing(br, trailing);
 
         add_sequence(br);
-        if(enb)
+        if (enb)
             __assert_reachable_sequence(br);
 
         return -1 - g;
@@ -756,7 +758,7 @@ public:
         get_flags(name, &ign, &enb);
 
         entity* const* ens = _entmap.find_value(name);
-        if(ens && (*ens)->type != entity::SEQUENCE)
+        if (ens && (*ens)->type != entity::SEQUENCE)
             __throw_different_exists(name);
 
         sequence* se = new sequence(name, (ushort)g);
@@ -768,7 +770,7 @@ public:
         se->leading = seq;
 
         add_sequence(se);
-        if(enb)
+        if (enb)
             __assert_reachable_sequence(se);
 
         return -1 - g;
@@ -830,7 +832,7 @@ public:
         uints off = 0;
         next_read_string(*str, off, true, false);
 
-        if(!consume_trailing_seq)
+        if (!consume_trailing_seq)
             _tok.shift_start(-(int)str->trailing[_last.termid].seq.len());
 
         return _last;
@@ -854,7 +856,7 @@ public:
         uints off = 0;
         next_read_block(*blk, off, true, false);
 
-        if(!consume_trailing_seq)
+        if (!consume_trailing_seq)
             _tok.shift_start(-(int)blk->trailing[_last.termid].seq.len());
 
         return _last;
@@ -864,7 +866,7 @@ public:
     charstr& next_append(charstr& dst)
     {
         token t = next();
-        if(!_last.tokbuf.is_empty() && dst.is_empty())
+        if (!_last.tokbuf.is_empty() && dst.is_empty())
             dst.takeover(_last.tokbuf);
         else
             dst.append(t);
@@ -905,7 +907,7 @@ public:
         **/
     const lextoken& match_block(int seqid, bool complete)
     {
-        if(matches_block(seqid, complete))
+        if (matches_block(seqid, complete))
             return _last;
 
 
@@ -941,7 +943,7 @@ public:
 
 
         //restore a simple token that was pushed back
-        if(_pushback && _last.id != seqid)
+        if (_pushback && _last.id != seqid)
         {
             DASSERT(_last.id >= 0);
             DASSERT(_last.tokbuf.is_empty());
@@ -952,8 +954,8 @@ public:
 
         next(1, seqid);
 
-        if(_last.id == seqid) {
-            if(!complete || !seq->is_block())
+        if (_last.id == seqid) {
+            if (!complete || !seq->is_block())
                 return true;
 
             uints off = 0;
@@ -977,7 +979,7 @@ public:
         sequence* seq = _stbary[sid];
 
         block_rule** br = _stack.last();
-        if(br && (*br)->id == sid) {
+        if (br && (*br)->id == sid) {
             _stack.pop();
             return;
         }
@@ -994,17 +996,17 @@ public:
     ///Skip group, default skipping whitespace group
     void skip(uint ignoregrp = 1)
     {
-        if(_pushback)
+        if (_pushback)
             return;
 
-        if(_last.tokbuf)
+        if (_last.tokbuf)
             _strings.add()->swap(_last.tokbuf);
         _last.reset();
 
         //skip characters from the ignored group
-        if(ignoregrp) {
+        if (ignoregrp) {
             token tok = scan_group(ignoregrp - 1, true);
-            if(tok.ptr() == 0)
+            if (tok.ptr() == 0)
                 set_end();
             else
                 _last.tok = tok;
@@ -1022,12 +1024,13 @@ public:
 
         @param ignoregrp id of the group to ignore if found at the beginning, 0 for none.
         This is used mainly to omit the whitespace (group 1), or explicitly to not skip it.
+        If ignoregrp < 0, and no block/sequence/group was found, read token until characters from the ignored group are found
         @param enable_seqid enable block/string/sequence temporarily if it's not enabled
         @param no_pop don't pop up the stack unless the next token equals the *no_pop token
         **/
-    const lextoken& next(uint ignoregrp = 1, int enable_seqid = 0, const token* no_pop = 0)
+    const lextoken& next(int ignoregrp = 1, int enable_seqid = 0, const token* no_pop = 0)
     {
-        if(_tok.is_null() && _bin)
+        if (_tok.is_null() && _bin)
         {
             //first time init from stream
             binstreambuf buf;
@@ -1040,28 +1043,28 @@ public:
         }
 
         //return last token if instructed
-        if(_pushback) {
+        if (_pushback) {
             _pushback = 0;
             return _last;
         }
 
-        if(_last.tokbuf)
+        if (_last.tokbuf)
             _strings.add()->swap(_last.tokbuf);
         _last.reset();
 
         //skip characters from the ignored group
-        if(ignoregrp) {
-            token tok = scan_group(ignoregrp - 1, true);
-            if(tok.ptr() == 0)
+        if (ignoregrp) {
+            token tok = scan_group(abs(ignoregrp) - 1, true);
+            if (tok.ptr() == 0)
                 return set_end();
             else
                 _last.tok = tok;
         }
-        else if(_tok.len() == 0)
+        else if (_tok.len() == 0)
         {
             //end of buffer
             //there still may be block rule active that is terminatable by eof
-            if(_stack.size() > 1 && (*_stack.last())->trailing.last()->seq.is_empty())
+            if (_stack.size() > 1 && (*_stack.last())->trailing.last()->seq.is_empty())
             {
                 const block_rule& br = **_stack.pop();
 
@@ -1085,7 +1088,7 @@ public:
         int kt;
         uints off = 0;
 
-        if((x & fSEQ_TRAILING)
+        if ((x & fSEQ_TRAILING)
             && _stack.size() > 1
             && (kt = match_trail((*_stack.last())->trailing, off)) >= 0)
         {
@@ -1096,7 +1099,7 @@ public:
             _last.state = -1;
             _last_string = k;
 
-            if(no_pop && *no_pop != br.trailing[kt].seq) {
+            if (no_pop && *no_pop != br.trailing[kt].seq) {
                 _last.tok.set(_tok.ptr(), br.trailing[kt].seq.len());
             }
             else {
@@ -1107,19 +1110,19 @@ public:
             return _last;
         }
 
-        if(x & xSEQ)
+        if (x & xSEQ)
         {
             //this could be a leading string/block delimiter, if we can find it in the register
             const dynarray<sequence*>& dseq = _seqary[((x&xSEQ) >> rSEQ) - 1];
             uint i, n = (uint)dseq.size();
             uint enb = -1 - enable_seqid;
 
-            for(i = 0; i < n; ++i) {
-                if((enabled(*dseq[i]) || dseq[i]->id == enb) && follows(dseq[i]->leading, 0))
+            for (i = 0; i < n; ++i) {
+                if ((enabled(*dseq[i]) || dseq[i]->id == enb) && follows(dseq[i]->leading, 0))
                     break;
             }
 
-            if(i < n)
+            if (i < n)
             {
                 sequence* seq = dseq[i];
                 uint k = seq->id;
@@ -1134,9 +1137,9 @@ public:
                 uints off = 0;
                 bool ign = ignored(*seq) && seq->id != enb;
 
-                if(seq->type == entity::BLOCK)
+                if (seq->type == entity::BLOCK)
                 {
-                    if(!ign)
+                    if (!ign)
                     {
                         _stack.push(reinterpret_cast<block_rule*>(seq));
                         return _last;
@@ -1144,14 +1147,24 @@ public:
 
                     next_read_block(*(const block_rule*)seq, off, true, ign);
                 }
-                else if(seq->type == entity::STRING)
+                else if (seq->type == entity::STRING) {
                     next_read_string(*(const string_rule*)seq, off, true, ign);
+                }
+                else {
+                    _last.outok._pte = _tok.ptr();
+                }
 
-                if(ign)
+                if (ign)
                     return next(ignoregrp, enable_seqid, no_pop);
 
                 return _last;
             }
+        }
+
+        if (ignoregrp < 0) {
+            _last.id = -ignoregrp;
+            _last.tok = scan_notgroup(-ignoregrp - 1, false);
+            return _last;
         }
 
         _last.id = x & xGROUP;
@@ -1164,26 +1177,30 @@ public:
 
         //normal token, get all characters belonging to the same group, unless this is
         // a single-char group
-        if(x & fGROUP_SINGLE)
+        if (x & fGROUP_SINGLE)
         {
-            if(_utf8) {
+            if (_utf8) {
                 //return whole utf8 characters
                 _last.tok = _tok.cut_left_n(prefetch_utf8());
             }
             else
                 _last.tok = _tok.cut_left_n(1);
+
+            _last.outok = _last.tok;
             return _last;
         }
 
         //consume remaining
-        if(x & fGROUP_TRAILSET)
+        if (x & fGROUP_TRAILSET)
             _last.tok = scan_mask(1 << _grpary[_last.id - 1]->bitmap, false, 1);
         else
             _last.tok = scan_group(_last.id - 1, false, 1);
 
+        _last.outok = _last.tok;
+
         //check if it's a keyword
         int kwdgrp;
-        if((x & fGROUP_KEYWORDS) && (kwdgrp = _kwds.valid(_last.hash.hash, _last.tok, &_last.termid)))
+        if ((x & fGROUP_KEYWORDS) && (kwdgrp = _kwds.valid(_last.hash.hash, _last.tok, &_last.termid)))
             _last.id = kwdgrp;
 
         return _last;
@@ -1196,11 +1213,11 @@ public:
     {
         uints skip = 0;
 
-        if(ignore) {
+        if (ignore) {
             token white = scan_group(ignore - 1, true);
             _tok.shift_start(-(int)white.len());
 
-            if(white.ptr() == 0)
+            if (white.ptr() == 0)
                 return false;
 
             skip = white.len();
@@ -1218,11 +1235,11 @@ public:
     {
         uints skip = 0;
 
-        if(ignore) {
+        if (ignore) {
             token white = scan_group(ignore - 1, true);
             _tok.shift_start(-(int)white.len());
 
-            if(white.ptr() == 0)
+            if (white.ptr() == 0)
                 return false;
 
             skip = white.len();
@@ -1257,13 +1274,13 @@ public:
 
         next(1, grp);
 
-        if(_last != grp) {
-            if(!ignored(_last.group()))
+        if (_last != grp) {
+            if (!ignored(_last.group()))
                 push_back();
             return false;
         }
 
-        if(!_last.tokbuf.is_empty())
+        if (!_last.tokbuf.is_empty())
             dst.takeover(_last.tokbuf);
         else
             dst = _last.tok;
@@ -1281,8 +1298,8 @@ public:
 
         next(1, grp);
 
-        if(_last != grp) {
-            if(!ignored(_last.group()))
+        if (_last != grp) {
+            if (!ignored(_last.group()))
                 push_back();
             return false;
         }
@@ -1301,7 +1318,7 @@ public:
 
         bool res = next(1, grp) == grp;
 
-        if(!res && !ignored(_last.group()))
+        if (!res && !ignored(_last.group()))
             push_back();
         return res;
     }
@@ -1322,7 +1339,7 @@ public:
     {
         bool res = matches(val);
 
-        if(!res)
+        if (!res)
         {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
@@ -1345,13 +1362,13 @@ public:
     {
         bool res = matches(c);
 
-        if(!res) {
+        if (!res) {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
             on_error_prefix(false, _errtext, current_line());
             _errtext << "error: ";
 
-            if(errmsg)
+            if (errmsg)
                 _errtext << errmsg;
             else
                 _errtext << "expected `" << c << "'";
@@ -1372,14 +1389,14 @@ public:
     {
         bool res = matches(grp, dst);
 
-        if(!res) {
+        if (!res) {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
             on_error_prefix(false, _errtext, current_line());
             _errtext << "error: ";
 
             const entity& ent = get_entity(grp);
-            if(errmsg)
+            if (errmsg)
                 _errtext << errmsg;
             else
                 _errtext << "expected a " << ent.entity_type() << " <<" << ent.name << ">>";
@@ -1401,14 +1418,14 @@ public:
     {
         bool res = matches(grp, dst);
 
-        if(!res) {
+        if (!res) {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
             on_error_prefix(false, _errtext, current_line());
             _errtext << "error: ";
 
             const entity& ent = get_entity(grp);
-            if(errmsg)
+            if (errmsg)
                 _errtext << errmsg;
             else
                 _errtext << "expected a " << ent.entity_type() << " <<" << ent.name << ">>";
@@ -1429,14 +1446,14 @@ public:
     {
         bool res = matches(grp);
 
-        if(!res) {
+        if (!res) {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
             on_error_prefix(false, _errtext, current_line());
             _errtext << "error: ";
 
             const entity& ent = get_entity(grp);
-            if(errmsg)
+            if (errmsg)
                 _errtext << errmsg;
             else
                 _errtext << "expected a " << ent.entity_type() << " <<" << ent.name << ">>";
@@ -1446,7 +1463,7 @@ public:
             throw lexception(_err, _errtext);
         }
 
-        if(!res)
+        if (!res)
             _last.id = 0;
 
         return _last;
@@ -1457,13 +1474,13 @@ public:
     {
         bool res = matches_end();
 
-        if(!res) {
+        if (!res) {
             _err = lexception::ERR_EXTERNAL_ERROR;
 
             on_error_prefix(false, _errtext, current_line());
             _errtext << "error: ";
 
-            if(errmsg)
+            if (errmsg)
                 _errtext << errmsg;
             else
                 _errtext << "expected end of file";
@@ -1509,8 +1526,8 @@ public:
     //@note if nothing was matched, the lexer doesn't consume anything from the stream
     int matches_either(token list[]) {
         int i = 0;
-        while(list[i]) {
-            if(matches(list[i++]))  return i;
+        while (list[i]) {
+            if (matches(list[i++]))  return i;
         }
         return 0;
     }
@@ -1525,35 +1542,35 @@ public:
     //@note if nothing was matched, the lexer doesn't consume anything from the stream
     template<class T1, class T2>
     int matches_either(T1 a, T2 b) {
-        if(matches(a))  return 1;
-        if(matches(b))  return 2;
+        if (matches(a))  return 1;
+        if (matches(b))  return 2;
         return 0;
     }
 
     template<class T1, class T2, class T3>
     int matches_either(T1 a, T2 b, T3 c) {
-        if(matches(a))  return 1;
-        if(matches(b))  return 2;
-        if(matches(c))  return 3;
+        if (matches(a))  return 1;
+        if (matches(b))  return 2;
+        if (matches(c))  return 3;
         return 0;
     }
 
     template<class T1, class T2, class T3, class T4>
     int matches_either(T1 a, T2 b, T3 c, T4 d) {
-        if(matches(a))  return 1;
-        if(matches(b))  return 2;
-        if(matches(c))  return 3;
-        if(matches(d))  return 4;
+        if (matches(a))  return 1;
+        if (matches(b))  return 2;
+        if (matches(c))  return 3;
+        if (matches(d))  return 4;
         return 0;
     }
 
     template<class T1, class T2, class T3, class T4, class T5>
     int matches_either(T1 a, T2 b, T3 c, T4 d, T5 e) {
-        if(matches(a))  return 1;
-        if(matches(b))  return 2;
-        if(matches(c))  return 3;
-        if(matches(d))  return 4;
-        if(matches(e))  return 5;
+        if (matches(a))  return 1;
+        if (matches(b))  return 2;
+        if (matches(c))  return 3;
+        if (matches(d))  return 4;
+        if (matches(e))  return 5;
         return 0;
     }
     //@}
@@ -1564,8 +1581,8 @@ public:
     int match_either(const token list[])
     {
         int i = 0;
-        while(list[i]) {
-            if(matches(list[i++]))  return i;
+        while (list[i]) {
+            if (matches(list[i++]))  return i;
         }
 
         _err = lexception::ERR_EXTERNAL_ERROR;
@@ -1584,7 +1601,7 @@ public:
     template<class T1, class T2>
     const lextoken& match_either(T1 a, T2 b)
     {
-        if(match_optional(a) || match_optional(b))
+        if (match_optional(a) || match_optional(b))
             return _last;
 
         _err = lexception::ERR_EXTERNAL_ERROR;
@@ -1603,7 +1620,7 @@ public:
     template<class T1, class T2, class T3>
     const lextoken& match_either(T1 a, T2 b, T3 c)
     {
-        if(matches(a) || matches(b) || matches(c))
+        if (matches(a) || matches(b) || matches(c))
             return _last;
 
         _err = lexception::ERR_EXTERNAL_ERROR;
@@ -1623,7 +1640,7 @@ public:
     template<class T1, class T2, class T3, class T4>
     const lextoken& match_either(T1 a, T2 b, T3 c, T4 d)
     {
-        if(matches(a) || matches(b) || matches(c)
+        if (matches(a) || matches(b) || matches(c)
             || matches(d))
             return _last;
 
@@ -1645,7 +1662,7 @@ public:
     template<class T1, class T2, class T3, class T4, class T5>
     const lextoken& match_either(T1 a, T2 b, T3 c, T4 d, T5 e)
     {
-        if(matches(a) || matches(b) || matches(c)
+        if (matches(a) || matches(b) || matches(c)
             || matches(d) || matches(e))
             return _last;
 
@@ -1692,7 +1709,7 @@ public:
     //@TODO needs to recover much more
     void backtrack(int mark = -1) {
         const backtrack_point* btm;
-        if(mark < 0)
+        if (mark < 0)
             btm = _btpoint.last();
         else
             btm = &_btpoint[mark];
@@ -1708,7 +1725,7 @@ public:
 
     ///Pop the mark without backtracking
     void pop_backtrack_mark(int mark = -1) {
-        if(mark < 0)
+        if (mark < 0)
             _btpoint.resize(-1);
         else
             _btpoint.resize(mark);
@@ -1717,26 +1734,26 @@ public:
 
 
     //@return true if whole input was consumed
-    bool end() const                    { return _last.id == 0; }
+    bool end() const { return _last.id == 0; }
 
     //@return last token read
-    const lextoken& last() const        { return _last; }
-    lextoken& last()                    { return _last; }
+    const lextoken& last() const { return _last; }
+    lextoken& last() { return _last; }
 
     ///Return remainder of the input
-    token remainder() const             { return _pushback ? _last.tok : _tok; }
+    token remainder() const { return _pushback ? _last.tok : _tok; }
 
 
     ///Return current lexer line position
     //@return current line number (from index 1, not 0)
     virtual uint current_line()
     {
-        if(_rawpos - _orig.ptr() < 0) {
+        if (_rawpos - _orig.ptr() < 0) {
             //if the beginning of the last token has been already discarded ...
             return _rawline;
         }
 
-        if(_rawpos > _lines_processed)
+        if (_rawpos > _lines_processed)
             count_newlines(_rawpos);
 
         return _rawline + 1;
@@ -1748,20 +1765,20 @@ public:
     //@param col receives column number of current token
     uint current_line(token* text, uint* col)
     {
-        if(_rawpos - _orig.ptr() < 0) {
+        if (_rawpos - _orig.ptr() < 0) {
             //if the beginning of the last token has been already discarded ...
-            if(col)  *col = 0;
-            if(text)  text->set_empty();
+            if (col)  *col = 0;
+            if (text)  text->set_empty();
 
             return _rawline + 1;
         }
 
         token pstr = token(_rawpos, _orig.ptre() - _rawpos);
 
-        if(_rawpos > _lines_processed)
+        if (_rawpos > _lines_processed)
             count_newlines(_rawpos);
 
-        if(text) {
+        if (text) {
             //find the end of current line
             uints n = pstr.count_notingroup("\r\n");
 
@@ -1773,7 +1790,7 @@ public:
             text->set(last, pstr.ptr() - last + n);
         }
 
-        if(col)
+        if (col)
             *col = uint(pstr.ptr() - _lines_last);
 
         return _rawline + 1;
@@ -1781,7 +1798,7 @@ public:
 
     ///Get error code
     int err(token* errstr) const {
-        if(errstr)
+        if (errstr)
             *errstr = _errtext;
         return _err;
     }
@@ -1842,9 +1859,9 @@ public:
         //normal token, get all characters belonging to the same group, unless this is
         // a single-char group
         uint n;
-        if(x & fGROUP_SINGLE)
+        if (x & fGROUP_SINGLE)
             n = _utf8 ? prefetch_utf8(t) : 1;
-        else if(x & fGROUP_TRAILSET)
+        else if (x & fGROUP_TRAILSET)
             n = (uint)count_inmask_nohash(t, 1 << _grpary[gid - 1]->bitmap, 1);
         else
             n = (uint)count_intable_nohash(t, gid - 1, 1);
@@ -1859,15 +1876,15 @@ public:
         DASSERT(grp > 0);
         --grp;
 
-        while(!tok.is_empty())
+        while (!tok.is_empty())
         {
-            if(grp != get_group(tok.first_char()))
+            if (grp != get_group(tok.first_char()))
                 break;
             ++tok;
         }
-        while(!tok.is_empty())
+        while (!tok.is_empty())
         {
-            if(grp != get_group(tok.last_char()))
+            if (grp != get_group(tok.last_char()))
                 break;
             tok--;
         }
@@ -1888,11 +1905,11 @@ public:
         uint sid = -1 - string;
         sequence* seq = _stbary[sid];
 
-        if(!seq->is_string())
+        if (!seq->is_string())
             throw ersINVALID_PARAMS;
 
         const string_rule* sr = reinterpret_cast<string_rule*>(seq);
-        if(!sr)  return false;
+        if (!sr)  return false;
 
         return sr->escrule->synthesize_string(tok, dst, skip_selfescape);
     }
@@ -1943,12 +1960,12 @@ protected:
             : next(1, 0, &val) == val;
         equals = equals && !_last.is_content();
 
-        if(!equals && !_pushback) {
+        if (!equals && !_pushback) {
             _tok._ptr = old;
-            if(_stack.size() > oldstacksize)
+            if (_stack.size() > oldstacksize)
                 _stack.resize(oldstacksize);
         }
-        else if(equals && _pushback)
+        else if (equals && _pushback)
             _pushback = 0;
 
         return equals;
@@ -1957,11 +1974,11 @@ protected:
     ///Assert valid rule id
     void __assert_valid_rule(int sid) const
     {
-        if(sid >= ID_KEYWORDS  &&  sid < ID_KEYWORDS + (int)_nkwd_groups)
+        if (sid >= ID_KEYWORDS && sid < ID_KEYWORDS + (int)_nkwd_groups)
             return;
 
-        if(sid == 0
-            || (sid>0 && sid - 1 >= (int)_grpary.size())
+        if (sid == 0
+            || (sid > 0 && sid - 1 >= (int)_grpary.size())
             || (sid < 0 && -sid - 1 >= (int)_stbary.size()))
         {
             _err = lexception::ERR_INVALID_RULE_ID;
@@ -1974,23 +1991,23 @@ protected:
     ///Assert valid sequence-type rule id
     void __assert_valid_sequence(int sid, uchar type) const
     {
-        if(sid > 0) {
+        if (sid > 0) {
             _err = lexception::ERR_ENTITY_BAD_TYPE;
             _errtext << "error: " << "invalid rule type (" << sid << "), a sequence-type expected";
 
             throw lexception(_err, _errtext);
         }
-        else if(sid == 0 || -sid - 1 >= (int)_stbary.size())
+        else if (sid == 0 || -sid - 1 >= (int)_stbary.size())
         {
             _err = lexception::ERR_INVALID_RULE_ID;
             _errtext << "error: " << "invalid rule id (" << sid << ")";
 
             throw lexception(_err, _errtext);
         }
-        else if(type > 0)
+        else if (type > 0)
         {
             const sequence* seq = _stbary[-sid - 1];
-            if(seq->type != type) {
+            if (seq->type != type) {
                 _err = lexception::ERR_ENTITY_BAD_TYPE;
                 _errtext << "error: " << "invalid rule type: " << seq->entity_type()
                     << " <<" << seq->name << ">>, a "
@@ -2004,13 +2021,13 @@ protected:
     ///Assert valid sequence/string/block rule id
     void __assert_valid_ssb(int sid) const
     {
-        if(sid > 0) {
+        if (sid > 0) {
             _err = lexception::ERR_ENTITY_BAD_TYPE;
             _errtext << "error: " << "invalid rule type (" << sid << "), a sequence-type expected";
 
             throw lexception(_err, _errtext);
         }
-        else if(sid == 0 || -sid - 1 >= (int)_stbary.size())
+        else if (sid == 0 || -sid - 1 >= (int)_stbary.size())
         {
             _err = lexception::ERR_INVALID_RULE_ID;
             _errtext << "error: " << "invalid rule id (" << sid << ")";
@@ -2054,22 +2071,22 @@ protected:
         }
 
         ///Is a sequence, string or block
-        bool is_ssb() const             { return type >= SEQUENCE; }
+        bool is_ssb() const { return type >= SEQUENCE; }
 
-        bool is_sequence() const        { return type == SEQUENCE; }
-        bool is_block() const           { return type == BLOCK; }
-        bool is_string() const          { return type == STRING; }
+        bool is_sequence() const { return type == SEQUENCE; }
+        bool is_block() const { return type == BLOCK; }
+        bool is_string() const { return type == STRING; }
 
-        bool is_keywordlist() const     { return type == KEYWORDLIST; }
+        bool is_keywordlist() const { return type == KEYWORDLIST; }
 
-        operator token() const          { return name; }
+        operator token() const { return name; }
 
         ///Entity name
         const char* entity_type() const { return entity_type(type); }
 
         static const char* entity_type(uchar type)
         {
-            switch(type) {
+            switch (type) {
             case 0:             return "end-of-file";
             case GROUP:         return "group";
             case ESCAPE:        return "escape";
@@ -2095,7 +2112,7 @@ protected:
             single = bsingle;
         }
 
-        bool has_trailset() const       { return bitmap >= 0; }
+        bool has_trailset() const { return bitmap >= 0; }
     };
 
     ///Escape tuple for substitutions
@@ -2156,16 +2173,16 @@ protected:
             ///Find longest replacement that starts given token
             const escpair* find(const token& t) const
             {
-                if(!(fastlookup[t[0] / BITBLK] & (1 << (t[0] % BITBLK))))
+                if (!(fastlookup[t[0] / BITBLK] & (1 << (t[0] % BITBLK))))
                     return 0;
 
                 uints i = map.lower_bound(t, func());
                 uints j, n = map.size();
-                for(j = i; j<n; ++j) {
-                    if(!t.begins_with(map[j]->replace))
+                for (j = i; j < n; ++j) {
+                    if (!t.begins_with(map[j]->replace))
                         break;
                 }
-                return j>i ? map[j - 1] : 0;
+                return j > i ? map[j - 1] : 0;
             }
 
             back_map() {
@@ -2194,10 +2211,10 @@ protected:
 
     private:
         void init_backmap() const {
-            if(backmap) return;
+            if (backmap) return;
 
             backmap = new back_map;
-            for(uint i = 0; i < pairs.size(); ++i)
+            for (uint i = 0; i < pairs.size(); ++i)
                 backmap->insert(&pairs[i]);
         }
     };
@@ -2232,7 +2249,7 @@ protected:
             const char* p = s.ptr();
             const char* pe = s.ptre();
 
-            for(; p < pe; ++p) {
+            for (; p < pe; ++p) {
                 uint k = icase ? tolower(*p) : *p;
                 h = (h ^ k) + (h << 26) + (h >> 6);
             }
@@ -2309,7 +2326,7 @@ protected:
             kwdid.group = group;
 
             keyword_id* v = (keyword_id*)set.insert_value(kwdid);
-            if(v)  v->ord = ins_to_group(group);
+            if (v)  v->ord = ins_to_group(group);
 
             return v != 0;
         }
@@ -2317,23 +2334,23 @@ protected:
         int valid(uint hash, const token& kwd, int* ord = 0) const
         {
             const keyword_id* k = set.find_value(hash, kwd);
-            if(ord && k) *ord = k->ord;
+            if (ord && k) *ord = k->ord;
             return k ? k->group : 0;
         }
 
         int valid(const token& kwd, int* ord = 0) const
         {
             const keyword_id* k = set.find_value(kwd);
-            if(ord && k) *ord = k->ord;
+            if (ord && k) *ord = k->ord;
             return k ? k->group : 0;
         }
 
         int ins_to_group(int gid) {
             group* pgb = nkwds.ptr();
             group* pgbe = nkwds.ptre();
-            for(; pgb != pgbe; ++pgb)
-                if(pgb->id == gid) break;
-            if(pgb == pgbe) {
+            for (; pgb != pgbe; ++pgb)
+                if (pgb->id == gid) break;
+            if (pgb == pgbe) {
                 pgb = nkwds.add();
                 pgb->id = gid;
                 pgb->nkwd = 0;
@@ -2375,8 +2392,8 @@ protected:
         {
             uints len = t.len();
             uints i = 0;
-            for(uints n = trailing.size(); i<n; ++i)
-                if(len > trailing[i].seq.len())  break;
+            for (uints n = trailing.size(); i < n; ++i)
+                if (len > trailing[i].seq.len())  break;
 
             trailing.ins(i)->set(t);
         }
@@ -2413,7 +2430,7 @@ protected:
             uint64 mask = 1ULL << id;
             bool was = (stbenabled & mask) != 0;
 
-            if(en)
+            if (en)
                 stbenabled |= mask;
             else
                 stbenabled &= ~mask;
@@ -2429,7 +2446,7 @@ protected:
             uint64 mask = 1ULL << id;
             bool was = (stbignored & mask) != 0;
 
-            if(ig)
+            if (ig)
                 stbignored |= mask;
             else
                 stbignored &= ~mask;
@@ -2439,8 +2456,8 @@ protected:
         bool enabled(const sequence& seq) const { return (stbenabled & (1ULL << seq.id)) != 0; }
         bool ignored(const sequence& seq) const { return (stbignored & (1ULL << seq.id)) != 0; }
 
-        bool enabled(int seq) const   { return (stbenabled & (1ULL << seq)) != 0; }
-        bool ignored(int seq) const   { return (stbignored & (1ULL << seq)) != 0; }
+        bool enabled(int seq) const { return (stbenabled & (1ULL << seq)) != 0; }
+        bool ignored(int seq) const { return (stbignored & (1ULL << seq)) != 0; }
 
 
         block_rule(const token& name, ushort id)
@@ -2463,11 +2480,11 @@ protected:
 
     const entity& get_entity(int id) const
     {
-        if(id >= ID_KEYWORDS && id < ID_KEYWORDS + (int)_nkwd_groups)
+        if (id >= ID_KEYWORDS && id < ID_KEYWORDS + (int)_nkwd_groups)
             return _kwds;
-        if(id > 0)
+        if (id > 0)
             return *_grpary[id - 1];
-        else if(id < 0)
+        else if (id < 0)
             return *_stbary[-id - 1];
         else {
             static entity end("end-of-file", 0, 0);
@@ -2476,11 +2493,11 @@ protected:
     }
 
 
-    bool enabled(const sequence& seq) const   { return (*_stack.last())->enabled(seq.id); }
-    bool ignored(const sequence& seq) const   { return (*_stack.last())->ignored(seq.id); }
+    bool enabled(const sequence& seq) const { return (*_stack.last())->enabled(seq.id); }
+    bool ignored(const sequence& seq) const { return (*_stack.last())->ignored(seq.id); }
 
-    bool enabled(int seq) const               { return seq < 0 ? (*_stack.last())->enabled(-1 - seq) : true; }
-    bool ignored(int seq) const               { return seq < 0 ? (*_stack.last())->ignored(-1 - seq) : false; }
+    bool enabled(int seq) const { return seq < 0 ? (*_stack.last())->enabled(-1 - seq) : true; }
+    bool ignored(int seq) const { return seq < 0 ? (*_stack.last())->ignored(-1 - seq) : false; }
 
     void enable(const sequence& seq, bool en) {
         (*_stack.last())->enable(seq.id, en);
@@ -2497,12 +2514,12 @@ protected:
 
         Tentmap::range_const_iterator r = _entmap.equal_range(name);
 
-        if(r.first == r.second)
+        if (r.first == r.second)
             __throw_doesnt_exist(name);
 
-        for(; r.first != r.second; ++r.first) {
+        for (; r.first != r.second; ++r.first) {
             const entity* ent = *r.first;
-            if(ent->is_ssb())
+            if (ent->is_ssb())
                 br->enable(ent->id, en);
         }
     }
@@ -2514,12 +2531,12 @@ protected:
 
         Tentmap::range_const_iterator r = _entmap.equal_range(name);
 
-        if(r.first == r.second)
+        if (r.first == r.second)
             __throw_doesnt_exist(name);
 
-        for(; r.first != r.second; ++r.first) {
+        for (; r.first != r.second; ++r.first) {
             const entity* ent = *r.first;
-            if(ent->is_ssb())
+            if (ent->is_ssb())
                 br->ignore(ent->id, ig);
         }
     }
@@ -2556,13 +2573,13 @@ protected:
     bool process_set(token s, uchar fnval, void (lexer::*fn)(uchar, uchar))
     {
         uchar k, kprev = 0;
-        for(; !s.is_empty(); kprev = k)
+        for (; !s.is_empty(); kprev = k)
         {
             k = ++s;
-            if(k == '.'  &&  s.first_char() == '.')
+            if (k == '.'  &&  s.first_char() == '.')
             {
                 k = s.nth_char(1);
-                if(!k || !kprev)
+                if (!k || !kprev)
                 {
                     _err = lexception::ERR_ILL_FORMED_RANGE;
 
@@ -2572,8 +2589,8 @@ protected:
                     throw lexception(_err, _errtext);
                 }
 
-                if(kprev > k) { uchar kt = k; k = kprev; kprev = kt; }
-                for(int i = kprev; i <= (int)k; ++i)  (this->*fn)(i, fnval);
+                if (kprev > k) { uchar kt = k; k = kprev; kprev = kt; }
+                for (int i = kprev; i <= (int)k; ++i)  (this->*fn)(i, fnval);
                 s.shift_start(2);
             }
             else
@@ -2601,8 +2618,8 @@ protected:
     {
         const stringorblock::trail* p = str.ptr();
         const stringorblock::trail* pe = str.ptre();
-        for(int i = 0; p < pe; ++p, ++i)
-            if(!p->seq.is_empty() && _tok.begins_with(p->seq, off))  return i;
+        for (int i = 0; p < pe; ++p, ++i)
+            if (!p->seq.is_empty() && _tok.begins_with(p->seq, off))  return i;
 
         return -1;
     }
@@ -2623,12 +2640,12 @@ protected:
 
         _last.state = 0;
 
-        while(1)
+        while (1)
         {
             //find the end while processing the escape characters
             // note that the escape group must contain also the terminators
             off = count_notescape(off);
-            if(off >= _tok.len())
+            if (off >= _tok.len())
             {
                 //uint nkeep = _tok.len();
 
@@ -2641,7 +2658,7 @@ protected:
 
                 add_stb_segment(sr, tid, off, outermost, ignored);
 
-                if(tid >= 0) {
+                if (tid >= 0) {
                     _last.termid = tid;
                     return _last;
                 }
@@ -2657,7 +2674,7 @@ protected:
 
             uchar escc = _tok[off];
 
-            if(escc == 0)
+            if (escc == 0)
             {
                 DASSERT(0);
                 //this is a syntax error, since the string wasn't properly terminated
@@ -2677,36 +2694,36 @@ protected:
 
             bool replaced = false;
 
-            if(er && escc == er->esc)
+            if (er && escc == er->esc)
             {
                 //a regular escape sequence, flush preceding data
-                if(outermost)
+                if (outermost)
                     _last.tokbuf.add_from(_tok.ptr(), off);
 
                 _tok.shift_start(off + 1);  //past the escape char
                 off = 0;
 
-                if(er->replfn)
+                if (er->replfn)
                 {
                     //a function was provided for translation
 
                     replaced = er->replfn(_tok, _last.tokbuf);
 
-                    if(!outermost)  //a part of block, do not actually build the buffer
+                    if (!outermost)  //a part of block, do not actually build the buffer
                         _last.tokbuf.reset();
                 }
 
-                if(!replaced)
+                if (!replaced)
                 {
                     uint i, n = (uint)er->pairs.size();
-                    for(i = 0; i < n; ++i)
-                        if(follows(er->pairs[i].code, 0))  break;
-                    if(i < n)
+                    for (i = 0; i < n; ++i)
+                        if (follows(er->pairs[i].code, 0))  break;
+                    if (i < n)
                     {
                         //found
                         const escpair& ep = er->pairs[i];
 
-                        if(outermost)
+                        if (outermost)
                             _last.tokbuf += ep.replace;
                         _tok.shift_start(ep.code.len());
 
@@ -2714,14 +2731,14 @@ protected:
                     }
                 }
 
-                if(!replaced)
+                if (!replaced)
                     _tok.shift_start(-1);
             }
 
-            if(!replaced)
+            if (!replaced)
             {
                 int k = match_trail(sr.trailing, off);
-                if(k >= 0)
+                if (k >= 0)
                 {
                     add_stb_segment(sr, k, off, outermost, ignored);
 
@@ -2740,25 +2757,25 @@ protected:
     /// the block content
     const lextoken& next_read_block(const block_rule& br, uints& off, bool outermost, bool ignored)
     {
-        while(1)
+        while (1)
         {
             //find the end while processing the nested sequences
             // note that the escape group must contain also the terminators
             off = count_notleading(off);
-            if(off >= _tok.len())
+            if (off >= _tok.len())
             {
                 //uint nkeep = _tok.len();
 
                 //end of input
 
-                //verify if the trailing set contains empty string, which would mean
+                //verify if the trailing set contains an empty string, which would mean
                 // that end of file is a valid terminator of the block
                 int tid = br.trailing.last()->seq.is_empty()
                     ? int(br.trailing.size()) - 1 : -1;
 
                 add_stb_segment(br, tid, off, outermost, ignored);
 
-                if(tid >= 0) {
+                if (tid >= 0) {
                     _last.state = 0;
                     return _last;
                 }
@@ -2778,36 +2795,36 @@ protected:
 
             //test if it's our trailing sequence
             int k;
-            if((x & fSEQ_TRAILING) && (k = match_trail(br.trailing, off)) >= 0)
+            if ((x & fSEQ_TRAILING) && (k = match_trail(br.trailing, off)) >= 0)
             {
                 //trailing string found
                 add_stb_segment(br, k, off, outermost, ignored);
 
                 _last.termid = k;
-                if(outermost)
+                if (outermost)
                     _last.state = 0;
                 return _last;
             }
 
             //if it's another leading sequence, find it
-            if(x & xSEQ)
+            if (x & xSEQ)
             {
                 const dynarray<sequence*>& dseq = _seqary[((x&xSEQ) >> rSEQ) - 1];
                 uint i, n = (uint)dseq.size();
 
-                for(i = 0; i < n; ++i) {
+                for (i = 0; i < n; ++i) {
                     uint sid = dseq[i]->id;
-                    if((br.stbenabled & (1ULL << sid)) && match_leading(dseq[i]->leading, off))
+                    if ((br.stbenabled & (1ULL << sid)) && match_leading(dseq[i]->leading, off))
                         break;
                 }
 
-                if(i < n)
+                if (i < n)
                 {
                     //valid & enabled sequence found, nest
                     sequence* sob = dseq[i];
                     bool ign_seq = br.ignored(*sob);
 
-                    if(ign_seq && !ignored) {
+                    if (ign_seq && !ignored) {
                         //force dumping to buffer, as this rule will be ignored
                         _last.tokbuf.add_from(_tok.ptr(), off);
                         _tok.shift_start(off);
@@ -2816,11 +2833,11 @@ protected:
 
                     off += sob->leading.len();
 
-                    if(sob->type == entity::BLOCK) {
+                    if (sob->type == entity::BLOCK) {
                         block_rule* brn = reinterpret_cast<block_rule*>(sob);
                         next_read_block(*brn, off, false, ign_seq);
                     }
-                    else if(sob->type == entity::STRING) {
+                    else if (sob->type == entity::STRING) {
                         string_rule* srn = reinterpret_cast<string_rule*>(sob);
                         next_read_string(*srn, off, false, ign_seq);
                     }
@@ -2839,7 +2856,7 @@ protected:
     {
         sequence* shield = verify_matchable_sequence(seq);
 
-        if(shield) {
+        if (shield) {
             _err = lexception::ERR_INTERNAL_ERROR;
             _errtext << "error: " << "sequence <<" << seq->name << ">> cannot ever be matched because it's shielded by rule <<"
                 << shield->name << ">> with the same leading delimiter, specified first in the rules";
@@ -2856,11 +2873,11 @@ protected:
         const dynarray<sequence*>& seqlist = _seqary[((x&xSEQ) >> rSEQ) - 1];
 
         uint n = (uint)seqlist.size();
-        for(uint i = 0; i < n; ++i) {
-            if(seqlist[i] == seq)
+        for (uint i = 0; i < n; ++i) {
+            if (seqlist[i] == seq)
                 return 0;
 
-            if(enabled(*seqlist[i]) && seqlist[i]->leading == seq->leading)
+            if (enabled(*seqlist[i]) && seqlist[i]->leading == seq->leading)
                 return seqlist[i];
         }
 
@@ -2876,23 +2893,23 @@ protected:
         //bool ignored = ignored(sb);
 
         //if not outermost block, include the terminator in output
-        if(!final)
+        if (!final)
             off += len;
 
         //on the terminating string
-        if(_last.tokbuf.len() > 0) //if there's something in the buffer already, append
+        if (_last.tokbuf.len() > 0) //if there's something in the buffer already, append
         {
-            if(!ignored)
+            if (!ignored)
                 _last.tokbuf.add_from(_tok.ptr(), off);
             _tok.shift_start(off);
             off = 0;
-            if(final)
+            if (final)
                 _last.tok = _last.tokbuf;
         }
-        else if(final)
+        else if (final)
             _last.tok.set(_tok.ptr(), off);
 
-        if(final) {
+        if (final) {
             _tok.shift_start(off + len);
             _last.outok.set(_last.outok.ptr(), _tok.ptr());
             off = 0;
@@ -2902,9 +2919,9 @@ protected:
     ///Strip leading . or ! characters from rule name
     static void strip_flags(token& name)
     {
-        while(!name.is_empty()) {
+        while (!name.is_empty()) {
             char c = name.first_char();
-            if(c != '.' && c != '!')
+            if (c != '.' && c != '!')
                 break;
             ++name;
         }
@@ -2916,11 +2933,11 @@ protected:
         bool ign = false;
         bool dis = false;
 
-        while(!name.is_empty()) {
+        while (!name.is_empty()) {
             char c = name.first_char();
             ign |= (c == '.');
             dis |= (c == '!');
-            if(c != '.' && c != '!')
+            if (c != '.' && c != '!')
                 break;
             ++name;
         }
@@ -2932,7 +2949,7 @@ protected:
     ucs4 get_code(uints& offs)
     {
         uchar k = _tok._ptr[offs];
-        if(k < _abmap.size())
+        if (k < _abmap.size())
         {
             ++offs;
             return k;
@@ -2944,13 +2961,13 @@ protected:
     uint prefetch_utf8(uints offs = 0)
     {
         uchar k = _tok._ptr[offs];
-        if(k < _abmap.size())
+        if (k < _abmap.size())
             return 1;
 
         uint nb = get_utf8_seq_expected_bytes(_tok.ptr() + offs);
 
         uints ab = _tok.len() - offs;
-        if(nb > ab)
+        if (nb > ab)
             throw ersSYNTAX_ERROR "invalid utf8 character";
 
         return nb;
@@ -2959,12 +2976,12 @@ protected:
     uint prefetch_utf8(const token& t) const
     {
         uchar k = t.first_char();
-        if(k < _abmap.size())
+        if (k < _abmap.size())
             return 1;
 
         uint nb = get_utf8_seq_expected_bytes(t.ptr());
 
-        if(t.len() < nb)
+        if (t.len() < nb)
             throw ersSYNTAX_ERROR "invalid utf8 character";
 
         return nb;
@@ -2977,7 +2994,7 @@ protected:
         uint nb = get_utf8_seq_expected_bytes(_tok.ptr() + offs);
 
         uints ab = _tok.len() - offs;
-        if(nb > ab)
+        if (nb > ab)
             throw ersSYNTAX_ERROR "invalid utf8 character";
 
         return read_utf8_seq(_tok.ptr(), offs);
@@ -2987,10 +3004,10 @@ protected:
     uints count_notescape(uints off)
     {
         const uchar* pc = (const uchar*)_tok.ptr();
-        for(; off < _tok.len(); ++off)
+        for (; off < _tok.len(); ++off)
         {
             const uchar* p = pc + off;
-            if((_abmap[*p] & (fGROUP_ESCAPE | fSEQ_TRAILING)) != 0)  break;
+            if ((_abmap[*p] & (fGROUP_ESCAPE | fSEQ_TRAILING)) != 0)  break;
         }
         return off;
     }
@@ -2999,10 +3016,10 @@ protected:
     uints count_notleading(uints off)
     {
         const uchar* pc = (const uchar*)_tok.ptr();
-        for(; off < _tok.len(); ++off)
+        for (; off < _tok.len(); ++off)
         {
             const uchar* p = pc + off;
-            if((_abmap[*p] & (fSEQ_TRAILING | xSEQ)) != 0)  break;
+            if ((_abmap[*p] & (fSEQ_TRAILING | xSEQ)) != 0)  break;
         }
         return off;
     }
@@ -3010,10 +3027,24 @@ protected:
     uints count_intable(const token& tok, uchar grp, uints off)
     {
         const uchar* pc = (const uchar*)tok.ptr();
-        for(; off < tok.len(); ++off)
+        for (; off < tok.len(); ++off)
         {
             const uchar* p = pc + off;
-            if((_abmap[*p] & xGROUP) != grp)
+            if ((_abmap[*p] & xGROUP) != grp)
+                break;
+
+            _last.upd_hash(_casemap[*p]);
+        }
+        return off;
+    }
+
+    uints count_notintable(const token& tok, uchar grp, uints off)
+    {
+        const uchar* pc = (const uchar*)tok.ptr();
+        for (; off < tok.len(); ++off)
+        {
+            const uchar* p = pc + off;
+            if ((_abmap[*p] & xGROUP) == grp)
                 break;
 
             _last.upd_hash(_casemap[*p]);
@@ -3024,10 +3055,10 @@ protected:
     uints count_inmask(const token& tok, uchar msk, uints off)
     {
         const uchar* pc = (const uchar*)tok.ptr();
-        for(; off < tok.len(); ++off)
+        for (; off < tok.len(); ++off)
         {
             const uchar* p = pc + off;
-            if((_trail[*p] & msk) == 0)  break;
+            if ((_trail[*p] & msk) == 0)  break;
 
             _last.upd_hash(_casemap[*p]);
         }
@@ -3037,10 +3068,10 @@ protected:
     uints count_intable_nohash(const token& tok, uchar grp, uints off) const
     {
         const uchar* pc = (const uchar*)tok.ptr();
-        for(; off < tok.len(); ++off)
+        for (; off < tok.len(); ++off)
         {
             uchar c = pc[off];
-            if((_abmap[c] & xGROUP) != grp)  break;
+            if ((_abmap[c] & xGROUP) != grp)  break;
         }
         return off;
     }
@@ -3048,10 +3079,10 @@ protected:
     uints count_inmask_nohash(const token& tok, uchar msk, uints off) const
     {
         const uchar* pc = (const uchar*)tok.ptr();
-        for(; off < tok.len(); ++off)
+        for (; off < tok.len(); ++off)
         {
             uchar c = pc[off];
-            if((_trail[c] & msk) == 0)  break;
+            if ((_trail[c] & msk) == 0)  break;
         }
         return off;
     }
@@ -3065,19 +3096,52 @@ protected:
     token scan_group(uchar group, bool ignore, uints off = 0)
     {
         off = count_intable(_tok, group, off);
-        if(off >= _tok.len())
+        if (off >= _tok.len())
         {
             //end of buffer
 
             // return special terminating token if we are in ignore mode
             // or there is nothing in the buffer and in input
-            if(ignore || (off == 0 && _last.tokbuf.len() > 0))
+            if (ignore || (off == 0 && _last.tokbuf.len() > 0))
                 return token();
         }
 
         // if there was something in the buffer, append this to it
         token res;
-        if(_last.tokbuf.len() > 0)
+        if (_last.tokbuf.len() > 0)
+        {
+            _last.tokbuf.add_from(_tok.ptr(), off);
+            res = _last.tokbuf;
+        }
+        else
+            res.set(_tok.ptr(), off);
+
+        _tok.shift_start(off);
+        return res;
+    }
+
+    ///Scan input for characters not from a group
+    //@return token with the data, an empty token if there were none, or
+    /// an empty token with _ptr==0 if there are no more data
+    //@param group group characters to return
+    //@param ignore true if the result would be ignored, so there's no need to fill the buffer
+    //@param off number of leading characters to skip
+    token scan_notgroup(uchar group, bool ignore, uints off = 0)
+    {
+        off = count_notintable(_tok, group, off);
+        if (off >= _tok.len())
+        {
+            //end of buffer
+
+            // return special terminating token if we are in ignore mode
+            // or there is nothing in the buffer and in input
+            if (ignore || (off == 0 && _last.tokbuf.len() > 0))
+                return token();
+        }
+
+        // if there was something in the buffer, append this to it
+        token res;
+        if (_last.tokbuf.len() > 0)
         {
             _last.tokbuf.add_from(_tok.ptr(), off);
             res = _last.tokbuf;
@@ -3097,19 +3161,19 @@ protected:
     token scan_mask(uchar msk, bool ignore, uints off = 0)
     {
         off = count_inmask(_tok, msk, off);
-        if(off >= _tok.len())
+        if (off >= _tok.len())
         {
             //end of buffer
 
             // return special terminating token if we are in ignore mode
             // or there is nothing in the buffer and in input
-            if(ignore || (off == 0 && _last.tokbuf.len() > 0))
+            if (ignore || (off == 0 && _last.tokbuf.len() > 0))
                 return token();
         }
 
         // if there was something in the buffer, append this to it
         token res;
-        if(_last.tokbuf.len() > 0)
+        if (_last.tokbuf.len() > 0)
         {
             _last.tokbuf.add_from(_tok.ptr(), off);
             res = _last.tokbuf;
@@ -3128,8 +3192,8 @@ protected:
 
         uint nc = (uint)seq->leading.len();
         uint i;
-        for(i = 0; i < dseq.size(); ++i)
-            if(dseq[i]->leading.len() < nc)  break;
+        for (i = 0; i < dseq.size(); ++i)
+            if (dseq[i]->leading.len() < nc)  break;
 
         *dseq.ins(i) = seq;
     }
@@ -3137,7 +3201,7 @@ protected:
     dynarray<sequence*>& set_seqgroup(uchar c)
     {
         uchar k = (_abmap[c] & xSEQ) >> rSEQ;
-        if(!k) {
+        if (!k) {
             _seqary.add();
             k = (uchar)_seqary.size();
             _abmap[c] |= k << rSEQ;
@@ -3160,7 +3224,8 @@ protected:
     const lextoken& set_end()
     {
         _last.id = 0;
-        _last.tok.set_empty(_last.tok.ptre());
+        _last.tok.set_empty(_tok.ptr());
+        _last.outok = _last.tok;
         return _last;
     }
 
@@ -3171,20 +3236,20 @@ protected:
         uint newlines = 0;
         char oc = _lines_oldchar;
 
-        for(; p < pe; ++p)
+        for (; p < pe; ++p)
         {
             char c = *p;
-            if(c == '\r') {
+            if (c == '\r') {
                 ++newlines;
                 _lines_last = p + 1;
             }
-            else if(c == '\n') {
-                if(oc != '\r')
+            else if (c == '\n') {
+                if (oc != '\r')
                     ++newlines;
                 _lines_last = p + 1;
             }
 
-            if(p == _rawpos) {
+            if (p == _rawpos) {
                 //mark rawpos line if coming accross it
                 _rawline = _lines + newlines;
                 _rawlast = _lines_last;
@@ -3197,7 +3262,7 @@ protected:
         _lines += newlines;
         _lines_processed = p;
 
-        if(p == _rawpos) {
+        if (p == _rawpos) {
             //mark rawpos line if coming accross it
             _rawline = _lines;
             _rawlast = _lines_last;
@@ -3276,19 +3341,19 @@ inline bool lexer::escape_rule::synthesize_string(const token& src, charstr& dst
     bool altered = false;
     int nself = 0;
 
-    for(; !tok.is_empty();)
+    for (; !tok.is_empty();)
     {
         const char* p = tok.ptr();
         const escpair* pair = backmap->find(tok);
 
-        if(pair) {
-            if(!altered && skip_selfescape && pair->code == esc) {
+        if (pair) {
+            if (!altered && skip_selfescape && pair->code == esc) {
                 ++nself;
                 ++tok;
                 continue;
             }
 
-            if(nself > 0)
+            if (nself > 0)
                 return synthesize_string(src, dst, false);
 
             dst.add_from_range(copied, p);
@@ -3303,7 +3368,7 @@ inline bool lexer::escape_rule::synthesize_string(const token& src, charstr& dst
             ++tok;
     }
 
-    if(altered  &&  tok.ptr() > copied)
+    if (altered  &&  tok.ptr() > copied)
         dst.add_from_range(copied, tok.ptr());
 
     return altered;

@@ -115,12 +115,12 @@ struct range
     }
 
     T& operator[] (ints i) {
-        DASSERT(i >= 0 && _ptr + i < _pte);
+        DASSERTN(i >= 0 && _ptr + i < _pte);
         return _ptr[i];
     }
 
     const T& operator[] (ints i) const {
-        DASSERT(i >= 0 && _ptr + i < _pte);
+        DASSERTN(i >= 0 && _ptr + i < _pte);
         return _ptr[i];
     }
 
@@ -185,7 +185,7 @@ struct range
     ///Eat the first element from range, returning it
     T& operator ++ ()
     {
-        DASSERT(_ptr < _pte);
+        DASSERTN(_ptr < _pte);
         if (_ptr < _pte)
         {
             ++_ptr;
@@ -211,7 +211,7 @@ struct range
     ///Eat the last element from range, returning it
     T& operator -- (int)
     {
-        DASSERT(_ptr < _pte);
+        DASSERTN(_ptr < _pte);
         if (_ptr < _pte)
             --_pte;
 

@@ -45,6 +45,7 @@
 #include "../binstream/stdstream.h"
 
 #include "../interface.h"
+#include "../timer.h"
 
 using namespace coid;
 
@@ -220,7 +221,6 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 logmsg::logmsg()
-    : _logger(0), _type(log::none)
 {
     //reserve memory from process allocator
     _str.reserve(128, PROCWIDE_SINGLETON(comm_array_mspace).msp);
@@ -241,6 +241,11 @@ void logmsg::write()
 ////////////////////////////////////////////////////////////////////////////////
 bool logmsg::finalize( policy_msg* p )
 {
+    if (_type == log::perf) {
+        int64 ns = nsec_timer::current_time_ns() - _time;
+        _str << " (" << (ns * 1.0e-6f) << "ms)";
+    }
+
     if (_type == log::none)
         _type = deduce_type();
 
@@ -329,6 +334,9 @@ ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash )
     msg->set_type(type);
     msg->set_hash(hash);
     msg->set_logger(this);
+
+    if (type == log::perf)
+        msg->set_time(nsec_timer::current_time_ns());
 
     return msg;
 }

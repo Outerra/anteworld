@@ -44,7 +44,7 @@
 COID_NAMESPACE_BEGIN
 
 ////////////////////////////////////////////////////////////////////////////////
-Reinst* regex_compiler::create( Reinst::OP type ) {
+Reinst* regex_compiler::create(Reinst::OP type) {
     Reinst* r = new Reinst(type);
     *_prog->rinst.add() = r;
     return r;
@@ -53,14 +53,14 @@ Reinst* regex_compiler::create( Reinst::OP type ) {
 ////////////////////////////////////////////////////////////////////////////////
 void regex_compiler::operand(Reinst::OP t, bool icase)
 {
-    if(_lastwasand)
+    if (_lastwasand)
         xoperator(Reinst::CAT);	// catenate is implicit
 
     Reinst* i = create(t);
 
-    if(t == Reinst::CCLASS || t == Reinst::NCCLASS)
+    if (t == Reinst::CCLASS || t == Reinst::NCCLASS)
         i->cp = _yyclassp;
-    if(t == Reinst::RUNE)
+    if (t == Reinst::RUNE)
         i->cd = icase ? ::tolower(_yyrune) : _yyrune;
 
     pushand(i, i);
@@ -70,35 +70,35 @@ void regex_compiler::operand(Reinst::OP t, bool icase)
 ////////////////////////////////////////////////////////////////////////////////
 void regex_compiler::xoperator(Reinst::OP t)
 {
-    if(t==Reinst::RBRA && --_nopenbraces<0)
+    if (t == Reinst::RBRA && --_nopenbraces < 0)
         throw exception() << "unmatched right paren";
-    if(t==Reinst::LBRA) {
+    if (t == Reinst::LBRA) {
         ++_cursubid;
         ++_nopenbraces;
-        if(_lastwasand)
+        if (_lastwasand)
             xoperator(Reinst::CAT);
     }
     else
         evaluntil(t);
 
-    if(t != Reinst::RBRA)
+    if (t != Reinst::RBRA)
         pushator(t);
 
     _lastwasand = 0;
-    
-    if(t==Reinst::STAR || t==Reinst::QUEST || t==Reinst::PLUS || t==Reinst::RBRA)
+
+    if (t == Reinst::STAR || t == Reinst::QUEST || t == Reinst::PLUS || t == Reinst::RBRA)
         _lastwasand = 1;	// these look like operands
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void regex_compiler::evaluntil(Reinst::OP pri)
 {
-    Node *op1, *op2;
-    Reinst *inst1, *inst2;
+    Node* op1, * op2;
+    Reinst* inst1, * inst2;
 
     Ator* a;
-    while((a=_atorstack.last())->ator >= pri || pri==Reinst::RBRA){
-        switch(popator()){
+    while ((a = _atorstack.last())->ator >= pri || pri == Reinst::RBRA) {
+        switch (popator()) {
         default:
             throw exception() << "unknown operator in evaluntil";
             break;
@@ -162,9 +162,9 @@ void regex_program::optimize()
     // get rid of NOOP chains
     Reinst** ib = rinst.ptr();
     Reinst** ie = rinst.ptre() - 1; //omit END
-    for( ; ib<ie; ++ib ){
+    for (; ib < ie; ++ib) {
         Reinst* target = (*ib)->next;
-        while(target->type == Reinst::NOP)
+        while (target->type == Reinst::NOP)
             target = target->next;
         (*ib)->next = target;
     }
@@ -173,56 +173,58 @@ void regex_program::optimize()
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef	DEBUG
 static	void
-dumpstack(void){
-    Node *stk;
-    int *ip;
+dumpstack(void) {
+    Node* stk;
+    int* ip;
 
     print("operators\n");
-    for(ip=atorstack; ip<atorp; ip++)
+    for (ip = atorstack; ip < atorp; ip++)
         print("0%o\n", *ip);
     print("operands\n");
-    for(stk=andstack; stk<andp; stk++)
+    for (stk = andstack; stk < andp; stk++)
         print("0%o\t0%o\n", stk->first->type, stk->last->type);
 }
 
 static	void
-dump(Reprog *pp)
+dump(Reprog* pp)
 {
-    Reinst *l;
-    ucs4 *p;
+    Reinst* l;
+    ucs4* p;
 
     l = pp->firstinst;
-    do{
-        print("%d:\t0%o\t%d\t%d", l-pp->firstinst, l->type,
-            l->left-pp->firstinst, l->right-pp->firstinst);
-        if(l->type == RUNE)
+    do {
+        print("%d:\t0%o\t%d\t%d", l - pp->firstinst, l->type,
+            l->left - pp->firstinst, l->right - pp->firstinst);
+        if (l->type == RUNE)
             print("\t%C\n", l->r);
-        else if(l->type == CCLASS || l->type == NCCLASS){
+        else if (l->type == CCLASS || l->type == NCCLASS) {
             print("\t[");
-            if(l->type == NCCLASS)
+            if (l->type == NCCLASS)
                 print("^");
-            for(p = l->cp->spans; p < l->cp->end; p += 2)
-                if(p[0] == p[1])
+            for (p = l->cp->spans; p < l->cp->end; p += 2)
+                if (p[0] == p[1])
                     print("%C", p[0]);
                 else
                     print("%C-%C", p[0], p[1]);
             print("]\n");
-        } else
+        }
+        else
             print("\n");
-    }while(l++->type);
+    }
+    while (l++->type);
 }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-int regex_compiler::nextc(ucs4 *rp)
+int regex_compiler::nextc(ucs4* rp)
 {
-    if(_string.is_empty()) {
+    if (_string.is_empty()) {
         *rp = 0;
         return 0;
     }
 
     *rp = _string.cut_utf8();
-    if(*rp == L'\\') {
+    if (*rp == L'\\') {
         *rp = _string.cut_utf8();
         return 1;
     }
@@ -236,13 +238,13 @@ Reinst::OP regex_compiler::lex(int literal, Reinst::OP dot_type, bool icase)
     int quoted;
 
     quoted = nextc(&_yyrune);
-    if(literal || quoted){
-        if(_yyrune == 0)
+    if (literal || quoted) {
+        if (_yyrune == 0)
             return Reinst::END;
         return Reinst::RUNE;
     }
 
-    switch(_yyrune){
+    switch (_yyrune) {
     case 0:
         return Reinst::END;
     case L'*':
@@ -286,7 +288,7 @@ Reinst::OP regex_compiler::bldcclass(bool icase)
     // SPECIAL CASE!!! negated classes don't match \n
 
     quoted = nextc(&rune);
-    if(!quoted && rune == L'^'){
+    if (!quoted && rune == L'^') {
         type = Reinst::NCCLASS;
         quoted = nextc(&rune);
         *runes.add() = '\n';
@@ -296,24 +298,24 @@ Reinst::OP regex_compiler::bldcclass(bool icase)
     }
 
     // parse class into a set of spans
-    while(1)
+    while (1)
     {
-        if(rune == 0){
+        if (rune == 0) {
             throw exception() << "malformed '[]'";
         }
-        if(!quoted && rune == L']')
+        if (!quoted && rune == L']')
             break;
-        if(!quoted && rune == L'-'){
-            if(runes.size() == 0) {
+        if (!quoted && rune == L'-') {
+            if (runes.size() == 0) {
                 throw exception() << "malformed '[]'";
             }
             quoted = nextc(&rune);
-            if((!quoted && rune == L']') || rune == 0){
+            if ((!quoted && rune == L']') || rune == 0) {
                 throw exception() << "malformed '[]'";
             }
             *runes.last() = rune;
 
-            if(icase && ::isalpha(rune) && ::isalpha(runes.last()[-1])) {
+            if (icase && ::isalpha(rune) && ::isalpha(runes.last()[-1])) {
                 ucs4* p = runes.add(2) - 2;
                 p[0] = ::tolower(p[0]);
                 p[1] = ::tolower(p[1]);
@@ -330,9 +332,9 @@ Reinst::OP regex_compiler::bldcclass(bool icase)
 
     // sort by span start
     ucs4* rend = runes.ptre();
-    for( ucs4* p = runes.ptr(); p < rend; p+=2) {
-        for( ucs4* np=p; np<rend; np+=2)
-            if(*np < *p) {
+    for (ucs4* p = runes.ptr(); p < rend; p += 2) {
+        for (ucs4* np = p; np < rend; np += 2)
+            if (*np < *p) {
                 ucs4 rune = np[0];
                 np[0] = p[0];
                 p[0] = rune;
@@ -344,21 +346,23 @@ Reinst::OP regex_compiler::bldcclass(bool icase)
 
     // merge spans
     ucs4* p = runes.ptr();
-    if(runes.size())
+    if (runes.size())
     {
         ucs4* np = _yyclassp->spans.need(2);
         np[0] = *p++;
         np[1] = *p++;
 
-        for(; p<rend; p+=2)
-            if(p[0] <= np[1]) {
-                if(p[1] > np[1])
+        for (; p < rend; p += 2) {
+            if (p[0] <= np[1]) {
+                if (p[1] > np[1])
                     np[1] = p[1];
-            } else {
+            }
+            else {
                 np = _yyclassp->spans.add(2);
                 np[0] = p[0];
                 np[1] = p[1];
             }
+        }
     }
 
     return type;
@@ -377,12 +381,12 @@ regex_program* regex_compiler::compile(token s, bool literal, bool icase, Reinst
     _prog = prg.ptr();
 
     // Start with a low priority operator to prime parser
-    pushator(Reinst::OP(Reinst::START-1));
+    pushator(Reinst::OP(Reinst::START - 1));
 
     Reinst::OP tk;
-    while((tk = lex(literal, dot_type, icase)) != Reinst::END)
+    while ((tk = lex(literal, dot_type, icase)) != Reinst::END)
     {
-        if((tk & 0300) == Reinst::OPERATOR)
+        if ((tk & 0300) == Reinst::OPERATOR)
             xoperator(tk);
         else
             operand(tk, icase);
@@ -399,7 +403,7 @@ regex_program* regex_compiler::compile(token s, bool literal, bool icase, Reinst
     dumpstack();
 #endif
 
-    if(_nopenbraces)
+    if (_nopenbraces)
         throw exception() << "unmatched left paren";
 
     // points to first and only operand

@@ -161,19 +161,19 @@ struct script_handle
 #endif
 
         if (js_trycatch.HasCaught())
-            ::js::script_handle::throw_js_error(js_trycatch, "ot::js::canvas::load_script");
+            ::js::script_handle::throw_exception_from_js_error(js_trycatch, "load_script");
         else {
             compiled_script->Run(V8_OPTARG1(iso->GetCurrentContext()));
 
             if (js_trycatch.HasCaught())
-                ::js::script_handle::throw_js_error(js_trycatch, "ot::js::canvas::load_script");
+                ::js::script_handle::throw_exception_from_js_error(js_trycatch, "load_script");
         }
 
         return compiled_script;
     }
 
 
-    ///Load and run script
+    ///Load and run script referenced to by the script_handle object
     v8::Handle<v8::Script> load_script()
     {
         V8_DECL_ISO(iso);
@@ -229,12 +229,12 @@ struct script_handle
             v8::Script::Compile(scriptv8, v8::string_utf8(script_path, iso));
 #endif
         if (js_trycatch.HasCaught())
-            throw_js_error(js_trycatch);
+            throw_exception_from_js_error(js_trycatch);
 
         compiled_script->Run(V8_OPTARG1(iso->GetCurrentContext()));
 
         if (js_trycatch.HasCaught())
-            throw_js_error(js_trycatch);
+            throw_exception_from_js_error(js_trycatch);
 
 #ifdef V8_MAJOR_VERSION
         return scope.Escape(compiled_script);
@@ -245,8 +245,8 @@ struct script_handle
 
 public:
 
-    ///
-    static void throw_js_error(v8::TryCatch& tc, const coid::token& str = coid::token())
+    ///Throw C++ exception from caught JS exception
+    static void throw_exception_from_js_error(v8::TryCatch& tc, const coid::token& str = coid::token())
     {
         V8_DECL_ISO(iso);
         V8_HANDLE_SCOPE(iso, handle_scope);
@@ -270,7 +270,7 @@ public:
         throw cexc;
     }
 
-    ///
+    ///Function called from scripts to include a script
     static v8::CBK_RET js_include(const v8::ARGUMENTS& args)
     {
         coid::charstr dst;
@@ -311,13 +311,13 @@ public:
 
         if (0 != script_handle::get_target_path(path, 0, dst, &relpath)) {
             (dst = "invalid path ") << path;
-            return v8::throw_js(iso, v8::Exception::Error, dst);
+            return v8::queue_js_exception(iso, v8::Exception::Error, dst);
         }
 
         coid::bifstream bif(dst);
         if (!bif.is_open()) {
             dst.ins(0, coid::token("error opening file "));
-            return v8::throw_js(iso, v8::Exception::Error, dst);
+            return v8::queue_js_exception(iso, v8::Exception::Error, dst);
         }
 
         coid::binstreambuf buf;
@@ -345,13 +345,25 @@ public:
         v8::Handle<v8::Script> script = v8::Script::Compile(source, spath);
 #endif
 
-        if (js_trycatch.HasCaught())
-            throw_js_error(js_trycatch, "js_include");
+        if (js_trycatch.HasCaught()) {
+            js_trycatch.ReThrow();
+#ifdef V8_MAJOR_VERSION
+            return;
+#else
+            return v8::Undefined();
+#endif
+        }
 
         script->Run(V8_OPTARG1(ctx));
 
-        if (js_trycatch.HasCaught())
-            throw_js_error(js_trycatch, "js_include");
+        if (js_trycatch.HasCaught()) {
+            js_trycatch.ReThrow();
+#ifdef V8_MAJOR_VERSION
+            return;
+#else
+            return v8::Undefined();
+#endif
+        }
 
         v8::Handle<v8::Value> rval = ctx->Global()->Get(result);
         ctx->Global()->Set(result, V8_UNDEFINED(iso));

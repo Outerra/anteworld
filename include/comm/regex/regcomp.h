@@ -41,12 +41,12 @@ COID_NAMESPACE_BEGIN
 
 
 /// Character class, each pair of rune's defines a range
-struct Reclass{
+struct Reclass {
     dynarray<ucs4> spans;
 };
 
 /// Machine instructions
-struct Reinst{
+struct Reinst {
 
     /// Actions and Tokens (Reinst types)
     ///
@@ -54,37 +54,37 @@ struct Reinst{
     /// 03xx are tokens, i.e. operands for operators
     ///
     enum OP {
-        RUNE		= 0177,
-        OPERATOR	= 0200,	// Bitmask of all operators
-        START		= 0200,	// Start, used for marker on stack
-        RBRA		= 0201,	// Right bracket, )
-        LBRA		= 0202,	// Left bracket, (
-        OR		    = 0203,	// Alternation, |
-        CAT		    = 0204,	// Concatentation, implicit operator
-        STAR		= 0205,	// Closure, *
-        PLUS		= 0206,	// a+ == aa*
-        QUEST		= 0207,	// a? == a|nothing, i.e. 0 or 1 a's
-        ANY		    = 0300,	// Any character except newline, .
-        ANYNL		= 0301,	// Any character including newline, .
-        NOP		    = 0302,	// No operation, internal use only
-        BOL		    = 0303,	// Beginning of line, ^
-        EOL		    = 0304,	// End of line, $
-        CCLASS		= 0305,	// Character class, []
-        NCCLASS		= 0306,	// Negated character class, []
-        END		    = 0377,	// Terminate: match found
+        RUNE = 0177,
+        OPERATOR = 0200,	// Bitmask of all operators
+        START = 0200,	    // Start, used for marker on stack
+        RBRA = 0201,	    // Right bracket, )
+        LBRA = 0202,	    // Left bracket, (
+        OR = 0203,	        // Alternation, |
+        CAT = 0204,	        // Concatentation, implicit operator
+        STAR = 0205,	    // Closure, *
+        PLUS = 0206,	    // a+ == aa*
+        QUEST = 0207,	    // a? == a|nothing, i.e. 0 or 1 a's
+        ANY = 0300,	        // Any character except newline, .
+        ANYNL = 0301,	    // Any character including newline, .
+        NOP = 0302,	        // No operation, internal use only
+        BOL = 0303,	        // Beginning of line, ^
+        EOL = 0304,	        // End of line, $
+        CCLASS = 0305,	    // Character class, []
+        NCCLASS = 0306,	    // Negated character class, []
+        END = 0377,	        // Terminate: match found
     };
 
-    OP	type;			// < 0200 ==> literal, otherwise action
+    OP	type;			    // < 0200 ==> literal, otherwise action
 
-    union	{
-        Reclass	*cp;	// class pointer
-        ucs4	cd;		// character
-        int	subid;		// sub-expression id for RBRA and LBRA
-        Reinst	*right;	// right child of OR 
+    union {
+        Reclass* cp;	    // class pointer
+        ucs4	cd;		    // character
+        int	subid;		    // sub-expression id for RBRA and LBRA
+        Reinst* right;	    // right child of OR
     };
     union {	//regexp relies on these two being in the same union
-        Reinst *left;		// left child of OR
-        Reinst *next;		// next instruction for CAT & LBRA
+        Reinst* left;		// left child of OR
+        Reinst* next;		// next instruction for CAT & LBRA
     };
 
     Reinst(OP type)
@@ -132,8 +132,8 @@ private:
     /// Parser Information
     struct Node
     {
-        Reinst*	first;
-        Reinst*	last;
+        Reinst* first;
+        Reinst* last;
 
         void set(Reinst* first, Reinst* last) {
             this->first = first;
@@ -141,8 +141,8 @@ private:
         }
     };
 
-    /// 
-    struct Ator 
+    ///
+    struct Ator
     {
         int ator;
         int subid;
@@ -153,14 +153,14 @@ private:
         }
     };
 
-    Reinst* create( Reinst::OP type );
+    Reinst* create(Reinst::OP type);
 
     void operand(Reinst::OP t, bool icase);
     void xoperator(Reinst::OP t);
 
     void evaluntil(Reinst::OP pri);
 
-    void pushand(Reinst *f, Reinst *l) {
+    void pushand(Reinst* f, Reinst* l) {
         _andstack.add()->set(f, l);
     }
 
@@ -170,7 +170,7 @@ private:
 
     Node* popand(int op)
     {
-        if(_andstack.size() == 0)
+        if (_andstack.size() == 0)
             throw exception() << "missing operand for " << (char)op;
 
         Node* n = _andstack.last();
@@ -181,7 +181,7 @@ private:
 
     int popator(void)
     {
-        if(_atorstack.size() == 0)
+        if (_atorstack.size() == 0)
             throw exception() << "can't happen: operator stack underflow";
 
         Ator* a = _atorstack.last();
@@ -190,7 +190,7 @@ private:
         return a->ator;
     }
 
-    int nextc(ucs4 *rp);
+    int nextc(ucs4* rp);
     Reinst::OP lex(int literal, Reinst::OP dot_type, bool icase);
     Reinst::OP bldcclass(bool icase);
 
@@ -223,9 +223,9 @@ struct Reljunk
     ucs4    any_except;
 
     enum MatchStyle {
-        SEARCH      = 0,            //< search the string and report the first occurrence
-        MATCH       = 1,            //< match whole string
-        FOLLOWS     = 2,            //< match leading part of the string
+        SEARCH = 0,                     //< search the string and report the first occurrence
+        MATCH = 1,                      //< match whole string
+        FOLLOWS = 2,                    //< match leading part of the string
     };
     MatchStyle style;
 
@@ -243,9 +243,9 @@ struct Reljunk
 /// Regex program representation
 struct regex_program
 {
-    token match( token bol, token* sub, uint nsub, Reljunk::MatchStyle style ) const;
-    
-    regex_program( bool icase )
+    token match(token bol, token* sub, uint nsub, Reljunk::MatchStyle style) const;
+
+    regex_program(bool icase)
         : startinst(0), icase(icase)
     {}
 
@@ -253,12 +253,12 @@ struct regex_program
 private:
 
     void optimize();
-    token regexec( token bol, token* sub, uint nsub, Reljunk *j ) const;
+    token regexec(token bol, token* sub, uint nsub, Reljunk* j) const;
 
 private:
 
     friend struct regex_compiler;
-    
+
     Reinst* startinst;	// start pc
     dynarray<Reclass*> rclass;
     dynarray<Reinst*> rinst;
