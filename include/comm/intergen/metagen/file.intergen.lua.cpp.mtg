@@ -58,7 +58,7 @@ $-(if event?)$
     void bind_events( bool force, iref<::lua::registry_handle> ref ) const;
 $-(/if)$
 
-    COIDNEWDELETE("$[ns]$$@value$::$[/ns]$$name$_lua_dispatcher");
+    COIDNEWDELETE($name$_lua_dispatcher);
 
     $name$_lua_dispatcher() $-(if event?)$ : _bound_events(false)$(/if)$
     {

@@ -117,6 +117,13 @@
 # define coid_constexpr const
 #endif
 
+#if defined(__cpp_if_constexpr) || _MSC_VER >= 1910
+# define coid_constexpr_if constexpr
+# define COID_CONSTEXPR_IF
+#else
+# define coid_constexpr_if
+#endif
+
 #if defined(__cpp_user_defined_literals) || _MSC_VER >= 1900
 # define COID_USER_DEFINED_LITERALS
 #endif
@@ -152,9 +159,8 @@
 #define STATIC_DBG static const
 #endif
 
-//#define _USE_32BIT_TIME_T
-#include <sys/types.h>
-#include <stddef.h>
+#include <cstddef>
+#include <cstdint>
 
 /// Operator new for preallocated storage
 inline void * operator new (size_t, const void *p) { return (void*)p; }
@@ -165,11 +171,11 @@ namespace coid {
 
 #ifdef SYSTYPE_WIN
 typedef short               __int16_t;
-typedef long                __int32_t;
+typedef int                 __int32_t;
 typedef __int64             __int64_t;
 
 typedef unsigned short      __uint16_t;
-typedef unsigned long       __uint32_t;
+typedef unsigned int        __uint32_t;
 typedef unsigned __int64    __uint64_t;
 
 typedef signed char     	__int8_t;
@@ -188,14 +194,9 @@ typedef __uint64_t      	uint64;
 typedef float               flt32;
 typedef double              flt64;
 
-
-#ifndef __USE_MISC      // defined on linux systems in sys/types.h
-#define COID_UINT_DEFINED
-    typedef unsigned int		uint;
-    typedef unsigned long       ulong;
-    typedef unsigned short      ushort;
-#endif
-
+typedef unsigned int		uint;
+typedef unsigned long       ulong;
+typedef unsigned short      ushort;
 
 typedef uint8               uchar;
 typedef int8                schar;
@@ -228,11 +229,11 @@ using coid::uchar;
 using coid::schar;
 using coid::uints;
 using coid::ints;
-# ifdef COID_UINT_DEFINED
+
 using coid::uint;
 using coid::ulong;
 using coid::ushort;
-# endif
+
 #endif
 
 

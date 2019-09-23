@@ -124,13 +124,8 @@ struct fog_params
 ///Cloud params
 struct cloud_params
 {
-    float base;                         //< cloud base elevation [m]
-    float height;                       //< max cloud thickness [m]
-
-    cloud_params()
-        : base(3000)
-        , height(4000)
-    {}
+    float base = 3000;                  //< cloud base elevation [m]
+    float height = 4000;                //< max cloud thickness [m]
 
     float get_rain_alt() const { return base + height * .5f; }
 
@@ -222,6 +217,9 @@ struct weather_params
 
     weather_params() {
         coid::metastream::initialize_from_defaults(this);
+    }
+
+    explicit weather_params(int) {
     }
 
     float wind_speed_at_height( float h ) const {

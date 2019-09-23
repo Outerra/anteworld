@@ -38,16 +38,15 @@ $-(if event?)$
 
 $-(/if)$
 $-(if hasprops?)$
-    static v8::CBK_RET _getter(v8::Local<v8::String> property, const v8::ACCESSOR &info);
-    static v8::CBK_RET _setter(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::ACCESSOR &info);
+    static v8::CBK_RET _getter(v8::Local<V8_NAME> property, const v8::ACCESSOR &info);
+    static v8::CBK_RET _setter(v8::Local<V8_NAME> property, v8::Local<v8::Value> value, const v8::ACCESSOR &info);
 
 $-(/if)$
 #ifdef V8_MAJOR_VERSION
-    static void _js_release_callback(const v8::WeakCallbackInfo<void*>& data)
+    static void _js_release_callback(const v8::WeakCallbackInfo<$name$_js_dispatcher>& data)
     {
-        void* p = data.GetParameter();
-        $name$_js_dispatcher* ifc = static_cast<$name$_js_dispatcher*>(p);
-        ifc->_object.Empty();
+        $name$_js_dispatcher* ifc = data.GetParameter();
+        ifc->_object.Reset();
         ifc->release_refcount();
     }
 
@@ -72,12 +71,12 @@ public:
 
     v8::Handle<v8::Object> create_interface_object( v8::Handle<v8::Context> context, bool make_weak );
 
-    static v8::Handle<v8::Script> load_script( const coid::token& scriptfile, const coid::token& file_name );
+    static v8::Handle<v8::Script> load_script( const coid::token& script, const coid::token& file_name );
 $-(if event?)$
     void bind_events( v8::Handle<v8::Context> context, bool force, v8::Handle<v8::Value> ref ) const;
 $-(/if)$
 
-    COIDNEWDELETE("$[ns]$$@value$::$[/ns]$$name$_js_dispatcher");
+    COIDNEWDELETE($name$_js_dispatcher);
 
     $name$_js_dispatcher() $-(if event?)$ : _bound_events(false)$(/if)$
     {}
@@ -96,17 +95,17 @@ $-(/if)$
 
     ~$name$_js_dispatcher() {
 $-(if event?)$
-        //V8_RESET(_eventobj);
-
         for (int i=0; i<$event.@size$; ++i) {
             V8_RESET(_events[i]);
         }
 
 $-(/if)$
-        V8_RESET(_object);
+        V8_DECL_ISO(iso);
+        if (!_object.IsEmpty()) {
+            V8_LOCAL(iso, _object)->SetInternalField(0, V8_NULL(iso));
+        }
 
-        //V8_RESET(_script);
-        //V8_RESET(_context);
+        V8_RESET(_object);
     }
 
     bool intergen_bind_capture( coid::binstring* capture, uint instid ) override
@@ -198,7 +197,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_$name$$@index$( const v8::ARGUMENTS& args
     if (args.Length() < $ninargs_nondef$ || args.Length() > $ninargs$) { //in/inout arguments
         coid::charstr tmp = "Wrong number of arguments in ";
         tmp << "$..name$.$name$";
-        return v8::throw_js(iso, v8::Exception::SyntaxError, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::SyntaxError, tmp);
     }
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
@@ -217,7 +216,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_$name$$@index$( const v8::ARGUMENTS& args
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$.$name$";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
@@ -262,10 +261,10 @@ $-(if return.type!="void")$
  $-(if return.iref.false? noutargs?)$
         static_assert( CHECK::meta_operator_exists<$return.type$>::value, "missing metastream operator for '$return.type$'" );
         v8::Handle<v8::Object> r__ = V8_NEWTYPE(iso, Object);
-        r__->Set(v8::symbol("$$ret"), read_to_v8(_rval_));
+        r__->Set(v8::symbol("$$ret", iso), read_to_v8(_rval_));
  $-(elif noutargs?)$
         v8::Handle<v8::Object> r__ = V8_NEWTYPE(iso, Object);
-        r__->Set(v8::symbol("$$ret"), ::js::wrap_object(_rval_.get(), ifc->context(iso)));
+        r__->Set(v8::symbol("$$ret", iso), ::js::wrap_object(_rval_.get(), ifc->context(iso)));
  $-(elif return.iref.false?)$
         v8::Handle<v8::Value> r__;
   $-(if return.ptr.true?)$
@@ -283,9 +282,9 @@ $-(if return.type!="void")$
  $-[args outarg?]$
   $-(if iref.false?)$
         static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
-        r__->Set(v8::symbol("$name$"), read_to_v8($name$));
+        r__->Set(v8::symbol("$name$", iso), read_to_v8($name$));
   $-(elif)$
-        r__->Set(v8::symbol("$name$"), ::js::wrap_object($name$.get(), ifc->context(iso)));
+        r__->Set(v8::symbol("$name$", iso), ::js::wrap_object($name$.get(), ifc->context(iso)));
   $-(/if)$
  $[/args]-$
 $-(elif noutargs?="1")$
@@ -302,9 +301,9 @@ $-(elif noutargs?)$
  $-[args outarg?]$
   $-(if iref.false?)$
         static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
-        r__->Set(v8::symbol("$name$"), read_to_v8($name$));
+        r__->Set(v8::symbol("$name$", iso), read_to_v8($name$));
   $-(elif)$
-        r__->Set(v8::symbol("$name$"), ::js::wrap_object($name$.get(), ifc->context(iso)));
+        r__->Set(v8::symbol("$name$", iso), ::js::wrap_object($name$.get(), ifc->context(iso)));
   $-(/if)$
  $[/args]-$
 $-(elif)$
@@ -318,7 +317,7 @@ $(/if)-$
 #endif
 
     } catch(const coid::exception& e) {
-        return v8::throw_js(iso, &v8::Exception::TypeError, e.text());
+        return v8::queue_js_exception(iso, &v8::Exception::TypeError, e.text());
     }
 }
 
@@ -375,7 +374,7 @@ $-[args inarg?]$$(if volatile?)$
 $-[/args]$
 
     if (js_trycatch__.HasCaught())
-        ::js::script_handle::throw_js_error(js_trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$(): ");
+        ::js::script_handle::throw_exception_from_js_error(js_trycatch__, "$..ns rest="::" after="::"$js::$..name$.$name$");
 // gather results
 $-(if !noutargs?)$
 
@@ -405,7 +404,7 @@ $-(elif)$
  $-(elif)$
 
     if (!r__->IsObject()) throw coid::exception("invalid params");
-    v8::Local<v8::Object> obj__ = r__->ToObject();
+    v8::Local<v8::Object> obj__ = r__->ToObject(V8_OPTARG1(iso));
   $-(if return.type!="void")$
 
     //return value
@@ -415,7 +414,7 @@ $-(elif)$
    $-(elif)$
     static_assert( CHECK::meta_operator_exists<$return.type$>::value, "missing metastream operator for '$return.type$'" );
     threadcached<$return.type$> _rval_;
-    write_from_v8(obj__->Get(v8::symbol("$$ret")), _rval_);
+    write_from_v8(obj__->Get(v8::symbol("$$ret", iso)), _rval_);
    $-(/if)$
   $-(/if)$
   $-[args outarg?]$
@@ -425,9 +424,9 @@ $-(elif)$
    $-(/if)$
    $-(if ptr?)$
     if ($name$)
-        write_from_v8(obj__->Get(v8::symbol("$name$")), *$name$);
+        write_from_v8(obj__->Get(v8::symbol("$name$", iso)), *$name$);
    $-(elif)$
-    write_from_v8(obj__->Get(v8::symbol("$name$")), $name$);
+    write_from_v8(obj__->Get(v8::symbol("$name$", iso)), $name$);
    $-(/if)$
   $-[/args]$
  $-(/if)$
@@ -466,7 +465,7 @@ v8::CBK_RET $..name$_js_dispatcher::v8_evback_$name$$@index$( const v8::ARGUMENT
     if (ifc->_events[$@index$].IsEmpty() || ev__->IsUndefined()) {
         coid::charstr tmp = "Event not available: ";
         tmp << "$name$";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 $-(if ninargs.nonzero?)$
 
@@ -493,7 +492,7 @@ $-(/if)$
 $-[/event]$
 $-(if hasprops?)$
 ////////////////////////////////////////////////////////////////////////////////
-v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<v8::String> property, const v8::ACCESSOR& args)
+v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<V8_NAME> property, const v8::ACCESSOR& args)
 {
     v8::Isolate* iso = args.GetIsolate();
 
@@ -513,12 +512,12 @@ v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<v8::String> property, const 
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$[]";
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
 
-    v8::String::Utf8Value key(property);
+    v8::String::Utf8Value key(V8_OPTARG(iso) property);
     coid::token tok(*key, key.length());
 
  $-(if getter.token?)$
@@ -543,7 +542,7 @@ v8::CBK_RET $name$_js_dispatcher::_getter(v8::Local<v8::String> property, const 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::ACCESSOR& args)
+v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<V8_NAME> property, v8::Local<v8::Value> value, const v8::ACCESSOR& args)
 {
     v8::Isolate* iso = args.GetIsolate();
 
@@ -563,7 +562,7 @@ v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<v8::String> property, v8::Lo
     if (!R_) {
         coid::charstr tmp = "Null interface object in ";
         tmp << "$..name$[] = ...";
-        return v8::throw_js(iso, v8::Exception::ReferenceError, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::ReferenceError, tmp);
     }
 
     v8::Context::Scope context_scope(ifc->context(iso));
@@ -571,7 +570,7 @@ v8::CBK_RET $name$_js_dispatcher::_setter(v8::Local<v8::String> property, v8::Lo
     threadcached<$setter.basetype$> val;
     write_from_v8(value, val);
 
-    v8::String::Utf8Value key(property);
+    v8::String::Utf8Value key(V8_OPTARG(iso) property);
     try {
 $-(if setter.token?)$
         (*R_)(coid::token(*key, key.length()), val);
@@ -581,7 +580,7 @@ $-(/if)$
     }
     catch ( std::exception& e )
     {
-        v8::throw_js(iso,v8::Exception::Error,e.what());
+        v8::queue_js_exception(iso,v8::Exception::Error,e.what());
     }
 #ifdef V8_MAJOR_VERSION
     args.GetReturnValue().Set(value);
@@ -610,12 +609,12 @@ v8::CBK_RET $name$_js_dispatcher::v8log( const v8::ARGUMENTS& args )
 
             inst = ifc;
             if (!ifc)
-                return v8::throw_js(iso, &v8::Exception::ReferenceError, "Null interface object in $$log");
+                return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, "Null interface object in $$log");
         }
     }
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
-    v8::String::Utf8Value key(args[0]);
+    v8::String::Utf8Value key(V8_OPTARG(iso) args[0]);
 
     coid::token tokey(*key, key.length());
 
@@ -631,10 +630,10 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
     v8::Isolate* iso = args.GetIsolate();
 
     if (args.Length() < 1)
-        return v8::throw_js(iso, &v8::Exception::Error, "Interface creator name missing");
+        return v8::queue_js_exception(iso, &v8::Exception::Error, "Interface creator name missing");
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
-    v8::String::Utf8Value key(args[0]);
+    v8::String::Utf8Value key(V8_OPTARG(iso) args[0]);
 
     typedef v8::Handle<v8::Value> (*fn_get)(const v8::ARGUMENTS&, interface_context*);
     coid::token tokey(*key, key.length());
@@ -644,7 +643,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
     if (!get) {
         coid::charstr tmp = "interface creator ";
         tmp << tokey << " not found";
-        return v8::throw_js(iso, v8::Exception::Error, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::Error, tmp);
     }
 
     v8::Local<v8::Object> obj__ = args.Holder();
@@ -659,7 +658,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface( const v8::ARGUMENTS& args )
         (v8::Handle<v8::External>::Cast(intobj__)->Value());
 
     if (!ifc)
-        return v8::throw_js(iso, &v8::Exception::ReferenceError, "Null interface object in $$query_interface");
+        return v8::queue_js_exception(iso, &v8::Exception::ReferenceError, "Null interface object in $$query_interface");
 
 #ifdef V8_MAJOR_VERSION
     args.GetReturnValue().Set(get(args, ifc));
@@ -674,10 +673,10 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface_global( const v8::ARGUMENTS&
     v8::Isolate* iso = args.GetIsolate();
 
     if (args.Length() < 1)
-        return v8::throw_js(iso, &v8::Exception::Error, "Interface creator name missing");
+        return v8::queue_js_exception(iso, &v8::Exception::Error, "Interface creator name missing");
 
     V8_ESCAPABLE_SCOPE(iso, handle_scope__);
-    v8::String::Utf8Value key(args[0]);
+    v8::String::Utf8Value key(V8_OPTARG(iso) args[0]);
 
     typedef v8::Handle<v8::Value> (*fn_get)(const v8::ARGUMENTS&, interface_context*);
     coid::token tokey(*key, key.length());
@@ -687,7 +686,7 @@ v8::CBK_RET $name$_js_dispatcher::v8query_interface_global( const v8::ARGUMENTS&
     if (!get) {
         coid::charstr tmp = "interface creator ";
         tmp << tokey << " not found";
-        return v8::throw_js(iso, v8::Exception::Error, tmp);
+        return v8::queue_js_exception(iso, v8::Exception::Error, tmp);
     }
 
 #ifdef V8_MAJOR_VERSION
@@ -759,25 +758,34 @@ v8::Handle<v8::Object> $name$_js_dispatcher::create_interface_object( v8::Handle
     if (_objtempl.IsEmpty())
     {
         v8::Local<v8::ObjectTemplate> ot = V8_NEWTYPE(iso, ObjectTemplate);
-        ot->SetInternalFieldCount(2);    //ptr and class hash id
+#ifdef V8_MAJOR_VERSION
+        ot->Set(v8::Symbol::GetToStringTag(iso), v8::string_utf8("$ns rest="::" after="::"$$name$"));
+#endif
+		ot->SetInternalFieldCount(2);    //ptr and class hash id
 
 $-[method !static? !destroy? !internal? !operator?]$
-        ot->Set(v8::symbol("$name$"), V8_NEWTYPE2(iso, FunctionTemplate, &v8_$name$$@index$));
+        ot->Set(v8::symbol("$name$", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8_$name$$@index$));
 $-[/method]$
 
-        ot->Set(v8::symbol("$$query_interface"), V8_NEWTYPE2(iso, FunctionTemplate, &v8query_interface));
-        ot->Set(v8::symbol("$$rebind_events"), V8_NEWTYPE2(iso, FunctionTemplate, &v8rebind_events));
-        ot->Set(v8::symbol("$$ctx"), V8_NEWTYPE2(iso, FunctionTemplate, &v8current_global));
-        ot->Set(v8::symbol("$$log"), V8_NEWTYPE2(iso, FunctionTemplate, &v8log));
+        ot->Set(v8::symbol("$$query_interface", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8query_interface));
+        ot->Set(v8::symbol("$$rebind_events", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8rebind_events));
+        ot->Set(v8::symbol("$$ctx", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8current_global));
+        ot->Set(v8::symbol("$$log", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8log));
 $-(if hasprops?)$
 
+#ifdef V8_MAJOR_VERSION
+        v8::NamedPropertyHandlerConfiguration conf(&_getter, &_setter);
+        conf.flags = v8::PropertyHandlerFlags::kNonMasking;
+        ot->SetHandler(conf);
+#else
         ot->SetNamedPropertyHandler(&_getter, &_setter);
+#endif
 $-(/if)$
 $-(if event.nonzero?)$
 
         //event wrappers for event invocation from outside js
 $-[event]$
-        ot->Set(v8::symbol("$name$"), V8_NEWTYPE2(iso, FunctionTemplate, &v8_evback_$name$$@index$));
+        ot->Set(v8::symbol("$name$", iso), V8_NEWTYPE2(iso, FunctionTemplate, &v8_evback_$name$$@index$));
 $-[/event]$
 $-(/if)$
 
@@ -796,12 +804,9 @@ $-(/if)$
         V8_PERSISTENT(iso, _object, obj);
 
 #ifdef V8_MAJOR_VERSION
-        void* p = this;
-        _object.SetWeak(&p, _js_release_callback, v8::WeakCallbackType::kParameter);
-        //_context.SetWeak();
+        _object.SetWeak(this, _js_release_callback, v8::WeakCallbackType::kParameter);
 #else
         _object.MakeWeak(this, _js_release_callback);
-        //_context.MakeWeak(0, _js_release_callback);
 #endif
         add_refcount();
     }
@@ -812,22 +817,7 @@ $-(/if)$
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Script> $name$_js_dispatcher::load_script( const coid::token& script, const coid::token& fname )
 {
-    v8::Isolate* iso = v8::Isolate::GetCurrent();
-    v8::Local<v8::String> scriptv8 = v8::string_utf8(script);
-
-    // set up an error handler to catch any exceptions the script might throw.
-    V8_TRYCATCH(iso, js_trycatch);
-
-    v8::Handle<v8::Script> compiled_script = v8::Script::Compile(scriptv8, v8::symbol(fname));
-    if (js_trycatch.HasCaught())
-        ::js::script_handle::throw_js_error(js_trycatch, "$ns rest="::" after="::"$js::$name$::load_script(): ");
-
-    compiled_script->Run();
-    
-    if (js_trycatch.HasCaught())
-        ::js::script_handle::throw_js_error(js_trycatch, "$ns rest="::" after="::"$js::$name$::load_script(): ");
-
-    return compiled_script;
+    return ::js::script_handle::load_script(script, fname);
 }
 
 $-(if event.empty!)$
@@ -856,7 +846,7 @@ $-[/event]$
     else if (ref->IsNull())
         clear = true;
     else
-        global = ref->ToObject();
+        global = ref->ToObject(V8_OPTARG1(iso));
 
     for (int i=0; i<$event.@size$; ++i)
     {
@@ -865,7 +855,7 @@ $-[/event]$
         if (clear)
             continue;
 
-        v8::Local<v8::Value> var = global->Get(v8::symbol(names[i]));
+        v8::Local<v8::Value> var = global->Get(v8::symbol(names[i], iso));
         if (var->IsUndefined())
             continue;
 
@@ -941,9 +931,9 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const ::js::script_
     if (!extctx && !script.is_context())
     {
         if (!script.has_context()) {
-            context->Global()->Set(v8::symbol("$$include"), V8_NEWTYPE2(iso, FunctionTemplate, &::js::script_handle::js_include)->GetFunction());
-            context->Global()->Set(v8::symbol("$$query_interface"), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8query_interface_global)->GetFunction());
-            context->Global()->Set(v8::symbol("$$log"), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8log)->GetFunction());
+            context->Global()->Set(v8::symbol("$$include", iso), V8_NEWTYPE2(iso, FunctionTemplate, &::js::script_handle::js_include)->GetFunction());
+            context->Global()->Set(v8::symbol("$$query_interface", iso), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8query_interface_global)->GetFunction());
+            context->Global()->Set(v8::symbol("$$log", iso), V8_NEWTYPE2(iso, FunctionTemplate, &$..name$_js_dispatcher::v8log)->GetFunction());
         }
 
         coid::token script_tok;
@@ -972,7 +962,7 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const ::js::script_
 
         V8_PERSISTENT(iso, ifc->_object, ifc->create_interface_object(context, false));
         if (bindname)
-            context->Global()->Set(v8::symbol(bindname), V8_LOCAL(iso, ifc->_object));
+            context->Global()->Set(v8::symbol(bindname, iso), V8_LOCAL(iso, ifc->_object));
 
         v8::Handle<v8::Script> compiled_script = load_script(script_tok, script.url());
 
@@ -982,7 +972,7 @@ iref<$..name$_js_dispatcher> $..name$_js_dispatcher::$name$( const ::js::script_
         V8_PERSISTENT(iso, ifc->_object, ifc->create_interface_object(context, false));
 
         if (bindname)
-            context->Global()->Set(v8::symbol(bindname), V8_LOCAL(iso, ifc->_object));
+            context->Global()->Set(v8::symbol(bindname, iso), V8_LOCAL(iso, ifc->_object));
     }
 
     return ifc;
@@ -998,7 +988,7 @@ v8::Handle<v8::Value> $..name$_js_dispatcher::v8creator_$name$$@order$( const v8
     if (args.Length() < 1+$ninargs_nondef$ || args.Length() > 1+$ninargs$) { //fnc name + in/inout arguments
         coid::charstr tmp = "Wrong number of arguments in ";
         tmp << "$name$";
-        v8::throw_js(iso, &v8::Exception::Error, tmp);
+        v8::queue_js_exception(iso, &v8::Exception::Error, tmp);
         return V8_UNDEFINED(iso);
     }
 
@@ -1051,7 +1041,7 @@ $[/args]-$
     //stream out
 $-(if noutargs?)$
     v8::Handle<v8::Object> r__ = V8_NEWTYPE(iso, Object);
-    r__->Set(v8::symbol("$$ret"), nifc
+    r__->Set(v8::symbol("$$ret", iso), nifc
         ? v8::Handle<v8::Value>(nifc->create_interface_object(ctx, true))
         : v8::Handle<v8::Value>(V8_NULL(iso)));
 $-(elif)$
@@ -1064,7 +1054,7 @@ $-[args outarg?]$
     $-(if iref.false?)$
     static_assert(CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'");
     $-(/if)$
-    r__->Set(v8::symbol("$name$"), read_to_v8($name$));
+    r__->Set(v8::symbol("$name$", iso), read_to_v8($name$));
 $[/args]-$
 
     return V8_ESCAPE(handle_scope__, r__);

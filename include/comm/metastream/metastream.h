@@ -109,6 +109,7 @@ public:
     bool stream_writing() const { return _binw; }
 
     typedef bstype::kind            type;
+    void* context = NULL;
 
 
     metastream() {
@@ -117,6 +118,13 @@ public:
 
     explicit metastream(fmtstream& bin)
     {
+        init();
+        bind_formatting_stream(bin);
+    }
+
+    explicit metastream(fmtstream& bin, void* ctx)
+    {
+        context = ctx;
         init();
         bind_formatting_stream(bin);
     }
@@ -138,6 +146,12 @@ public:
         meta.xstream_in(*that);
     }
 
+    ///Set metastream context and return the previous one
+    void* set_context(void* ctx) {
+        void* prev = context;
+        context = ctx;
+        return prev;
+    }
 
     ///Define struct streaming scheme
     //@param fn functor with member functions defining the struct layout
@@ -155,10 +169,10 @@ public:
         else if (!meta_insert(typeid(T).name(), sizeof(T), false)) {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -186,10 +200,10 @@ public:
             {
                 fn();
 
-                _last_var = smap().pop();
+                _last_var = _smap->pop();
                 md = _last_var->desc;
 
-                _current_var = smap().last();
+                _current_var = _smap->last();
 
                 meta_exit();
             }
@@ -230,10 +244,10 @@ public:
             {
                 fnrefl();
 
-                _last_var = smap().pop();
+                _last_var = _smap->pop();
                 md = _last_var->desc;
 
-                _current_var = smap().last();
+                _current_var = _smap->last();
 
                 meta_exit();
             }
@@ -244,7 +258,7 @@ public:
             MetaDesc::Var var;
             var.desc = &desc;
             _current_var = &var;
-            
+
             fnstream();
 
             md->streaming_type = desc.children[0].desc;
@@ -274,10 +288,10 @@ public:
         {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -301,10 +315,10 @@ public:
         {
             fn();
 
-            _last_var = smap().pop();
+            _last_var = _smap->pop();
             _last_var->desc->streaming_type = _last_var->desc;
 
-            _current_var = smap().last();
+            _current_var = _smap->last();
 
             meta_exit();
         }
@@ -375,7 +389,7 @@ public:
         return used;
     }
 
-    ///Define a fixed size array member variable 
+    ///Define a fixed size array member variable
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     template<typename T, size_t N>
@@ -668,7 +682,7 @@ public:
     //@param v pointer to the first array element
     //@param size element count
     template<size_t N, typename T>
-    metastream& member_array(const token& name, T* v)
+    metastream& member_array(const token& name, T* v, bool nonmember = false)
     {
         if (_binw) {
             binstream_container_fixed_array<T, ints> bc(v, N);
@@ -679,7 +693,148 @@ public:
             read_container(bc);
         }
         else
-            meta_variable_fixed_array<N>(name, v);
+            meta_variable_fixed_array<N>(name, v, nonmember);
+        return *this;
+    }
+
+
+
+    ///Define a member variable
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    //@return true if value was read or written and no default was used (also true in meta phase)
+    template<typename T>
+    bool nonmember(const token& name, T& v)
+    {
+        if (streaming()) {
+            *this || *(typename resolve_enum<T>::type*)&v;
+            return true;
+        }
+
+        meta_variable<T>(name, &v, true);
+        return true;
+    }
+
+    ///Define a member variable with default value to use if missing in stream
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    //@param defval value to use if the variable is missing from the stream, convertible to T
+    //@return true if value was read or written and no default was used (also true in meta phase)
+    template<typename T, typename D>
+    bool nonmember(const token& name, T& v, const D& defval)
+    {
+        bool used = true;
+
+        if (_binw) {
+            *this || *(typename resolve_enum<T>::type*)&v;
+        }
+        else if (_binr) {
+            used = read_optional(v);
+            if (!used)
+                v = T(defval);
+        }
+        else
+            meta_variable_optional<T>(name, &v, true);
+        return used;
+    }
+
+    ///Define a member variable with default value to use if missing in stream
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    //@param defval value to use if the variable is missing from the stream, convertible to T
+    //@param write_default if false, does not write value that equals the defval into output stream
+    //@return true if value was read or written and no default was used (also true in meta phase)
+    template<typename T, typename D>
+    bool nonmember(const token& name, T& v, const D& defval, bool write_default)
+    {
+        bool used = true;
+
+        if (_binw) {
+            used = write_optional(!cache_prepared() && !write_default && v == defval
+                ? 0 : (typename resolve_enum<T>::type*)&v);
+        }
+        else if (_binr) {
+            used = read_optional(v);
+            if (!used)
+                v = T(defval);
+        }
+        else
+            meta_variable_optional<T>(name, &v, true);
+        return used;
+    }
+
+    ///Define a fixed size array member variable
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    template<typename T, size_t N>
+    bool nonmember(const token& name, T(&v)[N])
+    {
+        member_array<N>(name, v, true);
+        return true;
+    }
+
+    ///Define a non-member variable referenced by a pointer (non-streamable) except const char*
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    //@param streamed false variable should not be streamed, just a part of meta description, can point to 1..N items (default)
+    //@param          true variable is indirectly referenced to by a pointer
+    //@note use member_optional or member_type for special handling when the pointer has to be allocated etc.
+    template<typename T, typename = std::enable_if_t<!std::is_same<const char*, T*>::value>>
+    bool nonmember(const token& name, T*& v, bool streamed = false)
+    {
+        nonmember_ptr(name, v, streamed);
+        return true;
+    }
+
+    ///Define a non-member variable referenced by a pointer, assumed to be already allocated when streaming to/from
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    template<typename T>
+    metastream& nonmember_indirect(const token& name, T*& v)
+    {
+        typedef typename std::remove_const<T>::type TNC;
+
+        if (streaming()) {
+            if (!v)
+                throw exception() << "null pointer";
+
+            *this || *(typename resolve_enum<TNC>::type*)v;
+        }
+        else
+            meta_variable_indirect<TNC>(name, -1);
+        return *this;
+    }
+
+    ///Define a raw pointer non-member variable to 1..N objects
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to variable to read/write to
+    //@param streamed false if variable should not be streamed, just a part of meta description
+    template<typename T>
+    bool nonmember_ptr(const token& name, T*& v, bool streamed)
+    {
+        typedef typename std::remove_const<T>::type TNC;
+
+        if (streaming())
+            *this || *(typename resolve_enum<TNC>::type*)v;
+        else
+            meta_variable_raw_ptr<TNC>(name, -1, streamed);
+
+        return true;
+    }
+
+    ///Define a non-member variable, with default value constructed by streaming the value object from nullstream
+    //@note obviously, T's metastream declaration must be made only of members with default values
+    //@param name variable name, used as a key in output formats
+    //@param v variable to read/write to
+    template<typename T>
+    metastream& nonmember_stream_default(const token& name, T& v)
+    {
+        if (streaming())
+            *this || (typename resolve_enum<T>::type&)v;
+        else {
+            meta_variable<T>(name, &v, true);
+            meta_cache_default_stream<T>(&v);
+        }
         return *this;
     }
 
@@ -761,6 +916,7 @@ public:
 
         _dometa = false;
         _fmtstreamwr = _fmtstreamrd = 0;
+        _smap = 0;
     }
 
     ///Bind the same stream to both input and output
@@ -924,7 +1080,7 @@ public:
         return *this;
     }
 
-    ///Used in metastream operators to define primitive types 
+    ///Used in metastream operators to define primitive types
     template<class T>
     metastream& meta_base_type(const char* type_name, T& v)
     {
@@ -1281,6 +1437,8 @@ public:
         _cur_variable_offset = 0;
         _rvarname.reset();
 
+        smap_init();
+
         _err.reset();
     }
 
@@ -1333,15 +1491,7 @@ public:
 
     metastream& operator || (char&a) { return meta_base_type("char", a); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    metastream& operator || (ints&a) { return meta_base_type("int", a); }
-    metastream& operator || (uints&a) { return meta_base_type("uint", a); }
-# else //SYSTYPE_64
-    metastream& operator || (int&a) { return meta_base_type("int", a); }
-    metastream& operator || (uint&a) { return meta_base_type("uint", a); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     metastream& operator || (long&a) { return meta_base_type("long", a); }
     metastream& operator || (ulong&a) { return meta_base_type("ulong", a); }
 #endif
@@ -1465,6 +1615,30 @@ public:
         return *this;
     }
 
+    ///Used for types that stream using a translation to a different type
+    //@param set void function(S&&) receiving object from stream
+    //@param get [const S& | S] function() returning object to stream
+    template <typename T, typename FnIn, typename FnOut>
+    metastream& operator_indirect(T& a, FnIn set, FnOut get) {
+        typedef std::remove_const_t<std::remove_reference_t<decltype(get())>> S;
+
+        if (stream_writing()) {
+            //auto& val = get();
+            *this || const_cast<S&>(get());
+        }
+        else if (stream_reading()) {
+            S val;
+            *this || val;
+            set(std::forward<S>(val));
+        }
+        else {
+            //_cur_variable_offset was set by a member method, but since this is using a temporary,
+            // indicate that it should not be used
+            _cur_variable_offset = -1;
+            *this || *(S*)0;
+        }
+        return *this;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     //@{ meta_* functions deal with building the description tree
@@ -1480,8 +1654,9 @@ protected:
             _root.desc = d;
             var = &_root;
         }
-        else
+        else {
             var = _current_var->add_child(d, _cur_variable_name, _cur_variable_offset);
+        }
 
         _cur_variable_name.set_empty();
 
@@ -1490,7 +1665,7 @@ protected:
 
     MetaDesc* meta_find(const token& name)//, bool* is_plain = 0)
     {
-        MetaDesc* d = smap().find(name);
+        MetaDesc* d = _smap->find(name);
         if (!d)
             return d;
 
@@ -1508,8 +1683,7 @@ protected:
         if (md)
             return md;
 
-        auto& sm = smap();
-        md = sm.create(
+        md = _smap->create(
             name,
             plain ? type::plain_compound() : type(),
             _cur_stream_fn);
@@ -1517,7 +1691,7 @@ protected:
         md->type_size = size;
 
         _current_var = meta_fill_parent_variable(md);
-        sm.push(_current_var);
+        _smap->push(_current_var);
 
         return 0;
     }
@@ -1526,16 +1700,16 @@ public:
 
     template<class T>
     static const MetaDesc* meta_find_type() {
-        return smap().find(typeid(T).name());
+        return smap_tls().find(typeid(T).name());
     }
 
     template<class T>
-    void meta_variable(const token& varname, const T* v)
+    void meta_variable(const token& varname, const T* v, bool nonmember = false)
     {
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
-        _cur_variable_offset = (int)(ints)v;
+        _cur_variable_offset = nonmember ? -1 : down_cast<int>((ints)v);
         _cur_stream_fn = &type_streamer<T>::fn;
 
         *this || *(B*)0;
@@ -1547,7 +1721,7 @@ public:
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
-        _cur_variable_offset = (int)offs;
+        _cur_variable_offset = down_cast<int>(offs);
         _cur_stream_fn = &type_streamer<T>::fn;
 
         *this || *(B*)0;
@@ -1561,7 +1735,7 @@ public:
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
-        _cur_variable_offset = (int)offs;
+        _cur_variable_offset = down_cast<int>(offs);
         _cur_stream_fn = &type_streamer<T>::fn;
 
         if (meta_decl_raw_pointer(
@@ -1583,7 +1757,7 @@ public:
         typedef typename resolve_enum<Telem>::type B;
 
         _cur_variable_name = varname;
-        _cur_variable_offset = (int)offs;
+        _cur_variable_offset = down_cast<int>(offs);
         _cur_stream_fn = &type_streamer<T>::fn;
 
         if (meta_decl_raw_pointer(
@@ -1599,9 +1773,9 @@ public:
     }
 
     template<class T>
-    void meta_variable_optional(const token& varname, const T* v)
+    void meta_variable_optional(const token& varname, const T* v, bool nonmember = false)
     {
-        meta_variable<T>(varname, v);
+        meta_variable<T>(varname, v, nonmember);
 
         _last_var->optional = true;
     }
@@ -1617,12 +1791,12 @@ public:
 
     ///Define member array variable
     template<size_t N, class T>
-    void meta_variable_fixed_array(const token& varname, T* v)
+    void meta_variable_fixed_array(const token& varname, T* v, bool nonmember = false)
     {
         typedef typename resolve_enum<T>::type B;
 
         _cur_variable_name = varname;
-        _cur_variable_offset = (int)(ints)v;
+        _cur_variable_offset = nonmember ? -1 : down_cast<int>((ints)v);
         _cur_stream_fn = &type_streamer<T>::fn;
 
         if (meta_decl_array(
@@ -1731,16 +1905,15 @@ public:
         DASSERT(!embedded || n != UMAXS);
         DASSERT(n != 0);
 
-        auto& sm = smap();
-        MetaDesc* d = sm.find(type_name);
+        MetaDesc* d = _smap->find(type_name);
 
         if (!d) {
-            d = sm.create(type_name, bstype::kind(), _cur_stream_fn);
+            d = _smap->create(type_name, bstype::kind(), _cur_stream_fn);
             d->array_size = n;
             d->type_size = type_size;
             d->is_array_type = true;
             d->embedded = embedded;
-            d->raw_pointer_offset = assert_cast<int>(raw_pointer_offset);
+            d->raw_pointer_offset = down_cast<int>(raw_pointer_offset);
             d->fnptr = fnptr;
             d->fncount = fncount;
             d->fnpush = fnpush;
@@ -1748,7 +1921,7 @@ public:
             d->streaming_type = d;
 
             _current_var = meta_fill_parent_variable(d);
-            sm.push(_current_var);
+            _smap->push(_current_var);
 
             return d;
         }
@@ -1761,7 +1934,7 @@ public:
             meta_exit();
         }
 
-        //MetaDesc* d = smap().create_array_desc(n, _cur_stream_fn);
+        //MetaDesc* d = _smap->create_array_desc(n, _cur_stream_fn);
         return 0;
     }
 
@@ -1818,7 +1991,7 @@ public:
         type t = bstype::t_type<T>();
         DASSERT(t.is_primitive());
 
-        MetaDesc* d = smap().find_or_create(type_name, t, _cur_stream_fn);
+        MetaDesc* d = _smap->find_or_create(type_name, t, _cur_stream_fn);
 
         _last_var = meta_fill_parent_variable(d);
         d->streaming_type = d;
@@ -1830,11 +2003,9 @@ public:
     ///Get back from multiple array decl around current type
     void meta_exit()
     {
-        auto& sm = smap();
-
         while (_current_var && _current_var->desc->is_array()) {
-            _last_var = sm.pop();
-            _current_var = sm.last();
+            _last_var = _smap->pop();
+            _current_var = _smap->last();
         }
     }
 
@@ -1850,6 +2021,8 @@ public:
         _cur_variable_name.set_empty();
         _cur_variable_offset = 0;
 
+        smap_init();
+
         *this || *(typename resolve_enum<T>::type*)0;
 
         const MetaDesc* mtd = _root.desc;
@@ -1858,9 +2031,9 @@ public:
         return mtd;
     }
 
-    const MetaDesc* get_type_info(const token& type) const { return smap().find(type); }
+    const MetaDesc* get_type_info(const token& type) const { return _smap->find(type); }
 
-    void get_type_info_all(dynarray<const MetaDesc*>& dst) { return smap().get_all_types(dst); }
+    void get_type_info_all(dynarray<const MetaDesc*>& dst) { return _smap->get_all_types(dst); }
 
 private:
 
@@ -1899,7 +2072,7 @@ private:
 
         MetaDesc::Var* last() const { MetaDesc::Var** p = _stack.last();  return p ? *p : 0; }
         MetaDesc::Var* pop() { MetaDesc::Var* p;  return _stack.pop(p) ? p : 0; }
-        
+
         void push(MetaDesc::Var* v) {
             _stack.push(v);
         }
@@ -1915,7 +2088,11 @@ private:
         void* pimpl;
     };
 
-    static structure_map& smap() {
+    void smap_init() {
+        _smap = &smap_tls();
+    }
+
+    static structure_map& smap_tls() {
         THREAD_LOCAL_SINGLETON_DEF(structure_map) _map;
         return *_map;
     }
@@ -1928,13 +2105,10 @@ private:
     MetaDesc::Var _root;
     MetaDesc::Var* _current_var;
     MetaDesc::Var* _last_var;
-    //MetaDesc* _streamdesc = 0;
 
     token _cur_variable_name;
     MetaDesc::stream_func _cur_stream_fn;
     int _cur_variable_offset;
-    //binstream::fnc_from_stream _cur_streamfrom_fnc;
-    //binstream::fnc_to_stream _cur_streamto_fnc;
 
     int _sesopen;                       //< flush(>0) or ack(<0) session currently open
 
@@ -1954,7 +2128,6 @@ private:
 
     bool _binw;
     bool _binr;
-    //bool _alias_mode = false;           //< true if creating alias streaming descriptor
     bool _dometa;                       //< true if shoud stream metadata, false if only the values
     bool _beseparator;                  //< true if separator between members should be read or written
 
@@ -2009,7 +2182,7 @@ private:
             return r;
         }
 
-        ///Set address (offset) at the current offset 
+        ///Set address (offset) at the current offset
         void set_addr(uints v) {
             DASSERT(v % sizeof(uints) == 0);
             *(uints*)(buf->ptr() + offs) = v - offs;
@@ -2157,12 +2330,15 @@ private:
     MetaDesc::Var* _cachevar;           //< variable being currently cached from input
     MetaDesc::Var* _cacheskip;          //< set if the variable was not present in input (can be filled with default) or has been already cached
 
+    structure_map* _smap;
+
 private:
 
     ////////////////////////////////////////////////////////////////////////////////
     MetaDesc::Var* last_var() const { return _stack.last()->var; }
     void pop_var() {
-        DASSERT_RUN(_stack.pop(_curvar));
+        bool has = _stack.pop(_curvar);
+        DASSERT(has);
         DASSERT(_curvar.var);
     }
 
@@ -2408,7 +2584,7 @@ protected:
 
 
     ///This is called from internal binstream when a primitive data or control token is
-    /// written. Possible type can be a primitive one, T_STRUCTBGN or T_STRUCTEND, 
+    /// written. Possible type can be a primitive one, T_STRUCTBGN or T_STRUCTEND,
     /// or array cotrol tokens
     opcd data_write(const void* p, type t)
     {
@@ -2867,7 +3043,7 @@ protected:
                 //cache is open for reading but the member is not there
                 //this can happen when reading a struct that was cached due to reordered input
                 if (!cache_use_default()) {
-                    dump_stack(_err, 0);
+                    dump_stack(_err, 1);
                     _err << " - variable '" << _curvar.var->varname << "' not found and no default value provided";
                     fmt_error();
                     throw exception(_err);
@@ -2956,14 +3132,14 @@ protected:
                 _cacheskip = _curvar.var;
             //if normal reading (not a reading to cache), set up defval read or fail
             else if (!cache_use_default() && !_curvar.var->optional) {
-                dump_stack(_err, 0);
+                dump_stack(_err, 1);
                 _err << " - variable '" << _curvar.var->varname << "' not found and no default value provided";
                 fmt_error();
                 throw exception(_err);
             }
         }
         else if (e) {
-            dump_stack(_err, 0);
+            dump_stack(_err, 1);
             _err << " - error while seeking for variable '" << _curvar.var->varname << "': " << opcd_formatter(e);
             fmt_error();
             throw exception(_err);
@@ -3022,7 +3198,7 @@ protected:
 
         opcd e = _fmtstreamwr->write_key(_curvar.var->varname, _curvar.kth);
         if (e) {
-            dump_stack(_err, 0);
+            dump_stack(_err, 1);
             _err << " - error while writing the variable name '" << _curvar.var->varname << "': " << opcd_formatter(e);
             throw exception(_err);
         }
@@ -3088,7 +3264,7 @@ protected:
 
         MetaDesc::Var* crv = par->desc->find_child(_rvarname);
         if (!crv) {
-            dump_stack(_err, 0);
+            dump_stack(_err, 1);
             _err << " - member variable: " << _rvarname << " not defined";
             fmt_error();
             e = ersNOT_FOUND "no such member variable";
@@ -3098,7 +3274,7 @@ protected:
 
         uints k = par->desc->get_child_pos(crv) * sizeof(uints);
         if (_current->valid_addr(base + k)) {
-            dump_stack(_err, 0);
+            dump_stack(_err, 1);
             _err << " - data for member: " << _rvarname << " specified more than once";
             fmt_error();
             e = ersMISMATCHED "redundant member data";

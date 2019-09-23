@@ -39,7 +39,7 @@ class policy_pooled
 	: public policy_base
 {
 public:
-    COIDNEWDELETE("policy_pooled");
+    COIDNEWDELETE(policy_pooled);
 
     typedef policy_pooled<T> this_type;
 	typedef pool<this_type*> pool_type;
@@ -65,7 +65,7 @@ public:
     ///
 	virtual void _destroy() override
     { 
-        DASSERT(_pool!=0); 
+        DASSERTN(_pool!=0); 
         _obj->reset();
 		this_type* t = static_cast<this_type*>(this);
         _pool->release_instance(t); 
@@ -74,7 +74,7 @@ public:
     ///
 	static this_type* create( pool_type* po, bool nonew=false, bool* isnew=0 ) 
     { 
-        DASSERT(po!=0); 
+        DASSERTN(po!=0); 
         this_type* p=0;
 
         bool make = !po->create_instance(p) && !nonew;
@@ -100,7 +100,7 @@ class policy_pooled_i
 	: public policy_base
 {
 public:
-    COIDNEWDELETE("policy_pooled_i");
+    COIDNEWDELETE(policy_pooled_i);
 
     typedef policy_pooled_i<T> this_type;
 	typedef pool<this_type*> pool_type;
@@ -119,7 +119,7 @@ public:
     ///
 	virtual void _destroy() override
     { 
-        DASSERT(_pool!=0); 
+        DASSERTN(_pool!=0); 
         static_cast<T*>(this)->reset();
         this_type* t = this;
         _pool->release_instance(t);
@@ -128,7 +128,7 @@ public:
     ///
 	static T* create(pool_type* po) 
     { 
-        DASSERT(po!=0); 
+        DASSERTN(po!=0); 
         this_type* p = 0;
 
         if( !po->create_instance(p) ) {

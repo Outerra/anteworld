@@ -31,9 +31,6 @@
     <Filter Include="metastream">
       <UniqueIdentifier>{aedaed11-7069-4485-ae2d-29bf25bac2a8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="net">
-      <UniqueIdentifier>{5653ec8b-ca6a-4d3c-81b9-78f26f0a74ba}</UniqueIdentifier>
-    </Filter>
     <Filter Include="regex">
       <UniqueIdentifier>{b66b0c00-bea8-489b-8c0c-07ebebb3abae}</UniqueIdentifier>
     </Filter>
@@ -77,9 +74,6 @@
     </ClCompile>
     <ClCompile Include="metastream\metastream.cpp">
       <Filter>metastream</Filter>
-    </ClCompile>
-    <ClCompile Include="net\asyncrcv.cpp">
-      <Filter>net</Filter>
     </ClCompile>
     <ClCompile Include="regex\regcomp.cpp">
       <Filter>regex</Filter>
@@ -364,9 +358,6 @@
     <ClInclude Include="metastream\metavar.h">
       <Filter>metastream</Filter>
     </ClInclude>
-    <ClInclude Include="net\asyncrcv.h">
-      <Filter>net</Filter>
-    </ClInclude>
     <ClInclude Include="regex\regcomp.h">
       <Filter>regex</Filter>
     </ClInclude>
@@ -441,5 +432,6 @@
     <ClInclude Include="sync\queue.h">
       <Filter>sync</Filter>
     </ClInclude>
+    <ClInclude Include="function.h" />
   </ItemGroup>
 </Project>

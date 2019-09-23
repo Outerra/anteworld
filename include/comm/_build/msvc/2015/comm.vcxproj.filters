@@ -37,9 +37,6 @@
     <Filter Include="intergen">
       <UniqueIdentifier>{48906725-6d3e-4a41-9723-a66f32495883}</UniqueIdentifier>
     </Filter>
-    <Filter Include="net">
-      <UniqueIdentifier>{6e77811d-e79f-4ce4-a39d-9ee0d1bbafa7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="coder\lz4">
       <UniqueIdentifier>{d018964f-d4a5-44ce-ada8-1b87570254f7}</UniqueIdentifier>
     </Filter>
@@ -114,9 +111,6 @@
     <ClCompile Include="..\..\..\sync\thread_mgr.cpp">
       <Filter>sync</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\net\asyncrcv.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\coder\lz4\lz4.c">
       <Filter>coder\lz4</Filter>
     </ClCompile>
@@ -139,6 +133,12 @@
       <Filter>log</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\commassert.cpp">
+      <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\binstream\stdstream.cpp">
+      <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\taskmaster.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>
@@ -373,9 +373,6 @@
     <ClInclude Include="..\..\..\alloc\slotalloc.h">
       <Filter>alloc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\net\asyncrcv.h">
-      <Filter>net</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\coder\lz4\lz4.h">
       <Filter>coder\lz4</Filter>
     </ClInclude>
@@ -404,5 +401,8 @@
       <Filter>intergen</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\taskmaster.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />
   </ItemGroup>
 </Project>

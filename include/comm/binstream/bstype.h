@@ -301,15 +301,7 @@ DEF_TYPE(   int64,              T_INT);
 
 DEF_TYPE(   char,               T_CHAR);
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-DEF_TYPE(   uints,              T_UINT);
-DEF_TYPE(   ints,               T_INT);
-# else
-DEF_TYPE(   uint,               T_UINT);
-DEF_TYPE(   int,                T_INT);
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
 DEF_TYPE(   ulong,              T_UINT);
 DEF_TYPE(   long,               T_INT);
 #endif

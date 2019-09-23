@@ -600,6 +600,7 @@ int mspace_mallopt(int, int);
   but operate only for the given mspace argument
 */
 void* mspace_malloc(mspace msp, size_t bytes);
+void* mspace_malloc_virtual(mspace msp, size_t bytes);
 void mspace_free(/*mspace msp,*/ void* mem);
 void* mspace_calloc(mspace msp, size_t n_elements, size_t elem_size);
 void* mspace_realloc(mspace msp, void* mem, size_t newsize);
@@ -611,6 +612,7 @@ void** mspace_independent_comalloc(mspace msp, size_t n_elements,
                                    size_t sizes[], void* chunks[]);
 size_t mspace_bulk_free(mspace msp, void**, size_t n_elements);
 size_t mspace_usable_size(const void* mem);
+size_t mspace_virtual_size(const void* mem);
 mspace mspace_from_ptr(const void* mem);
 void mspace_malloc_stats(mspace msp);
 int mspace_trim(mspace msp, size_t pad);

@@ -1,10 +1,10 @@
 
 //#include "comm/binstream/filestream.h"
-#include "comm/binstream/binstreambuf.h"
-#include "comm/metastream/metastream.h"
-#include "comm/metastream/fmtstreamjson.h"
-#include "comm/ref.h"
-#include "comm/metastream/metagen.h"
+#include "../binstream/binstreambuf.h"
+#include "../metastream/metastream.h"
+#include "../metastream/fmtstreamjson.h"
+#include "../ref.h"
+#include "../metastream/metagen.h"
 
 using namespace coid;
 
@@ -191,7 +191,7 @@ void metastream_test4()
     auto a = m.get_type_desc<dynarray<token>>();
     auto x = m.get_type_desc<aaa>();
 
-    DASSERT(0);
+    //DASSERT(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -69,8 +69,8 @@ void test_job_queue()
         coidlog_info("jobtest", "a: " << a << ", b: " << (uints)b);
     };
 
-    task.push(-1, job1, 1, nullptr);
-    task.push_memberfn(-1, &jobtest::func, &jt, 2, nullptr);
+    task.push(coid::taskmaster::EPriority::LOW, nullptr, job1, 1, nullptr);
+    task.push_memberfn(coid::taskmaster::EPriority::LOW, nullptr, &jobtest::func, &jt, 2, nullptr);
 
     task.terminate(true);
 

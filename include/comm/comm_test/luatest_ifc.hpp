@@ -96,7 +96,7 @@ namespace ns1 {
 
         ifc_fn coid::charstr fun2(ifc_in int a, ifc_in iref<ns::other> b, ifc_out int& c, ifc_out iref<ns::other>& d) {
             c = a - 1;
-            d = ns::other::create(a);
+            d = ns::other::create(coid::charstr(a));
             d->set_str("fun2crt");
 
             return "fun2";

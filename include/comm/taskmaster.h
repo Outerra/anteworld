@@ -43,8 +43,6 @@
 #include "alloc/slotalloc.h"
 #include "bitrange.h"
 #include "sync/queue.h"
-//#include "sync/mutex.h"
-//#include "sync/guard.h"
 #include "pthreadx.h"
 #include "log/logger.h"
 #include <mutex>
@@ -54,34 +52,74 @@ COID_NAMESPACE_BEGIN
 
 /**
     Taskmaster runs a set of worker threads and a queue of tasks that are processed by the worker threads.
-    It's intended for short tasks that can be parallelized across a preallocated number of work threads,
-    but it also supports long-duration jobs that can run on a limited number of worker threads
-    and have a lower priority.
 
-    Additionally, jobs can be synchronized or unsynchronized.
+    Tasks with higher priorities are processed before tasks with lower priorities. LOW priority tasks can 
+    run on a limited number of worker threads. Each job can be associated with a signal and user can wait 
+    for this signal. Several jobs can share single signal, but single job can not trigger multiple signals.
 
-    - threads configured to process long duration tasks will prioritize short jobs if available
-    - thread waiting for completion of given set of jobs will also partake in processing of the same
-      type of jobs it's waiting for
-    - there can be multiple threads that wait for completion of jobs
-    - if there's a thread waiting for job completion, all worker threads prioritize given job type
-    - if there are multiple completion requests at different synchronization levels, the one with
-      the highest priority (lowest sync level number) is prioritized over the other
+    When a thread is waiting for a signal it processes other tasks in queue.
 
+    Basic usage:
+        coid::taskmaster::signal_handle signal;
+        for (int i = 0; i < 10; ++i) {
+            taskmaster->push(coid::taskmaster::EPriority::NORMAL, &signal, [i](){ foo(i); });
+        }
+        taskmaster->wait(signal);
 **/
 class taskmaster
 {
 public:
+    struct critical_section
+    {
+        volatile int32 value = 0;
+    };
+
+    struct signal_handle
+    {
+        enum 
+        { 
+            invalid = 0xffFFffFF,
+            index_mask = 0x0000ffFF,
+            version_shift = 16
+        };
+
+        static signal_handle make(uint version, uint index) { return signal_handle((version << version_shift) | (index & index_mask)); }
+
+        signal_handle() : value(invalid) {}
+        explicit signal_handle(uint32 value) : value(value) {}
+
+        bool is_valid() const { return value != invalid; }
+        uint index() const { return value & index_mask; }
+        uint version() const { return value >> version_shift; }
+
+        uint32 value = invalid;
+    };
+
+    static const signal_handle invalid_signal;
+
+    enum class EPriority {
+        HIGH,
+        NORMAL,
+        LOW,                            //< for limited "long run" threads
+
+        COUNT
+    };
 
     //@param nthreads total number of job threads to spawn
-    //@param nlong_threads number of long-duration job threads (<= nthreads)
-    taskmaster( uint nthreads, uint nlong_threads )
-        : _nlong_threads(nlong_threads)
+    //@param nlong_threads number of low-prio job threads (<= nthreads)
+    taskmaster( uint nthreads, uint nlowprio_threads )
+        : _nlowprio_threads(nlowprio_threads)
         , _qsize(0)
         , _quitting(false)
     {
         _taskdata.reserve(8192);
-        _synclevels.reserve(16, false);
+        
+        _signal_pool.resize(4096);
+        _free_signals.reserve(4096, false);
+        for (uint i = 0; i < _signal_pool.size(); ++i) {
+            _signal_pool[i].version = 0;
+            _free_signals.push(signal_handle(i));
+        }
 
         _threads.alloc(nthreads);
         _threads.for_each([&](threadinfo& ti, uints id) {
@@ -91,103 +129,136 @@ public:
         });
     }
 
-    ///Set number of threads that can process long-duration jobs
-    //@param nlong_threads number of long-duration job threads
-    void set_long_duration_threads( uint nlong_threads ) {
-        _nlong_threads = nlong_threads;
-    }
-
-    ///Add synchronization level
-    //@param level sync level number (0 highest priority for completion)
-    //@param name sync level name
-    //@param submitter optional allowed submitter thread
-    //@return level
-    uint add_task_level( uint level, const token& name, thread_t submitter = thread::invalid() ) {
-        sync_level& sl = _synclevels.get_or_add(level);
-        sl.name = name;
-        sl.njobs = 0;
-        sl.submitter = submitter;
-
-        return level;
-    }
-
     ///Run fn(index) in parallel in task level 0
     //@param first begin index value
     //@param last end index value
     //@param fn function(index) to run
     template <typename Index, typename Fn>
     void parallel_for(Index first, Index last, const Fn& fn) {
+        signal_handle signal;
         for (; first != last; ++first) {
-            push(0, fn, first);
+            push(EPriority::HIGH, &signal, fn, first);
         }
 
-        wait(0);
+        wait(signal);
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
-    //@param tlevel task level to push into (<0 unsynced long duration tasks, >=0 registered task level
+    //@param priority task priority, higher priority tasks are processed before lower priority
+    //@param signal signal to trigger when the task finishes
     //@param fn function to run
     //@param args arguments needed to invoke the function
-    //@return false if task was rejected (thread not allowed to submit to given task level ...)
     template <typename Fn, typename ...Args>
-    bool push( int tlevel, const Fn& fn, Args&& ...args )
+    void push( EPriority priority, signal_handle* signal, const Fn& fn, Args&& ...args )
     {
         using callfn = invoker<Fn, Args...>;
 
-        //lock to access allocator and semaphore
-        std::unique_lock<std::mutex> lock(_sync);
+        {
+            //lock to access allocator and semaphore
+            std::unique_lock<std::mutex> lock(_sync);
 
-        granule* p = alloc_data(sizeof(callfn));
-        auto task = new(p) callfn(tlevel, fn, std::forward<Args>(args)...);
+            granule* p = alloc_data(sizeof(callfn));
+            increment(signal);
+            auto task = new(p) callfn(signal ? *signal : invalid_signal, fn, std::forward<Args>(args)...);
 
-        return push_to_queue(task);
+            _ready_jobs[(int)priority].push_front(task);
+        
+            ++_qsize;
+        }
+        _cv.notify_one();
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
-    //@param tlevel task level to push into (<0 unsynced long duration tasks, >=0 registered task level
+    //@param priority task priority, higher priority tasks are processed before lower priority
+    //@param signal signal to trigger when the task finishes
     //@param fn member function to run
     //@param obj object reference to run the member function on. Can be a pointer or a smart ptr type which resolves to the object with * operator
     //@param args arguments needed to invoke the function
-    //@return false if task was rejected (thread not allowed to submit to given task level ...)
     template <typename Fn, typename C, typename ...Args>
-    bool push_memberfn( int tlevel, Fn fn, const C& obj, Args&& ...args )
+    void push_memberfn( EPriority priority, signal_handle* signal, Fn fn, const C& obj, Args&& ...args )
     {
         static_assert(std::is_member_function_pointer<Fn>::value, "fn must be a function that can be invoked as ((*obj).*fn)(args)");
 
         using callfn = invoker_memberfn<Fn, C, Args...>;
+        
+        {
+            //lock to access allocator and semaphore
+            std::unique_lock<std::mutex> lock(_sync);
 
-        //lock to access allocator and semaphore
-        std::unique_lock<std::mutex> lock(_sync);
+            granule* p = alloc_data(sizeof(callfn));
+            increment(signal);
+            auto task = new(p) callfn(signal ? *signal : invalid_signal, fn, obj, std::forward<Args>(args)...);
 
-        granule* p = alloc_data(sizeof(callfn));
-        auto task = new(p) callfn(tlevel, fn, obj, std::forward<Args>(args)...);
-
-        return push_to_queue(task);
+            _ready_jobs[(int)priority].push_front(task);
+        
+            ++_qsize;
+        }
+        _cv.notify_one();
     }
 
 
-    ///Wait for completion of all jobs of given task level
-    //@param tlevel task level to wait for
-    //@note this waiting thread can participate in job completion, and all worker threads will prioritize
-    // jobs of requested task level unless there's a higher-priority wait in another thread
-    void wait( int tlevel )
+    /// Enter critical section; no two threads can be in the same critical section at the same time
+    /// other threads process other tasks while waiting to enter critical section
+    //@param spin_count number of spins before trying to process other tasks
+    //@note never call enter(A) enter(B) exit(A) exit(B) in that order, since it can cause 
+    // deadlock thanks to taskmaster's nature
+    void enter_critical_section(critical_section& critical_section, int spin_count = 1024)
     {
-        if (tlevel >= (int)_synclevels.size())
-            return;
+        for(;;) {
+            for(int i = 0; i < spin_count; ++i) {
+                if (critical_section.value == 0 && atomic::cas(&critical_section.value, 1, 0) == 0) {
+                    return;
+                }
+            }
 
-        //signal to worker threads there's a priority task level
-        auto& level = _synclevels[tlevel];
-        ++level.priority;
-
-        //wait for threads to complete tasks, possibly helping with a pending task
-        bool working = false;
-        while (level.njobs > 0) {
-            if (!working)
+            invoker_base* task = 0;
+            const int order = get_order();
+            for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads && order != -1);
+                if (can_run && _ready_jobs[prio].pop(task)) {
+                    --_qsize;
+                    run_task(task, get_order());
+                    break;
+                }
+            }
+            if (!task)
                 thread::wait(0);
-            working = process_specific_task(tlevel);
         }
+    }
 
-        --level.priority;
+
+    /// Leave critical section
+    //@note only thread which entered the critical section can leave it
+    void leave_critical_section(critical_section& critical_section)
+    {
+        const int32 prev = atomic::cas(&critical_section.value, 0, 1);
+        DASSERTN(prev == 1);
+    }
+
+
+    ///Wait for signal to become signaled
+    //@param signal signal to wait for
+    //@note each time a task is pushed to queue and has a signal associated, it increments the signal's counter.
+    // When the task finishes it decrements the counter. Once the counter == 0, the signal is in signaled state.
+    // Multiple tasks can use the same signal.
+    void wait(signal_handle signal)
+    {
+        if (!signal.is_valid()) return;
+
+        const int order = get_order();
+        while (!is_signaled(signal, true)) {
+            invoker_base* task = 0;
+            for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads && order != -1);
+                if (can_run && _ready_jobs[prio].pop(task)) {
+                    --_qsize;
+                    run_task(task, get_order());
+                    break;
+                }
+            }
+            if (!task)
+                thread::wait(0);
+        }
     }
 
     ///Terminate all task threads
@@ -209,6 +280,39 @@ public:
         });
     }
 
+    
+    ///Create standalone signal not associated with any task. It can be used to wait for any arbitrary stuff. 
+    //@note The signal's counter is initialized = 1 -> wait(signal) will wait untill counter == 0)
+    // use taskmaster::trigger_signal(signal) do decrement the counter
+    // if you just want to wait until some task finishes, you do not need to use this, see "Basic usage"
+    signal_handle create_signal()
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+
+        signal_handle handle;
+        if(!_free_signals.pop(handle)) return invalid_signal;
+        
+        signal& s = _signal_pool[handle.index()];
+        s.ref = 1;
+
+        return handle;
+    }
+
+    ///Manually decrements signal's counter. When the counter reaches 0, the signal is in signaled state 
+    ///and waiting entities can progress further.
+    void trigger_signal(signal_handle handle)
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+
+        signal& s = _signal_pool[handle.index()];
+        --s.ref;
+        if(s.ref == 0) {
+            s.version = (s.version + 1) % 0xffFF;
+            signal_handle free_handle = signal_handle::make(s.version, handle.index());
+            _free_signals.push(free_handle);
+        }
+    }
+
 protected:
 
     ///
@@ -222,26 +326,6 @@ protected:
 
         threadinfo() : master(0), order(-1)
         {}
-
-        bool is_long_duration_thread() const {
-            return order < master->_nlong_threads;
-        }
-    };
-
-    ///
-    struct sync_level
-    {
-        std::atomic_int njobs;          //< number of jobs on this sync level
-        std::atomic_int priority;
-
-        charstr name;
-        thread_t submitter;             //< allowed task submitter thread
-
-        sync_level()
-            : njobs(0)
-            , priority(0)
-            , submitter(thread::invalid())
-        {}
     };
 
     ///Unit of allocation for tasks
@@ -249,6 +333,12 @@ protected:
     {
         uint8 dummy[8 * sizeof(void*)];
     };
+
+    static int& get_order()
+    {
+        static thread_local int order = -1;
+        return order;
+    }
 
     granule* alloc_data(uints size)
     {
@@ -264,25 +354,25 @@ protected:
         virtual void invoke() = 0;
         virtual size_t size() const = 0;
 
-        invoker_base(int sync)
-            : _sync(sync)
+        invoker_base(signal_handle signal)
+            : _signal(signal)
             , _tid(thread::self())
         {}
 
-        int task_level() const {
-            return _sync;
+        signal_handle signal() const {
+            return _signal;
         }
 
     protected:
-        int _sync;
+        signal_handle _signal;
         thread_t _tid;
     };
 
     template <typename Fn, typename ...Args>
     struct invoker_common : invoker_base
     {
-        invoker_common(int sync, const Fn& fn, Args&& ...args)
-            : invoker_base(sync)
+        invoker_common(signal_handle signal, const Fn& fn, Args&& ...args)
+            : invoker_base(signal)
             , _fn(fn)
             , _tuple(std::forward<Args>(args)...)
         {}
@@ -311,8 +401,8 @@ protected:
     template <typename Fn, typename ...Args>
     struct invoker : invoker_common<Fn, Args...>
     {
-        invoker(int sync, const Fn& fn, Args&& ...args)
-            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+        invoker(signal_handle signal, const Fn& fn, Args&& ...args)
+            : invoker_common<Fn, Args...>(signal, fn, std::forward<Args>(args)...)
         {}
 
         void invoke() override final {
@@ -323,18 +413,18 @@ protected:
             return sizeof(*this);
         }
     };
-
+    
     ///invoker for member functions (on copied objects)
     template <typename Fn, typename C, typename ...Args>
     struct invoker_memberfn : invoker_common<Fn, Args...>
     {
-        invoker_memberfn(int sync, Fn fn, const C& obj, Args&&... args)
-            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+        invoker_memberfn(signal_handle signal, Fn fn, const C& obj, Args&&... args)
+            : invoker_common<Fn, Args...>(signal, fn, std::forward<Args>(args)...)
             , _obj(obj)
         {}
 
-        invoker_memberfn(int sync, Fn fn, C&& obj, Args&&... args)
-            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+        invoker_memberfn(signal_handle signal, Fn fn, C&& obj, Args&&... args)
+            : invoker_common<Fn, Args...>(signal, fn, std::forward<Args>(args)...)
             , _obj(std::forward<C>(obj))
         {}
 
@@ -355,8 +445,8 @@ protected:
     template <typename Fn, typename C, typename ...Args>
     struct invoker_memberfn<Fn, C*, Args...> : invoker_common<Fn, Args...>
     {
-        invoker_memberfn(int sync, Fn fn, C* obj, Args&&... args)
-            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+        invoker_memberfn(signal_handle signal, Fn fn, C* obj, Args&&... args)
+            : invoker_common<Fn, Args...>(signal, fn, std::forward<Args>(args)...)
             , _obj(obj)
         {}
 
@@ -377,8 +467,8 @@ protected:
     template <typename Fn, typename C, typename ...Args>
     struct invoker_memberfn<Fn, iref<C>, Args...> : invoker_common<Fn, Args...>
     {
-        invoker_memberfn(int sync, Fn fn, const iref<C>& obj, Args&&... args)
-            : invoker_common<Fn, Args...>(sync, fn, std::forward<Args>(args)...)
+        invoker_memberfn(signal_handle signal, Fn fn, const iref<C>& obj, Args&&... args)
+            : invoker_common<Fn, Args...>(signal, fn, std::forward<Args>(args)...)
             , _obj(obj)
         {}
 
@@ -395,34 +485,11 @@ protected:
         iref<C> _obj;
     };
 
-
-    bool push_to_queue(invoker_base* task)
+    struct signal
     {
-        int sync = task->task_level();
-
-        if (sync >= 0) {
-            DASSERT(sync < (int)_synclevels.size());
-
-            if (sync >= (int)_synclevels.size())
-                return false;
-
-            if (_synclevels[sync].submitter != thread::invalid()
-                && _synclevels[sync].submitter != thread::self())
-            {
-                coidlog_error("taskmaster", "thread not allowed to submit tasks to task level " << sync);
-                return false;
-            }
-
-            ++_synclevels[sync].njobs;
-        }
-
-        _queue.push(task);
-        
-        ++_qsize;
-        _cv.notify_one();
-
-        return true;
-    }
+        volatile int ref;
+        uint32 version;
+    };
 
 private:
 
@@ -433,75 +500,7 @@ private:
         return ti->master->threadfunc(ti->order);
     }
 
-    void* threadfunc( int order )
-    {
-        coidlog_info("taskmaster", "thread " << order << " running");
-
-        do
-        {
-            wait();
-
-            //could have been woken up for termination
-            if (_quitting)
-                break;
-
-            //if a wait is active, all worker threads should prioritize given task level
-            int priority_level = get_priority_level();
-            bool longthread = order < _nlong_threads;
-
-            invoker_base* task = 0;
-            RASSERT(_queue.pop(task));
-
-            //if priority level is set, process only tasks of that level
-            //short-duration threads should process only short tasks
-
-            if ((priority_level < 0 && (longthread || task->task_level() >= 0))
-                || task->task_level() == priority_level)
-            {
-                run_task(task, order);
-            }
-            else {
-                _queue.push(task);
-                notify();
-            }
-        }
-        while (1);
-
-        coidlog_info("taskmaster", "thread " << order << " exiting");
-
-        return 0;
-    }
-
-    int get_priority_level() const {
-        const sync_level* sl = _synclevels.find_if([](const sync_level& sl) {
-            return sl.priority > 0;
-        });
-
-        return sl ? int(sl - _synclevels.ptr()) : -1;
-    }
-
-    bool process_specific_task( int tlevel )
-    {
-        //run through the queue once to pick tasks from given level
-        int qsize = _qsize;
-        sync_level& sl = _synclevels[tlevel];
-        invoker_base* task;
-
-        while (qsize-->0 && sl.njobs > 0 && try_wait()) {
-            RASSERT(_queue.pop(task));
-
-            if (task->task_level() == tlevel) {
-                run_task(task, -1);
-                return true;
-            }
-
-            //push back
-            _queue.push(task);
-            notify();
-        }
-
-        return false;
-    }
+    void* threadfunc( int order );
 
     void run_task( invoker_base* task, int order )
     {
@@ -511,11 +510,63 @@ private:
         DASSERT_RETVOID(_taskdata.is_valid_id(id));
         task->invoke();
 
-        int sync = task->task_level();
-        if (sync >= 0)
-            --_synclevels[sync].njobs;
+        const signal_handle handle = task->signal();
+        if (handle.is_valid()) {
+            std::unique_lock<std::mutex> lock(_signal_sync);
+            signal& s = _signal_pool[handle.index()];
+            --s.ref;
+            if(s.ref == 0) {
+                s.version = (s.version + 1) % 0xffFF;
+                signal_handle free_handle = signal_handle::make(s.version, handle.index());
+                _free_signals.push(free_handle);
+            }
+        }
 
         _taskdata.del_range((granule*)task, align_to_chunks(task->size(), sizeof(granule)));
+    }
+
+    bool is_signaled(signal_handle handle, bool lock)
+    {
+        DASSERT_RET(handle.is_valid(), false);
+
+        signal& s = _signal_pool[handle.index()];
+        
+        if (lock) _signal_sync.lock();
+        const uint version = s.version;
+        const uint ref = s.ref;
+        if (lock) _signal_sync.unlock();
+
+        return version != handle.version() || ref == 0;
+    }
+
+    signal_handle alloc_signal()
+    {
+        signal_handle handle;
+        if(!_free_signals.pop(handle)) return invalid_signal;
+        
+        signal& s = _signal_pool[handle.index()];
+        s.ref = 1;
+
+        return handle;
+    }
+
+    void increment(signal_handle* handle)
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+        if (!handle) return;
+        
+        if (handle->is_valid()) {
+            signal& s = _signal_pool[handle->index()];
+            if (is_signaled(*handle, false)) {
+                *handle = alloc_signal();
+            }
+            else {
+                ++s.ref;
+            }
+        }
+        else {
+            *handle = alloc_signal();
+        }
     }
 
     void notify() {
@@ -553,6 +604,7 @@ private:
 private:
 
     std::mutex _sync;
+    std::mutex _signal_sync;
     std::condition_variable _cv;
     std::atomic_int _qsize;             //< current queue size, used also as a semaphore
     volatile bool _quitting;
@@ -562,9 +614,11 @@ private:
     queue<invoker_base*> _queue;
 
     dynarray<threadinfo> _threads;
-    volatile int _nlong_threads;
+    volatile int _nlowprio_threads;
 
-    dynarray<sync_level> _synclevels;
+    dynarray<signal> _signal_pool;
+    dynarray<signal_handle> _free_signals;
+    queue<invoker_base*> _ready_jobs[(int)EPriority::COUNT];
 };
 
 COID_NAMESPACE_END

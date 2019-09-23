@@ -37,9 +37,6 @@
     <Filter Include="intergen">
       <UniqueIdentifier>{ef7c566f-3d1a-4dd1-b1f5-ce2957c39ee4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="net">
-      <UniqueIdentifier>{7889250e-2342-4bf1-9e14-00733ff89aaa}</UniqueIdentifier>
-    </Filter>
     <Filter Include="coder\lz4">
       <UniqueIdentifier>{5492f2b2-11d9-4591-bdf6-568bd8e53ea3}</UniqueIdentifier>
     </Filter>
@@ -310,9 +307,6 @@
       <Filter>alloc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\binstring.h" />
-    <ClInclude Include="..\..\..\net\asyncrcv.h">
-      <Filter>net</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\coder\lz4\lz4.h">
       <Filter>coder\lz4</Filter>
     </ClInclude>
@@ -363,6 +357,10 @@
       <Filter>binstream</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\function.h" />
+    <ClInclude Include="..\..\..\alloc\slotalloc_tracker.h">
+      <Filter>alloc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\crypt\utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -440,9 +438,6 @@
     <ClCompile Include="..\..\..\interface.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\net\asyncrcv.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\coder\lz4\lz4.c">
       <Filter>coder\lz4</Filter>
     </ClCompile>
@@ -468,6 +463,9 @@
       <Filter>coder</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\commassert.cpp">
+      <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\taskmaster.cpp">
       <Filter>cxx</Filter>
     </ClCompile>
   </ItemGroup>

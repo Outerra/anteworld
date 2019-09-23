@@ -50,6 +50,10 @@
 
 COID_NAMESPACE_BEGIN
 
+#if defined(COID_CONSTEXPR_IF) && !defined(__cpp_if_constexpr)
+#error Please enable C++17 language standard (/std:c++17) in project settings for VS2017+ projects
+#endif
+
 //helper insert/delete fnc
 template <class T> T* __move(ints nitemsfwd, T* ptr, uints nitems) {
     if (nitems)
@@ -93,7 +97,7 @@ class dynarray
 
     ///Check if given number doesn't exceed the maximum counter type value
     static void _assert_allowed_size(uints n) {
-        DASSERT(n <= COUNT(-1));
+        DASSERTN(n <= COUNT(-1));
     }
 
 protected:
@@ -108,7 +112,7 @@ public:
     typedef COUNT               count_t;
     typedef A                   allocator_type;
 
-    COIDNEWDELETE("dynarray");
+    COIDNEWDELETE(dynarray);
 
     dynarray() : _ptr(0) {
         A::instance();
@@ -309,8 +313,8 @@ public:
 # define DYNARRAY_CHECK_BOUNDS_U(k)
 #endif
 
-    void __check_bounds(ints k) const { DASSERT(k >= 0 && (uints)k < _count()); }
-    void __check_bounds(uints k) const { DASSERT(k < _count()); }
+    void __check_bounds(ints k) const { DASSERTN(k >= 0 && (uints)k < _count()); }
+    void __check_bounds(uints k) const { DASSERTN(k < _count()); }
 
     const T& operator [] (uints k) const { DYNARRAY_CHECK_BOUNDS_U(k)  return *(_ptr + k); }
     T& operator [] (uints k) { DYNARRAY_CHECK_BOUNDS_U(k)  return *(_ptr + k); }
@@ -320,7 +324,7 @@ public:
     {
         if (size() != a.size())  return false;
         for (uints i = 0; i < size(); ++i)
-            if (_ptr[i] != a._ptr[i])  return false;
+            if (!(_ptr[i] == a._ptr[i]))  return false;
         return true;
     }
 
@@ -379,6 +383,10 @@ protected:
     //@{Helper functions for for_each to allow calling with optional index argument
     ///Functor argument type reference or pointer
     template<class Fn>
+    using has_index = std::integral_constant<bool, !(closure_traits<Fn>::arity::value <= 1)>;
+
+#ifndef COID_CONSTEXPR_IF
+    template<class Fn>
     using arg0 = typename std::remove_reference<typename closure_traits<Fn>::template arg<0>>::type;
 
     template<class Fn>
@@ -390,9 +398,6 @@ protected:
 
     template<class Fn>
     using is_const = std::is_const<arg0<Fn>>;
-
-    template<class Fn>
-    using has_index = std::integral_constant<bool, !(closure_traits<Fn>::arity::value <= 1)>;
 
     template<class Fn>
     using result_type = typename closure_traits<Fn>::result_type;
@@ -424,6 +429,7 @@ protected:
     {
         return fn(v, index);
     }
+#endif
     //@}
 
 public:
@@ -437,7 +443,14 @@ public:
         count_t n = size();
         for (count_t i = 0; i < n; ++i) {
             T& v = const_cast<T&>(_ptr[i]);
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                fn(v, i);
+            else
+                fn(v);
+#else
             funccall(fn, v, i);
+#endif
 
             count_t nn = size();
             if (n > nn) {
@@ -458,7 +471,17 @@ public:
         count_t n = size();
         for (count_t i = 0; i < n; ++i) {
             T& v = const_cast<T&>(_ptr[i]);
-            if (funccall(fn, v, i)) return _ptr + i;
+            bool rv;
+#ifdef COID_CONSTEXPR_IF
+            if constexpr (has_index<Func>::value)
+                rv = fn(v, i);
+            else
+                rv = fn(v);
+#else
+            rv = funccall(fn, v, i);
+#endif
+            if (rv)
+                return _ptr + i;
         }
         return 0;
     }
@@ -471,7 +494,7 @@ public:
         @return pointer to the first element of array */
     T* alloc(uints nitems)
     {
-        DASSERT(nitems <= COUNT(-1));
+        DASSERTN(nitems <= COUNT(-1));
 
         _destroy();
         uints n = _count();
@@ -502,7 +525,7 @@ public:
         @return pointer to the first element of array */
     T* calloc(uints nitems, bool toones = false)
     {
-        DASSERT(nitems <= COUNT(-1));
+        DASSERTN(nitems <= COUNT(-1));
 
         _destroy();
         uints n = _count();
@@ -534,7 +557,7 @@ public:
         @return pointer to the first element of array */
     T* realloc(uints nitems)
     {
-        DASSERT(nitems <= COUNT(-1));
+        DASSERTN(nitems <= COUNT(-1));
 
         uints n = _count();
 
@@ -564,7 +587,7 @@ public:
         @return pointer to the first element of array */
     T* crealloc(uints nitems, bool toones = false)
     {
-        DASSERT(nitems <= COUNT(-1));
+        DASSERTN(nitems <= COUNT(-1));
 
         uints n = _count();
 
@@ -628,7 +651,7 @@ public:
         if (!nitems)  return _ptr + n;
         uints nto = nitems + n;
         uints nalloc = nto;
-        DASSERT(nto <= COUNT(-1));
+        DASSERTN(nto <= COUNT(-1));
 
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
@@ -653,7 +676,7 @@ public:
 
         uints nto = nitems + n;
         uints nalloc = nto;
-        DASSERT(nto <= COUNT(-1));
+        DASSERTN(nto <= COUNT(-1));
 
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
@@ -676,7 +699,7 @@ public:
         if (!nitems)  return _ptr + n;
         uints nto = nitems + n;
         uints nalloc = nto;
-        DASSERT(nto <= COUNT(-1));
+        DASSERTN(nto <= COUNT(-1));
 
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nto, n);
@@ -1073,6 +1096,21 @@ public:
         return _ptr;
     }
 
+
+    ///Reserve \a nitems of elements
+    /** @param nitems number of items to reserve
+        @return pointer to the first item of array */
+    T* reserve_virtual(uints nitems)
+    {
+        discard();
+
+        _ptr = A::template reserve<T>(nitems);
+        _set_count(0);
+
+        return _ptr;
+    }
+
+
     ///Reserve \a nitems of elements
     /** @param nitems number of items to reserve
         @param ikeep keep existing elements (true) or do not necessarily keep them (false)
@@ -1282,6 +1320,40 @@ public:
     }
     //@}
 
+
+    ///Find or insert element into a sorted array
+    //@param key key to search for
+    //@param isnew [out] set to true if value was newly created
+    //@note there must exist < operator able to do (T < K) comparison
+    template<class K>
+    T* find_or_insert_sorted(const K& key, bool& isnew) {
+        uints index;
+        const T* value = contains_sorted(key, &index);
+
+        if (!value) {
+            isnew = true;
+            return ins(index);
+        }
+
+        return const_cast<T*>(value);
+    }
+
+    ///Find or insert element into a sorted array
+    //@param key key to search for
+    //@param isnew [out] set to true if value was newly created
+    //@note there must exist < operator able to do (T < K) comparison
+    template<class K, class FUNC>
+    T* find_or_insert_sorted(const K& key, const FUNC& fn, bool& isnew) {
+        uints index;
+        const T* value = contains_sorted(key, fn, &index);
+
+        if (!value) {
+            isnew = true;
+            return ins(index);
+        }
+
+        return const_cast<T*>(value);
+    }
 
     ///Binary search sorted array
     //@note there must exist < operator able to do (T < K) comparison
@@ -1586,7 +1658,7 @@ public:
     //@warn Doesn't execute either destructors for the removed elements or constructors for added ones.
     uints set_size(uints n)
     {
-        DASSERT(n <= count_t(-1));
+        DASSERTN(n <= count_t(-1));
         DASSERT(n * sizeof(T) <= _size());
 
         if (_ptr) _set_count(n);
@@ -1666,7 +1738,7 @@ range<T>& range<T>::operator = (const dynarray<T, COUNT, A>& a)
 template< class SRC, class DST, class COUNT >
 dynarray<DST, COUNT>& dynarray_takeover(dynarray<SRC, COUNT>& src, dynarray<DST, COUNT>& dst)
 {
-    DASSERT(sizeof(DST) == 1);
+    DASSERTN(sizeof(DST) == 1);
 
     dst.discard();
     dst._ptr = (DST*)src._ptr;
@@ -1679,7 +1751,7 @@ dynarray<DST, COUNT>& dynarray_takeover(dynarray<SRC, COUNT>& src, dynarray<DST,
 template< class SRC, class DST, class COUNT >
 dynarray<DST, COUNT>& dynarray_swap(dynarray<SRC, COUNT>& src, dynarray<DST, COUNT>& dst)
 {
-    DASSERT(sizeof(DST) == 1);
+    DASSERTN(sizeof(DST) == 1);
 
     dst.reset();
     SRC* p = (SRC*)dst._ptr;

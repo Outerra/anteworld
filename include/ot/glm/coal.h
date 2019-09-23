@@ -465,17 +465,17 @@ namespace coal
 
 	}
 	
-	inline bool intersects_aabb_aabb(const glm::vec3& aabb1_origin,
-		const glm::vec3& aabb1_half, 
-		const glm::vec3& aabb2_origin, 
-		const glm::vec3& aabb2_half)
-	{
-		const glm::vec3 t = aabb2_origin - aabb1_origin;
+    template<typename T> bool intersects_aabb_aabb(const T& aabb1_origin,
+        const T& aabb1_half,
+        const T& aabb2_origin,
+        const T& aabb2_half)
+    {
+        const T t = aabb2_origin - aabb1_origin;
 
-		return glm::abs(t.x) <= (aabb1_half.x + aabb2_half.x) &&
-			glm::abs(t.y) <= (aabb1_half.y + aabb2_half.y) &&
-			glm::abs(t.z) <= (aabb1_half.z + aabb2_half.z);
-	}
+        return glm::abs(t.x) <= (aabb1_half.x + aabb2_half.x) &&
+            glm::abs(t.y) <= (aabb1_half.y + aabb2_half.y) &&
+            glm::abs(t.z) <= (aabb1_half.z + aabb2_half.z);
+    }
 
 	inline bool intersects_aabb_obb(const glm::vec3& aabb_origin,
 		const glm::vec3& aabb_half, 

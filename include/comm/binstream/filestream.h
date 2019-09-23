@@ -65,7 +65,7 @@ class filestream : public binstream
 {
 public:
 
-    COIDNEWDELETE("coid::filestream");
+    COIDNEWDELETE(filestream);
 
     virtual uint binstream_attributes( bool in0out1 ) const override
     {
@@ -140,18 +140,18 @@ public:
     }
 
     //@{ Get and set current reading and writing position
-    uint64 get_read_pos() const         { return _op>0  ?  getpos()  :  _rpos; }
-    uint64 get_write_pos() const        { return _op<0  ?  getpos()  :  _wpos; }
+    uint64 get_read_pos() const override { return _op > 0 ? getpos() : _rpos; }
+    uint64 get_write_pos() const override { return _op < 0 ? getpos() : _wpos; }
 
-    bool set_read_pos( uint64 pos )     {
-        if(_op<0)
+    bool set_read_pos(uint64 pos) override {
+        if (_op < 0)
             upd_wpos();
 
         return setpos(pos);
     }
 
-    bool set_write_pos( uint64 pos )     {
-        if(_op>0)
+    bool set_write_pos(uint64 pos) override {
+        if (_op > 0)
             upd_rpos();
 
         return setpos(pos);
@@ -168,34 +168,36 @@ public:
     /// c - create
     /// t,- - truncate
     /// a,+ - append
-    virtual opcd open( const zstring& name, const token& attr = "" ) override
+    virtual opcd open(const zstring& name, const token& attr = "") override
     {
         close();
 
-        int flg=0;
-        int rw=0,sh=0;
-        
+        int flg = 0;
+        int rw = 0, sh = 0;
+
         token attrx = attr;
-        while(attrx)
+        while (attrx)
         {
             char c = ++attrx;
-            if(c == 'r')       rw |= 1;
-            else if(c == 'w')  rw |= 2;
-            else if(c == 'l')  sh |= 1;
+            if (c == 'r')       rw |= 1;
+            else if (c == 'w')  rw |= 2;
+            else if (c == 'l')  sh |= 1;
 #ifdef SYSTYPE_WIN
-            else if(c == 'e')  flg |= _O_EXCL;
-            else if(c == 'c')  flg |= _O_CREAT;
-            else if(c == 't' || c == '-')  flg |= _O_TRUNC;
-            else if(c == 'a' || c == '+')  flg |= _O_APPEND;
+            else if (c == 'e')  flg |= _O_EXCL;
+            else if (c == 'c')  flg |= _O_CREAT;
+            else if (c == 't' || c == '-')  flg |= _O_TRUNC;
+            else if (c == 'a' || c == '+')  flg |= _O_APPEND;
 #else
-            else if(c == 'e')  flg |= O_EXCL;
-            else if(c == 'c')  flg |= O_CREAT;
-            else if(c == 't' || c == '-')  flg |= O_TRUNC;
-            else if(c == 'a' || c == '+')  flg |= O_APPEND;
+            else if (c == 'e')  flg |= O_EXCL;
+            else if (c == 'c')  flg |= O_CREAT;
+            else if (c == 't' || c == '-')  flg |= O_TRUNC;
+            else if (c == 'a' || c == '+')  flg |= O_APPEND;
 #endif
-            else if(c == 'b');  //ignored - always binary mode
-            else if(c != ' ')
-                return ersINVALID_PARAMS;
+            else if (c == 'b');  //ignored - always binary mode
+            else if (c == 'S') flg |= _O_SEQUENTIAL;
+            else if (c == 'R') flg |= _O_RANDOM;
+
+            //other letters ignored for forward compatibility
         }
 
         _rpos = _wpos = 0;
@@ -203,35 +205,35 @@ public:
 #ifdef SYSTYPE_WIN
         int af;
 
-        if( rw == 2 )       flg |= _O_WRONLY,    af = _S_IWRITE;
-        else if( rw == 1 )  flg |= _O_RDONLY,    af = _S_IREAD;
-        else /*( rw == 3 )*/flg |= _O_RDWR,      af = _S_IREAD | _S_IWRITE;
+        if (rw == 2)       flg |= _O_WRONLY, af = _S_IWRITE;
+        else if (rw == 1)  flg |= _O_RDONLY, af = _S_IREAD;
+        else /*( rw == 3 )*/flg |= _O_RDWR, af = _S_IREAD | _S_IWRITE;
 
 
-        if( sh == 1 )       sh = _SH_DENYWR;
-        else                sh = _SH_DENYNO;
+        if (sh == 1)       sh = _SH_DENYWR;
+        else               sh = _SH_DENYNO;
 
         flg |= _O_BINARY;
 
 # ifdef SYSTYPE_MSVC
-        return ::_sopen_s( &_handle, name.c_str(), flg, sh, af ) ? ersIO_ERROR : opcd(0);
+        return ::_sopen_s(&_handle, name.c_str(), flg, sh, af) ? ersIO_ERROR : opcd(0);
 # else
-        _handle = ::_sopen( name.c_str(), flg, sh, af );
-        return _handle != -1  ?  opcd(0)  :  ersIO_ERROR;
+        _handle = ::_sopen(name.c_str(), flg, sh, af);
+        return _handle != -1 ? opcd(0) : ersIO_ERROR;
 # endif
 #else
-        if( rw == 3 )       flg |= O_RDWR;
-        else if( rw == 2 )  flg |= O_WRONLY;
+        if (rw == 3)       flg |= O_RDWR;
+        else if (rw == 2)  flg |= O_WRONLY;
         else                flg |= O_RDONLY;
 
-	    _handle = ::open( name.c_str(), flg, 0644 );
+        _handle = ::open(name.c_str(), flg, 0644);
 
-        if( _handle != -1  &&  sh )
+        if (_handle != -1 && sh)
         {
-            int e = ::lockf( _handle, F_TLOCK, 0 );
-            if( e != 0 )  close();
+            int e = ::lockf(_handle, F_TLOCK, 0);
+            if (e != 0)  close();
         }
-        return _handle != -1  ?  opcd(0)  :  ersIO_ERROR;
+        return _handle != -1 ? opcd(0) : ersIO_ERROR;
 #endif
     }
 
@@ -305,6 +307,7 @@ public:
     {
         _handle = -1;
         _rpos = _wpos = 0;
+        _op = 1;
         open(s);
     }
 
@@ -312,6 +315,7 @@ public:
     {
         _handle = -1;
         _rpos = _wpos = 0;
+        _op = 1;
         open(s, attr);
     }
 
@@ -319,6 +323,7 @@ public:
     {
         _handle = -1;
         _rpos = _wpos = 0;
+        _op = 1;
         open(s, attr);
     }
 

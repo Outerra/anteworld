@@ -140,7 +140,7 @@ public:
 private:
     dynarray<Node*> _table;
     uints _nelem;
-    uint _shift;
+    uint _shift = 64;
 
     typedef hashtable<VAL, HASHFUNC, EQFUNC, GETKEYFUNC, ALLOC>  _Self;
 
@@ -429,6 +429,20 @@ protected:
         return find_socket_ext(_table, _shift, k);
     }
 
+    ///Find first node that matches the key
+    Node** find_socket_val(const LOOKUP& k, const VAL* val) const
+    {
+        uints h = bucket(k, _shift);
+        Node** pn = (Node**)&_table[h];
+        Node* n = *pn;
+        while (n && &n->_val != val)
+        {
+            pn = &n->_next;
+            n = *pn;
+        }
+        return n ? pn : nullptr;
+    }
+
     ///Delete all records that match the key
     uints del(const LOOKUP& k)
     {
@@ -647,6 +661,10 @@ public:
 
     bool erase_value(const LOOKUP& k, VAL* dst) {
         return this->__erase_value(k, dst);
+    }
+
+    bool erase_value_slot(const LOOKUP& k, const VAL* dst) {
+        return this->__erase_value_slot(k, dst);
     }
 
     size_t erase(const LOOKUP& k) {
@@ -958,6 +976,21 @@ protected:
         *pn = n->_next;
         if (dst)
             std::swap(*dst, n->_val);
+
+        _ALLOC.free(n);
+        --_nelem;
+
+        return true;
+    }
+
+    bool __erase_value_slot(const LOOKUP& k, const VAL* val)
+    {
+        Node** pn = find_socket_val(k, val);
+        if (!*pn)
+            return false;
+
+        Node* n = *pn;
+        *pn = n->_next;
 
         _ALLOC.free(n);
         --_nelem;

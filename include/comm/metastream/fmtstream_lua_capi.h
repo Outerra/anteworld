@@ -636,18 +636,8 @@ LUA_FAST_STREAMER(uint16, integer, Integer);
 LUA_FAST_STREAMER(uint32, integer, Integer);
 LUA_FAST_STREAMER(uint64, integer, Integer);    //can lose data in conversion
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-LUA_FAST_STREAMER(ints, integer, Integer);
-LUA_FAST_STREAMER(uints, integer, Integer);
-# else //SYSTYPE_64
-LUA_FAST_STREAMER(int, integer, Integer);
-LUA_FAST_STREAMER(uint, integer, Integer);
-# endif
-#elif defined(SYSTYPE_32)
 LUA_FAST_STREAMER(long, integer, Integer);
 LUA_FAST_STREAMER(ulong, integer, Integer);
-#endif
 
 LUA_FAST_STREAMER(float, number, Number);
 LUA_FAST_STREAMER(double, number, Number);

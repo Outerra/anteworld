@@ -37,13 +37,28 @@
 
 #include "commassert.h"
 #include "log/logger.h"
+#include "pthreadx.h"
 
 COID_NAMESPACE_BEGIN
 
 static int __assert_throws = 1;
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, const char* function, const char* expr )
+enter_single_thread::enter_single_thread(volatile uint& tid) : _tid(tid)
+{
+    thread_t t = thread::self();
+
+    RASSERT(_tid == 0 || _tid == (uint)t);
+    _tid = (uint)t;
+}
+
+enter_single_thread::~enter_single_thread()
+{
+    _tid = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool __rassert( const opt_string& txt, const char* file, int line, const char* function, const char* expr )
 {
     zstring* z = txt.get();
 
@@ -53,8 +68,7 @@ opcd __rassert( const opt_string& txt, opcd exc, const char* file, int line, con
         << '\r' //forces log flush
     );
 
-    opcd e = __assert_throws ? exc : opcd(0);
-    return e;
+    return __assert_throws;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -91,6 +91,8 @@ public:
         return exists(_thread);
     }
 
+    void set_name(const coid::token& name);
+
     //@return true if thread exists
     static bool exists( thread_t tid );
 
@@ -115,13 +117,15 @@ public:
     //@param context thread context, queryable from thread
     thread& create( fnc_entry f, void* arg, void* context=0, const token& name = token() )
     {
-        _thread = create_new( f, arg, context, name );
+        _thread = create_new(f, arg, context, name);
         return *this;
     }
 
     ///Spawn new thread, returning the thread object
     static thread create_new( fnc_entry f, void* arg, void* context=0, const token& name = token() );
 
+    // sets a processor affinity mask for current thread
+    static void set_affinity_mask(uint64 mask);
 
     //@{ Static methods dealing with the thread currently running
 

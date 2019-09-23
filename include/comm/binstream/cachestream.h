@@ -56,10 +56,10 @@ protected:
     uints _cinread, _tcinread;
     dynarray<uchar> _cin;
     dynarray<uchar> _cot;
-    uints _cotwritten, _tcotwritten;
+    uints _tcotwritten;
 
     enum {
-        DEFAULT_CACHE_SIZE          = 256,
+        DEFAULT_CACHE_SIZE = 512,
     };
 
     bool eois;                      //< end of the input stream already read
@@ -67,59 +67,57 @@ protected:
 public:
 
 
-    void takeover( cachestream& other )
+    void takeover(cachestream& other)
     {
         _bin = other._bin;
         _cinread = other._cinread;
         _tcinread = other._tcinread;
-        _cotwritten = other._cotwritten;
         _tcotwritten = other._tcotwritten;
-        _cin.takeover( other._cin );
-        _cot.takeover( other._cot );
+        _cin.takeover(other._cin);
+        _cot.takeover(other._cot);
         eois = other.eois;
 
         other._cinread = other._tcinread = 0;
-        other._cotwritten = other._tcotwritten = 0;
+        other._tcotwritten = 0;
         other._bin = 0;
         other.eois = false;
     }
 
-    void swap( cachestream& b )
+    void swap(cachestream& b)
     {
         std::swap(_bin, b._bin);
         std::swap(_cinread, b._cinread);
         std::swap(_tcinread, b._tcinread);
-        std::swap(_cotwritten, b._cotwritten);
         std::swap(_tcotwritten, b._tcotwritten);
         std::swap(_cin, b._cin);
         std::swap(_cot, b._cot);
         std::swap(eois, b.eois);
     }
 
-    virtual uint binstream_attributes( bool in0out1 ) const
+    virtual uint binstream_attributes(bool in0out1) const
     {
         return _bin->binstream_attributes(in0out1) | fATTR_READ_UNTIL;
     }
 
-    void reserve_buffer_size( uints sizer, uints sizew=0 )
+    void reserve_buffer_size(uints sizer, uints sizew = 0)
     {
-        _cin.reserve( nearest_high_pow2(sizer), false );
-        _cot.reserve( nearest_high_pow2(sizew?sizew:sizer), false );
+        _cin.reserve(nearest_high_pow2(sizer), false);
+        _cot.reserve(nearest_high_pow2(sizew ? sizew : sizer), false);
     }
 
-    uints len() const           { return _cotwritten + _cot.size(); }
+    uints len() const { return _tcotwritten + _cot.size(); }
 
-    uints size_read() const     { return _tcinread + _cinread; }
+    uints size_read() const { return _tcinread + _cinread; }
 
 
     ///Override this to handle the cache flushes
-    virtual opcd on_cache_flush( void* p, uints size, bool final )
+    virtual opcd on_cache_flush(void* p, uints size, bool final)
     {
         return ersNOT_IMPLEMENTED;
     }
 
     ///Override this to handle the cache fills
-    virtual opcd on_cache_fill( void* p, uints& size )
+    virtual opcd on_cache_fill(void* p, uints& size)
     {
         return ersNO_MORE;
     }
@@ -127,93 +125,93 @@ public:
 
 
     ///Get pointer to raw data in the buffer
-    void* get_raw_usable( uints pos, uints& len )
+    void* get_raw_usable(uints pos, uints& len)
     {
-        if( pos >= _cotwritten + _cot.size()  ||  pos < _cotwritten )
+        if (pos >= _tcotwritten + _cot.size() || pos < _tcotwritten)
             return 0;
-        if( pos+len > _cotwritten + _cot.size() )
-            len = _cotwritten + _cot.size() - pos;
+        if (pos + len > _tcotwritten + _cot.size())
+            len = _tcotwritten + _cot.size() - pos;
 
-        return _cot.ptr() + pos - _cotwritten;
+        return _cot.ptr() + pos - _tcotwritten;
     }
 
     ///Get pointer to raw data in the buffer
-    void* get_raw( uints pos, uints len )
+    void* get_raw(uints pos, uints len)
     {
-        if( pos >= _cotwritten + _cot.size()  ||  pos < _cotwritten )
+        if (pos >= _tcotwritten + _cot.size() || pos < _tcotwritten)
             return 0;
-        if( pos+len > _cotwritten + _cot.size() )
+        if (pos + len > _tcotwritten + _cot.size())
             return 0;
 
-        return _cot.ptr() + pos - _cotwritten;
+        return _cot.ptr() + pos - _tcotwritten;
     }
 
 
-    virtual opcd write_raw( const void* p, uints& len )
+    virtual opcd write_raw(const void* p, uints& len)
     {
-        if( _cot.reserved_total() == 0 )
-            _cot.reserve( DEFAULT_CACHE_SIZE, false );
+        if (_cot.reserved_total() == 0)
+            _cot.reserve(DEFAULT_CACHE_SIZE, false);
 
         opcd e = 0;
 
         uints rm = _cot.reserved_remaining();
-        if( rm >= len )
+        if (rm >= len)
         {
-            _cot.add_bin_from( (const uchar*)p, len );
+            _cot.add_bin_from((const uchar*)p, len);
             len = 0;
         }
         else
         {
-            _cot.add_bin_from( (const uchar*)p, rm );
+            _cot.add_bin_from((const uchar*)p, rm);
 
             p = (const uchar*)p + rm;
             len -= rm;
 
-            e = on_cache_flush( _cot.ptr(), _cot.size(), false );
-            if( e == ersNOT_IMPLEMENTED )  e = 0;
-            if(e)
+            e = on_cache_flush(_cot.ptr(), _cot.size(), false);
+            if (e == ersNOT_IMPLEMENTED)  e = 0;
+            if (e)
             {
                 //enlarge the cache instead
                 uints newsize = _cot.reserved_total();
-                if( newsize < _cot.size() + len )
+                if (newsize < _cot.size() + len)
                     newsize = nearest_high_pow2(_cot.size() + len);
 
-                _cot.reserve( newsize, true );
-                return write_raw( p, len );
+                _cot.reserve(newsize, true);
+                return write_raw(p, len);
             }
 
             uints n = _cot.size();
-            e = _bin->write_raw( _cot.ptr(), n );
+            e = _bin->write_raw(_cot.ptr(), n);
 
-            if(e)
+            if (e)
                 return e;
 
-            _cotwritten += _cot.size();
+            _tcotwritten += _cot.size();
             _cot.reset();
 
-            return write_raw( p, len );
+            return write_raw(p, len);
         }
 
         return e;
     }
 
-    virtual opcd read_raw( void* p, uints& len )
+    virtual opcd read_raw(void* p, uints& len)
     {
         opcd e;
 
         uints rm = _cin.size() - _cinread;
-        if( rm >= len )
+        if (rm >= len)
         {
-            xmemcpy( p, _cin.ptr()+_cinread, len );
+            xmemcpy(p, _cin.ptr() + _cinread, len);
             _cinread += len;
             len = 0;
             e = 0;
         }
         else
         {
-            if(rm)  //copy remaining stuff from cache
+            if (rm)  //copy remaining stuff from cache
             {
-                xmemcpy( p, _cin.ptr()+_cinread, rm );
+                xmemcpy(p, _cin.ptr() + _cinread, rm);
                 p = (char*)p + rm;
                 len -= rm;
                 _cinread += rm;
@@ -222,28 +220,31 @@ public:
                 return eois ? ersNO_MORE : ersRETRY;
             }
 
-            if( eois )
+            if (eois)
                 return ersNO_MORE;
 
-            if( len >= _cin.reserved_total() )
+            if (len >= _cin.reserved_total())
             {
                 //direct read
-                e = fill_cache_line( p, len );
+                uints olen = len;
+                e = fill_cache_line(p, len);
+
+                _tcinread += olen - len;
             }
             else
             {
                 e = read_cache_line();
                 uints n = _cin.size();
 
-                if( n > len )
+                if (n > len)
                     n = len;
 
-                xmemcpy( p, _cin.ptr(), n );
+                xmemcpy(p, _cin.ptr(), n);
                 _cinread = n;
                 len -= n;
             }
 
-            if(!len)
+            if (!len)
                 e = 0;  //from the caller's viewpoint it's ok since everything requested was actually read
         }
 
@@ -253,27 +254,29 @@ public:
 
 
 
-    virtual opcd open( const zstring& name, const zstring& arg=zstring() )
+    virtual opcd open(const zstring& name, const zstring& arg = zstring())
     {
         return _bin->open(name, arg);
     }
-    virtual opcd close( bool linger=false )
+    virtual opcd close(bool linger = false)
     {
         return _bin->close(linger);
     }
-    
 
-    virtual bool is_open() const        { return _bin && _bin->is_open(); }
+
+    virtual bool is_open() const { return _bin && _bin->is_open(); }
 
     void flush_cache(bool final)
     {
-        on_cache_flush( _cot.ptr(), _cot.size(), final );
-        if(_cot.size())
-            _bin->xwrite_raw( _cot.ptr(), _cot.size() );     //throws
+        on_cache_flush(_cot.ptr(), _cot.size(), final);
+        if (_cot.size())
+            _bin->xwrite_raw(_cot.ptr(), _cot.size());     //throws
 
+        _tcotwritten += _cot.size();
         _cot.reset();
-        _cotwritten = _tcotwritten = 0;
-        _bin->flush();
+
+        if (final)
+            _bin->flush();
     }
 
     virtual void flush()
@@ -281,11 +284,11 @@ public:
         flush_cache(true);
     }
 
-    virtual void acknowledge (bool eat=false)
+    virtual void acknowledge(bool eat = false)
     {
-        if(!eat)
+        if (!eat)
         {
-            if( _cin.size() - _cinread > 0 )
+            if (_cin.size() - _cinread > 0)
                 throw ersIO_ERROR "data left in input buffer";
         }
 
@@ -301,48 +304,78 @@ public:
         _cin.reset();
         eois = false;
 
-        if(_bin) _bin->reset_read();
+        if (_bin) _bin->reset_read();
     }
 
     virtual void reset_write()
     {
         _cot.reset();
-        _cotwritten = _tcotwritten = 0;
-        if(_bin) _bin->reset_write();
+        _tcotwritten = 0;
+        if (_bin) _bin->reset_write();
     }
 
+    uint64 get_read_pos() const override { return _tcinread + _cinread; }
+    uint64 get_write_pos() const override { return _tcotwritten + _cot.size(); }
 
-    virtual opcd set_timeout( uint ms )
+    bool set_read_pos(uint64 pos) override {
+        if (pos >= _tcinread && pos <= _tcinread + _cin.size()) {
+            //within current cache block
+            _cinread = pos - _tcinread;
+            return true;
+        }
+
+        if (!_bin || !_bin->set_read_pos(pos))
+            return false;
+
+        _cinread = 0;
+        _tcinread = pos;
+        _cin.reset();
+        eois = false;
+
+        return true;
+    }
+
+    bool set_write_pos(uint64 pos) override {
+        if (!_bin || !_bin->set_write_pos(pos))
+            return false;
+
+        flush_cache(false);
+        _tcotwritten = pos;
+
+        return true;
+    }
+
+    virtual opcd set_timeout(uint ms)
     {
         return _bin->set_timeout(ms);
     }
 
-    virtual opcd transfer_to( binstream& dst, uints datasize=UMAXS, uints* size_written=0, uints blocksize=4096 ) override
-	{
+    virtual opcd transfer_to(binstream& dst, uints datasize = UMAXS, uints* size_written = 0, uints blocksize = 4096) override
+    {
         opcd e;
-        uints n=0;
+        uints n = 0;
 
-        for( ;; )
+        for (;; )
         {
             uints clen = _cin.size() - _cinread;
-			uints len = datasize>clen ? clen : datasize;
+            uints len = datasize > clen ? clen : datasize;
             uints oen = len;
 
-            e = dst.write_raw( _cin.ptr()+_cinread, len );
+            e = dst.write_raw(_cin.ptr() + _cinread, len);
 
             uints dlen = oen - len;
             datasize -= dlen;
             _cinread += dlen;
 
             n += dlen;
-            if(size_written)        //update inside the loop to have a progress feedback
+            if (size_written)        //update inside the loop to have a progress feedback
                 *size_written = n;
 
-            if( e || len>0 || datasize==0 )
+            if (e || len > 0 || datasize == 0)
                 break;
 
             read_cache_line();
-            if(_cin.size() == 0)
+            if (_cin.size() == 0)
                 break;
         }
 
@@ -353,127 +386,130 @@ public:
     cachestream()
     {
         _bin = 0;
+        _cin.reserve(DEFAULT_CACHE_SIZE, false);
         _cinread = _tcinread = 0;
-        _cotwritten = _tcotwritten = 0;
+        _tcotwritten = 0;
         eois = false;
     }
-    cachestream( binstream* bin )
+    cachestream(binstream* bin)
     {
         _bin = bin;
+        _cin.reserve(DEFAULT_CACHE_SIZE, false);
         _cinread = _tcinread = 0;
-        _cotwritten = _tcotwritten = 0;
+        _tcotwritten = 0;
         eois = false;
     }
-    cachestream( binstream& bin )
+    cachestream(binstream& bin)
     {
         _bin = &bin;
+        _cin.reserve(DEFAULT_CACHE_SIZE, false);
         _cinread = _tcinread = 0;
-        _cotwritten = _tcotwritten = 0;
+        _tcotwritten = 0;
         eois = false;
     }
 
-    opcd bind( binstream& bin, int io=0 )
+    opcd bind(binstream& bin, int io = 0)
     {
         _bin = &bin;
         reset_all();
         return 0;
     }
 
-    binstream* bound( int io=0 ) const          { return _bin; }
+    binstream* bound(int io = 0) const { return _bin; }
 
-	/// read until 'term' bytestring is read or 'max_size' bytes received
-	opcd read_until( const substring& ss, binstream* bout, uints max_size=UMAXS )
+    /// read until 'term' bytestring is read or 'max_size' bytes received
+    opcd read_until(const substring& ss, binstream* bout, uints max_size = UMAXS)
     {
-        int e = find_substring( ss, bout, max_size );
-        if(e>0) return 0;
-        if(e<0) return ersNO_MORE;
+        int e = find_substring(ss, bout, max_size);
+        if (e > 0) return 0;
+        if (e < 0) return ersNO_MORE;
         return ersNOT_FOUND;
-	}
-
-
-    virtual opcd peek_read( uint timeout ) {
-        return _cin.size() > _cinread  ?  opcd(0) : _bin->peek_read(timeout);
     }
 
-    virtual opcd peek_write( uint timeout ) {
+
+    virtual opcd peek_read(uint timeout) {
+        return _cin.size() > _cinread ? opcd(0) : _bin->peek_read(timeout);
+    }
+
+    virtual opcd peek_write(uint timeout) {
         return 0;
     }
 
 
     ///Advance past substring, preceding part pushing to \a pout (if \a pout is nonzero)
     /// @return >0 if found, 0 if not found, <0 if no input
-    int find_substring( const substring& sub, binstream* bout, uints limit=UMAXS )
+    int find_substring(const substring& sub, binstream* bout, uints limit = UMAXS)
     {
         uints slen = sub.len();
-        if( slen == 1 )
-            return find_char( sub.ptr()[0], bout, limit );
+        if (slen == 1)
+            return find_char(sub.ptr()[0], bout, limit);
 
-        uints ts=0;
-        while(1)
+        uints ts = 0;
+        while (1)
         {
-            uints n = memcmpseg( sub.ptr(), slen );
-            if( n == slen )
+            uints n = memcmpseg(sub.ptr(), slen);
+            if (n == slen)
             {
                 _cinread += n;
                 return 1;    //substring found and the current position is just behind it
             }
 
             //fetch byte (sub._len) away from current position
-            uints s1 = slen+1;
+            uints s1 = slen + 1;
             uints asl = fetch_forward(s1);
-            if( s1 > asl )
+            if (s1 > asl)
             {
                 //end of input, substring cannot be there
-                if( bout )
-                    add_bin_limited( *bout, limit, _cin.ptr()+_cinread, _cin.size() - _cinread );
+                if (bout)
+                    add_bin_limited(*bout, limit, _cin.ptr() + _cinread, _cin.size() - _cinread);
                 ts += _cin.size() - _cinread;
                 _cinread = _cin.size();
                 return ts ? 0 : -1;
             }
 
-            uchar o = _cin[_cinread+slen];
+            uchar o = _cin[_cinread + slen];
 
             // part to skip
             uints sk = sub.get_skip(o);      //sk can be (sub._len+1) max
-            if(bout)
-                add_bin_limited( *bout, limit, _cin.ptr()+_cinread, sk );
+            if (bout)
+                add_bin_limited(*bout, limit, _cin.ptr() + _cinread, sk);
             ts += sk;
             _cinread += sk;
         }
     }
 
-    int find_char( char k, binstream* bout, uints limit = UMAXS )
+    int find_char(char k, binstream* bout, uints limit = UMAXS)
     {
-        uints ts=0;
-        token t( (const char*)_cin.ptr()+_cinread, _cin.size() - _cinread );
+        uints ts = 0;
+        token t((const char*)_cin.ptr() + _cinread, _cin.size() - _cinread);
 
-        bool bexit=false;
-        while(1)
+        bool bexit = false;
+        while (1)
         {
             const char* pk = t.strchr(k);
-            if(pk)
+            if (pk)
             {
-                if(bout)
-                    add_bin_limited( *bout, limit, t.ptr(), pk - t.ptr() );
+                if (bout)
+                    add_bin_limited(*bout, limit, t.ptr(), pk - t.ptr());
                 _cinread += pk - t.ptr() + 1;
                 return 1;
             }
 
-            if(bout)
-                add_bin_limited( *bout, limit, t.ptr(), t.len() );
+            if (bout)
+                add_bin_limited(*bout, limit, t.ptr(), t.len());
             ts += t.len();
 
-            if(bexit) break;
+            if (bexit) break;
 
             read_cache_line();
             uints cs = _cin.size();
 
-            if( cs == 0 )
+            if (cs == 0)
                 break;
-            if( cs < _cin.reserved_total() )
+            if (cs < _cin.reserved_total())
                 bexit = true;
 
-            t.set( (const char*)_cin.ptr(), cs );
+            t.set((const char*)_cin.ptr(), cs);
         }
 
         _cinread = _cin.size();
@@ -485,66 +521,66 @@ private:
 
     opcd read_cache_line()
     {
-        if( _cin.reserved_total() == 0 )
-            _cin.reserve( DEFAULT_CACHE_SIZE, false );
+        if (_cin.reserved_total() == 0)
+            _cin.reserve(DEFAULT_CACHE_SIZE, false);
 
         uints cs = _cin.reserved_total();
-        opcd e = _bin->read_raw_any( _cin.ptr(), cs );
+        opcd e = _bin->read_raw_any(_cin.ptr(), cs);
 
-        _cin.set_size( _cin.reserved_total() - cs );
+        _cin.set_size(_cin.reserved_total() - cs);
         _tcinread += _cinread;
         _cinread = 0;
 
-        if( e && e!=ersRETRY )
+        if (e && e != ersRETRY)
             eois = true;
 
         return e;
     }
 
-    opcd fill_cache_line( void* p, uints& size )
+    opcd fill_cache_line(void* p, uints& size)
     {
         opcd e = _bin
-            ? _bin->read_raw_any( p, size )
-            : on_cache_fill( p, size );
+            ? _bin->read_raw_any(p, size)
+            : on_cache_fill(p, size);
 
-        if( e && e!=ersRETRY )
+        if (e && e != ersRETRY)
             eois = true;
 
         return e;
     }
 
-    static uints add_bin_limited( binstream& bin, uints& lmax, const void* src, uints len )
+    static uints add_bin_limited(binstream& bin, uints& lmax, const void* src, uints len)
     {
-        uints sz=lmax;
-        if( lmax > len )
+        uints sz = lmax;
+        if (lmax > len)
             sz = len;
-        bin.write_raw( src, sz );
+        bin.write_raw(src, sz);
         lmax -= sz;
         return sz;
     }
 
     ///Fetch byte \a offs away from current position, without discarding any data
-    uints fetch_forward( uints offs )
+    uints fetch_forward(uints offs)
     {
-        if( _cin.reserved_total() == 0 )
-            _cin.reserve( DEFAULT_CACHE_SIZE, false );
+        if (_cin.reserved_total() == 0)
+            _cin.reserve(DEFAULT_CACHE_SIZE, false);
 
         uints rm = _cin.size() - _cinread;
-        if( rm >= offs )
+        if (rm >= offs)
             return rm;
-        else if( offs <= _cin.reserved_total() )
+        else if (offs <= _cin.reserved_total())
         {
             //compacting the cache would suffice
-            _cin.del( 0, _cinread );
+            _cin.del(0, _cinread);
         }
         else
         {
             //we have to enlarge the cache
             dynarray<uchar> newcin;
-            newcin.reserve( rm+offs, false );
+            newcin.reserve(rm + offs, false);
 
-            if(rm)
-                newcin.copy_bin_from( _cin.ptr()+_cinread, rm );
+            if (rm)
+                newcin.copy_bin_from(_cin.ptr() + _cinread, rm);
             _cin.takeover(newcin);
         }
 
@@ -552,7 +588,7 @@ private:
         _cinread = 0;
 
         uints ts = _cin.reserved_remaining();
-        opcd e = fill_cache_line( _cin.ptr()+_cin.size(), ts );
+        opcd e = fill_cache_line(_cin.ptr() + _cin.size(), ts);
 
         uints n = _cin.size() + _cin.reserved_remaining() - ts;
         _cin.set_size(n);
@@ -561,30 +597,30 @@ private:
     }
 
     ///Compare two strings and return length of matching byte string, refill cache
-    uints memcmpseg( const void* subs, uints len )
+    uints memcmpseg(const void* subs, uints len)
     {
         uints rm = _cin.size() - _cinread;
-        
-        if( rm >= len )
-            return memcmplen( subs, _cin.ptr()+_cinread, len );
+
+        if (rm >= len)
+            return memcmplen(subs, _cin.ptr() + _cinread, len);
         else
         {
             //compare what's there remaining
-            uints n = memcmplen( subs, _cin.ptr()+_cinread, rm );
-            if( n < rm )
+            uints n = memcmplen(subs, _cin.ptr() + _cinread, rm);
+            if (n < rm)
                 return n;
             //load remaining data to cache
             uints tl = fetch_forward(len);
-            return n + memcmplen( (const uchar*)subs+n, _cin.ptr()+_cinread+n, tl<len ? tl : len );
+            return n + memcmplen((const uchar*)subs + n, _cin.ptr() + _cinread + n, tl < len ? tl : len);
         }
     }
 
     ///Compare two strings and return length of matching byte string
-    static uints memcmplen( const void* a, const void* b, uints n )
+    static uints memcmplen(const void* a, const void* b, uints n)
     {
         uints i;
-        for( i=0; i<n && ((uchar*)a)[i] == ((uchar*)b)[i]; ++i );
-            return i;
+        for (i = 0; i < n && ((uchar*)a)[i] == ((uchar*)b)[i]; ++i);
+        return i;
     }
 
 private:
@@ -595,7 +631,7 @@ private:
 
        // Preprocessing
        preQsBc(x, m, qsBc);
- 
+
        // Searching
        j = 0;
        while (j <= n - m) {

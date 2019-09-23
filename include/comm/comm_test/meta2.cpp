@@ -1,10 +1,10 @@
 
-#include <comm/metastream/metastream.h>
-#include <comm/metastream/fmtstreamjson.h>
-#include <comm/hash/hashkeyset.h>
-#include <comm/binstream/binstream.h>
-#include <comm/binstream/filestream.h>
-#include <comm/str.h>
+#include "../metastream/metastream.h"
+#include "../metastream/fmtstreamjson.h"
+#include "../hash/hashkeyset.h"
+#include "../binstream/binstream.h"
+#include "../binstream/filestream.h"
+#include "../str.h"
 
 
 

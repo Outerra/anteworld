@@ -73,8 +73,10 @@ struct entity_data {
     uint _bone_id;			//< parent's element bone ID
     quat _rot;				//< entity rotation (if entity has parent the rotation is relative to parent)
     float3 _scale;			//< entity scale coeficient
+    float _water_level = -32768;
+    float _emissive_multiplier = 1;
 
-    float _water_level;     //< 
+    uint3 _res;
 
     entity_data(
         const double3 &pos,
@@ -85,8 +87,6 @@ struct entity_data {
         , _bone_id(InvalidBoneId)
         , _rot(rot)
         , _scale(scale)
-
-        , _water_level(0)
     {}
 
     entity_data()
@@ -95,8 +95,6 @@ struct entity_data {
         , _bone_id(InvalidBoneId)
         , _rot()
         , _scale(1)
-
-        , _water_level(0)
     {}
 
     ~entity_data()
@@ -107,7 +105,8 @@ struct entity_data {
         _bone_id = InvalidBoneId;
         _rot = quat();
         _scale = float3(0);
-        _water_level = 0;
+        _water_level = -32768;
+        _emissive_multiplier = 0;
 #endif
     }
 

@@ -273,19 +273,10 @@ SIGNEDNESS_MACRO(uint32,int32,uint32,0);
 SIGNEDNESS_MACRO(int64,int64,uint64,1);
 SIGNEDNESS_MACRO(uint64,int64,uint64,0);
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-SIGNEDNESS_MACRO(ints,ints,uints,1);
-SIGNEDNESS_MACRO(uints,ints,uints,0);
-# else
-SIGNEDNESS_MACRO(int,int,uint,1);
-SIGNEDNESS_MACRO(uint,int,int,0);
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
 SIGNEDNESS_MACRO(long,long,ulong,1);
 SIGNEDNESS_MACRO(ulong,long,ulong,0);
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

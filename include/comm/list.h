@@ -20,7 +20,7 @@ public:
     ///
     struct node
     {
-        COIDNEWDELETE("list::node");
+        COIDNEWDELETE(node);
 
         union {
             node *_next_basic_pool;
@@ -318,8 +318,8 @@ public:
     ///
     bool is_empty() const { return _node._next == &_node; }
 
-    T& front() const { DASSERT(!is_empty()); return _node._next->item(); }
-    T& back() const { DASSERT(!is_empty()); return _node._prev->item(); }
+    T& front() const { DASSERTN(!is_empty()); return _node._next->item(); }
+    T& back() const { DASSERTN(!is_empty()); return _node._prev->item(); }
 
     iterator begin() { return iterator(_node._next); }
     iterator end() { return iterator(&_node); }

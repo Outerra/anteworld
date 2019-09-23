@@ -38,6 +38,8 @@
 
 #include "../str.h"
 #include "../ref.h"
+#include "../function.h"
+#include "../alloc/slotalloc.h"
 
 COID_NAMESPACE_BEGIN
 
@@ -125,6 +127,10 @@ void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... 
 #define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::error, src ); if(q) {q->str() << msg; }} while(0)
 //@}
 
+///Create a perf object that logs the time while the scope exists
+#define coidlog_perf_scope(src, msg) \
+   ref<coid::logmsg> perf##line = coid::canlog(coid::log::perf, src); if(perf##line) perf##line->str() << msg
+
 ///Log fatal error and throw exception with the same message
 #define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
 
@@ -155,15 +161,17 @@ protected:
 
     friend class policy_msg;
 
-    logger* _logger;
+    logger* _logger = 0;
     ref<logger_file> _logger_file;
 
-    log::type _type;
+    tokenhash _hash;
+    log::type _type = log::none;
     charstr _str;
+    uint64 _time = 0;
 
 public:
 
-    COIDNEWDELETE("logmsg");
+    COIDNEWDELETE(logmsg);
 
     logmsg();
 
@@ -237,6 +245,15 @@ public:
 
 	void set_type(log::type t) { _type = t; }
 
+    void set_time(uint64 ns) {
+        _time = ns;
+    }
+
+    int64 get_time() const { return _time; }
+
+    void set_hash(const tokenhash& hash) { _hash = hash; }
+    const tokenhash& get_hash() { return _hash; }
+
     charstr& str() { return _str; }
     const charstr& str() const { return _str; }
 
@@ -269,6 +286,18 @@ inline void printlog( log::type type, const tokenhash& hash, const token& fmt, V
 
 #endif //COID_VARIADIC_TEMPLATES
 
+struct log_filter {
+    typedef function<void(ref<logmsg>&)> filter_fun;
+    filter_fun _filter_fun;
+    charstr _module;
+    uint _log_level;
+
+    log_filter(filter_fun fn, const token& module, uint level) 
+    : _filter_fun(fn)
+    , _module(module)
+    , _log_level(level)
+    {}
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +318,7 @@ inline void printlog( log::type type, const tokenhash& hash, const token& fmt, V
 class logger
 {
 protected:
-
+    slotalloc<log_filter> _filters;
 	ref<logger_file> _logfile;
 
     log::type _minlevel;
@@ -313,7 +342,7 @@ public:
     ///Formatted log message
     template<class ...Vs>
     void print( const token& fmt, Vs&&... vs ) {
-        ref<logmsg> msgr = create_msg(log::none);
+        ref<logmsg> msgr = create_msg(log::none, tokenhash());
         if(!msgr)
             return;
 
@@ -336,10 +365,10 @@ public:
 #endif
 
     //@return logmsg, filling the prefix by the log type (e.g. ERROR: )
-    ref<logmsg> operator()( log::type type = log::info, const int64* time_ms = 0 );
+    ref<logmsg> operator()( log::type type = log::info, const tokenhash& hash = "", const int64* time_ms = 0 );
 
     //@return an empty logmsg object
-    ref<logmsg> create_msg( log::type type );
+    ref<logmsg> create_msg( log::type type, const tokenhash& hash );
 
     ///Creates logmsg object if given log message type is enabled
     //@param type log level
@@ -357,6 +386,9 @@ public:
     void set_log_level( log::type minlevel = log::last );
 
     static void enable_debug_out(bool en);
+
+    uints register_filter(log_filter& filter) { _filters.push(filter); return _filters.count() - 1; }
+    void unregister_filter(uint pos) { _filters.del_item(pos); }
 };
 
 

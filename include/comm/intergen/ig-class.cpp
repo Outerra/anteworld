@@ -48,7 +48,11 @@ int Interface::check_interface( iglexer& lex )
 bool Class::parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& namespcs, dynarray<paste_block>* pasters, dynarray<MethodIG::Arg>& irefargs )
 {
     templarg.swap(templarg_);
-    namespaces = namespcs;
+    //namespaces = namespcs;
+    for (auto& x : namespcs) {
+        if (x)
+            namespaces.push(x);
+    }
 
     namespaces.for_each([this](const charstr& v){ namespc << v << "::"; });
     if(namespc)

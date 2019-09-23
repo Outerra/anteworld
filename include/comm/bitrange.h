@@ -81,10 +81,10 @@ inline void _BitScanReverse64(ulong* idx, uint64 v) {
 //@{
 //@return position of the lowest or highest bit set
 //@note return value is undefined when the input is 0
-inline uint8 lsb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
-inline uint8 lsb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
-inline uint8 msb_bit_set(uint v)    { DASSERT(v); ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
-inline uint8 msb_bit_set(uint64 v)  { DASSERT(v); ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
+inline uint8 lsb_bit_set(uint v)    { DASSERTN(v); ulong idx; _BitScanForward(&idx, v);   return uint8(idx); }
+inline uint8 lsb_bit_set(uint64 v)  { DASSERTN(v); ulong idx; _BitScanForward64(&idx, v); return uint8(idx); }
+inline uint8 msb_bit_set(uint v)    { DASSERTN(v); ulong idx; _BitScanReverse(&idx, v);   return uint8(idx); }
+inline uint8 msb_bit_set(uint64 v)  { DASSERTN(v); ulong idx; _BitScanReverse64(&idx, v); return uint8(idx); }
 //@}
 
 #ifdef SYSTYPE_32
@@ -178,19 +178,6 @@ inline uints nearest_high_pow2( uints x ) {
 inline uint8 population_count(uint16 val) { return uint8(__popcnt16(val)); }
 inline uint8 population_count(uint32 val) { return uint8(__popcnt(val)); }
 inline uint8 population_count(uint64 val) { return uint8(__popcnt64(val)); }
-
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-inline uint8 population_count(ints val) { return population_count(uint32(val)); }
-inline uint8 population_count(uints val) { return population_count(uint32(val)); }
-# else //SYSTYPE_64
-inline uint8 population_count(int val) { return population_count(uint32(val)); }
-inline uint8 population_count(uint val) { return population_count(uint32(val)); }
-# endif
-#elif defined(SYSTYPE_32)
-inline uint8 population_count(long val) { return population_count(uint32(val)); }
-inline uint8 population_count(ulong val) { return population_count(uint32(val)); }
-#endif //SYSTYPE_WIN
 
 ////////////////////////////////////////////////////////////////////////////////
 

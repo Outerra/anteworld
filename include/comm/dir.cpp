@@ -107,26 +107,26 @@ uint64 directory::file_size(zstring file)
 bool directory::is_absolute_path(const token& path)
 {
 #ifdef SYSTYPE_WIN
-    return path.nth_char(1) == ':' || path.begins_with("\\\\");
+    return path.nth_char(1) == ':' || path.begins_with("\\\\"_T);
 #else
     return path.first_char() == '/';
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::is_subpath( token root, token path )
+bool directory::is_subpath(token root, token path)
 {
     return subpath(root, path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::subpath( token root, token& path )
+bool directory::subpath(token root, token& path)
 {
-    while(root && path) {
+    while (root && path) {
         token r = root.cut_left_group(DIR_SEPARATORS);
         token p = path.cut_left_group(DIR_SEPARATORS);
 
-        if(r != p)
+        if (r != p)
             break;
     }
 
@@ -134,74 +134,80 @@ bool directory::subpath( token root, token& path )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::append_path(charstr& dst, token path, bool keep_below)
+int directory::append_path(charstr& dst, token path, bool keep_below)
 {
-    if(is_absolute_path(path)) {
-        if(keep_below && !is_subpath(dst, path))
-            return false;
+    if (is_absolute_path(path))
+    {
         dst = path;
+
+        return keep_below && !is_subpath(dst, path) ? -1 : 1;
     }
     else
     {
         char sep = separator();
 
         token tdst = dst;
-        if(directory::is_separator(tdst.last_char())) {
+        if (directory::is_separator(tdst.last_char())) {
             sep = tdst.last_char();
             tdst--;
         }
 
-        while(path.begins_with(".."))
+        bool is_below = true;
+
+        while (path.begins_with(".."_T))
         {
-            if(keep_below)
-                return false;
+            if (keep_below)
+                is_below = false;
 
             path.shift_start(2);
             char c = path.first_char();
 
-            if(c != 0 && !is_separator(c))
-                return false;       //bad path, .. not followed by separator
+            if (c != 0 && !is_separator(c))
+                return 0;           //bad path, .. not followed by a separator
 
-            if(tdst.is_empty())
-                return false;       //too many .. in path
+            if (tdst.is_empty())
+                return 0;           //too many .. in path
 
             token cut = tdst.cut_right_group_back(DIR_SEPARATORS, token::cut_trait_keep_sep_with_returned());
-            if(directory::is_separator(cut.first_char()))
+            if (directory::is_separator(cut.first_char()))
                 sep = cut.first_char();
 
-            if(c == 0) {
+            if (c == 0) {
                 dst.resize(tdst.len());
-                return true;
+                return is_below ? -1 : 1;
             }
 
             ++path;
         }
 
-        if(keep_below) {
+        if (keep_below) {
             //check if the appended path doesn't escape out
             int rdepth = 0;
             token rp = path;
-            while(token v = rp.cut_left_group(DIR_SEPARATORS)) {
-                if(v == '.');
-                else if(v == "..")
+            while (token v = rp.cut_left_group(DIR_SEPARATORS))
+            {
+                if (v == '.');
+                else if (v == ".."_T)
                     rdepth--;
                 else
                     rdepth++;
 
-                if(rdepth < 0)
-                    return false;
+                if (rdepth < 0) {
+                    is_below = false;
+                    break;
+                }
             }
         }
 
         dst.resize(tdst.len());
 
-        if(dst && !is_separator(dst.last_char()))
+        if (dst && !is_separator(dst.last_char()))
             dst << sep;
 
         dst << path;
-    }
 
-    return true;
+        return is_below ? -1 : 1;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +384,7 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
     if (directory::is_valid_file(src)) {
         if (ddir) {
             //copy to dst/
-            token file = src.get_token().cut_right_group_back("\\/");
+            token file = src.get_token().cut_right_group_back("\\/"_T);
             dsts << file;
             err = move ? move_file(src, dsts) : copy_file(src, dsts);
         }
@@ -390,7 +396,7 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
 
     if (!sdir) {
         if (ddir) {
-            token folder = src.get_token().cut_right_group_back("\\/");
+            token folder = src.get_token().cut_right_group_back("\\/"_T);
             dsts << folder;
         }
         else if (!is_valid(dsts))
@@ -562,7 +568,7 @@ bool directory::get_relative_path(token src, token dst, charstr& relout, bool la
         }
     }
 
-    return append_path(relout, dst);
+    return append_path(relout, dst) != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -573,7 +579,7 @@ bool directory::compact_path(charstr& dst, char tosep)
 #ifdef SYSTYPE_WIN
     bool absp = false;
 
-    if (dtok.begins_with("\\\\")) {
+    if (dtok.begins_with("\\\\"_T)) {
         absp = true;
         dtok.shift_start(2);
     }
@@ -601,12 +607,11 @@ bool directory::compact_path(charstr& dst, char tosep)
     token fwd, rem;
     fwd.set_empty(dtok.ptr());
 
-    static const token up = "..";
     int nfwd = 0;
 
     do {
         token seg = dtok.cut_left_group(DIR_SEPARATORS);
-        bool isup = seg == up;
+        bool isup = seg == ".."_T;
 
         ints d = dtok.ptr() - seg.ptre();
         if(d > 1) {

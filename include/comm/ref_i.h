@@ -80,7 +80,7 @@ public:
             _p->add_refcount();
     }
 
-    ///Constructor from a convertible type
+    ///Copy constructor from convertible type
 #if SYSTYPE_MSVC && _MSC_VER >= 1800
     template<class T2, class = typename std::enable_if<std::is_convertible<T2*, T*>::value>::type>
 #else
@@ -90,10 +90,31 @@ public:
         _p = r.add_refcount();
     }
 
+    ///Move constructor from convertible type
+#if SYSTYPE_MSVC && _MSC_VER >= 1800
+    template<class T2, class = typename std::enable_if<std::is_convertible<T2*, T*>::value>::type>
+#else
+    template<class T2>
+#endif
+    iref(iref<T2>&& r) : _p(0) {
+        takeover(r);
+    }
+
+    ///Increment refcount
     T* add_refcount() const {
-        T* p = _p;
-        if (p && p->can_add_refcount())
-            return p;
+        if (_p)
+            _p->add_refcount();
+        return _p;
+    }
+
+    ///Assign refcounted object if its refcount is non-zero
+    //@return assigned object or null
+    //@note keeps previous object if assignment fails
+    T* add_refcount(T* p) {
+        if (p && p->can_add_refcount()) {
+            release();
+            return _p = p;
+        }
         return 0;
     }
 
@@ -154,7 +175,7 @@ public:
     }
 
     ///Assign if empty
-    bool assign_safe(const iref_t& r) {
+    /*bool assign_safe(const iref_t& r) {
         static coid::comm_mutex _mux(500, false);
 
         _mux.lock();
@@ -164,7 +185,7 @@ public:
             _p = r.add_refcount();
         _mux.unlock();
         return succ;
-    }
+    }*/
 
     const iref_t& operator = (const iref_t& r) {
         T* p = r.add_refcount();
@@ -196,12 +217,15 @@ public:
 
     typedef T* iref<T>::*unspecified_bool_type;
 
+    ///Discard without decrementing refcount
     void forget() { _p = 0; }
 
     template<class T2>
     void takeover(iref<T2>& p) {
-        if (_p == static_cast<T*>(p.get()))
+        if (_p == static_cast<T*>(p.get())) {
+            p.release();
             return;
+        }
         release();
         _p = p.get();
         p.forget();

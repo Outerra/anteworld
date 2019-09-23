@@ -40,8 +40,7 @@
 #define __COID_COMM_TIME__HEADER_FILE__
 
 #include "namespace.h"
-#include <time.h>
-#include <limits.h>
+#include <ctime>
 
 #ifdef SYSTYPE_MINGW
 time_t timelocal (struct tm *tm);
@@ -94,7 +93,7 @@ struct timet
     static timet last()
     {
         timet t;
-        t.t = LLONG_MAX;
+        t.t = INT64_MAX;
         return t;
     }
 

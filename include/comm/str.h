@@ -44,9 +44,8 @@
 #include "binstream/bstype.h"
 #include "hash/hashfunc.h"
 
- //#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstring>
+#include <ctime>
 #include <functional>
 
 #include "token.h"
@@ -65,7 +64,7 @@ class charstr
 
 public:
 
-    COIDNEWDELETE("charstr");
+    COIDNEWDELETE(charstr);
 
     struct output_iterator : std::iterator<std::output_iterator_tag, char>
     {
@@ -93,7 +92,7 @@ public:
     ///String literal constructor, optimization to have fast literal strings available as tokens
     //@note tries to detect and if passed in a char array instead of string literal, by checking if the last char is 0
     // and the preceding char is not 0
-    // Call token(&*array) to force treating the array as a zero-terminated string
+    // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
     charstr(const char(&str)[N])
     {
@@ -222,18 +221,10 @@ public:
     explicit charstr(int64 i) { append_num(10, i); }
     explicit charstr(uint64 i) { append_num(10, i); }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    explicit charstr(ints i) { append_num(10, (ints)i); }
-    explicit charstr(uints i) { append_num(10, (uints)i); }
-# else //SYSTYPE_64
-    explicit charstr(int i) { append_num(10, i); }
-    explicit charstr(uint i) { append_num(10, i); }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     explicit charstr(long i) { append_num(10, (ints)i); }
     explicit charstr(ulong i) { append_num(10, (uints)i); }
-#endif //SYSTYPE_WIN
+#endif
 
     explicit charstr(float d) { operator += (d); }
     explicit charstr(double d) { operator += (d); }
@@ -259,7 +250,7 @@ public:
             return czstr;
         }
 
-        DASSERT(slen <= UMAX32);
+        DASSERTN(slen <= UMAX32);
 
         assign(czstr, slen);
         return czstr + slen;
@@ -286,7 +277,7 @@ public:
         if(slen == 0)
             return czstr;
 
-        DASSERT(slen <= UMAX32);
+        DASSERTN(slen <= UMAX32);
 
         _append(czstr, slen);
         _tstr[len()] = 0;
@@ -295,7 +286,9 @@ public:
 
     const char* add_from_range(const char* strbgn, const char* strend)
     {
-        return add_from(strbgn, strend - strbgn);
+        return strend > strbgn
+            ? add_from(strbgn, strend - strbgn)
+            : strbgn;
     }
 
     ///Copy to buffer, terminate with zero
@@ -342,7 +335,7 @@ public:
         }
         else {
             uints ts = lens();
-            DASSERT(ts + length <= UMAX32);
+            DASSERTN(ts + length <= UMAX32);
 
             if((uints)length < ts)
             {
@@ -452,18 +445,10 @@ public:
     charstr& operator = (int64 i) { reset(); append_num(10, i);       return *this; }
     charstr& operator = (uint64 i) { reset(); append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator = (ints i) { reset(); append_num(10, (ints)i);  return *this; }
-    charstr& operator = (uints i) { reset(); append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator = (int i) { reset(); append_num(10, i); return *this; }
-    charstr& operator = (uint i) { reset(); append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator = (long i) { reset(); append_num(10, (ints)i);  return *this; }
     charstr& operator = (ulong i) { reset(); append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator = (float d) { reset(); return operator += (d); }
     charstr& operator = (double d) { reset(); return operator += (d); }
@@ -550,18 +535,10 @@ public:
     charstr& operator += (int64 i) { append_num(10, i);       return *this; }
     charstr& operator += (uint64 i) { append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator += (ints i) { append_num(10, (ints)i);  return *this; }
-    charstr& operator += (uints i) { append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator += (int i) { append_num(10, i); return *this; }
-    charstr& operator += (uint i) { append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator += (long i) { append_num(10, (ints)i);  return *this; }
     charstr& operator += (ulong i) { append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator += (float d) { append_float(d, 6); return *this; }
     charstr& operator += (double d) { append_float(d, 10); return *this; }
@@ -606,18 +583,10 @@ public:
     charstr& operator << (int64 i) { append_num(10, i);       return *this; }
     charstr& operator << (uint64 i) { append_num(10, i);       return *this; }
 
-#ifdef SYSTYPE_WIN
-# ifdef SYSTYPE_32
-    charstr& operator << (ints i) { append_num(10, (ints)i);  return *this; }
-    charstr& operator << (uints i) { append_num(10, (uints)i); return *this; }
-# else //SYSTYPE_64
-    charstr& operator << (int i) { append_num(10, i); return *this; }
-    charstr& operator << (uint i) { append_num(10, i); return *this; }
-# endif
-#elif defined(SYSTYPE_32)
+#if defined(SYSTYPE_WIN)
     charstr& operator << (long i) { append_num(10, (ints)i);  return *this; }
     charstr& operator << (ulong i) { append_num(10, (uints)i); return *this; }
-#endif //SYSTYPE_WIN
+#endif
 
     charstr& operator << (float d) { return operator += (d); }
     charstr& operator << (double d) { return operator += (d); }
@@ -1347,6 +1316,22 @@ public:
         return *this;
     }
 
+    ///Replace all non-alphanumeric characters
+    charstr& replace_non_alphanum(char replacement)
+    {
+        for (char* p = (char*) ptr(), *pe = (char*) ptre(); p < pe; ++p) {
+            uchar c = *p;
+            
+            if ((c >= 'A') && (c <= 'Z') || (c >= 'a') && (c <= 'z') || (c >= '0') && (c <= '9')) {
+                continue;
+            }
+
+            *p = replacement;
+        }
+
+        return *this;
+    }
+
     ///Append string while decoding characters as specified for URL encoding
     charstr& append_decode_url(const token& str)
     {
@@ -1945,7 +1930,7 @@ protected:
             return;
         }
 
-        DASSERT(len <= UMAX32);
+        DASSERTN(len <= UMAX32);
 
         char* p = _tstr.alloc(len + 1);
         xmemcpy(p, czstr, len);
@@ -1966,7 +1951,7 @@ protected:
             return 0;
         }
 
-        DASSERT(len <= UMAX32);
+        DASSERTN(len <= UMAX32);
 
         char* p = _tstr.alloc(len + 1);
         termzero();
@@ -2149,7 +2134,7 @@ protected:
     char* uniadd(uints n)
     {
         uints cn = _tstr.sizes();
-        DASSERT(cn + n <= UMAX32);
+        DASSERTN(cn + n <= UMAX32);
 
         char* p = (cn == 0)
             ? _tstr.add(n + 1)
@@ -2362,7 +2347,7 @@ template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
 {
     typedef charstr key_type;
 
-    size_t operator() (const charstr& str) const
+    uint operator() (const charstr& str) const
     {
         return INSENSITIVE
             ? __coid_hash_string(str.ptr(), str.len())
@@ -2372,7 +2357,7 @@ template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
 
 ///Equality operator for hashes with token keys
 template<>
-struct equal_to<charstr, token> : public std::binary_function<charstr, token, bool>
+struct equal_to<charstr, token>
 {
     typedef token key_type;
 
@@ -2383,7 +2368,7 @@ struct equal_to<charstr, token> : public std::binary_function<charstr, token, bo
 };
 
 ///Case-insensitive equality operators for hashes with token keys
-struct equal_to_insensitive : public std::binary_function<charstr, token, bool>
+struct equal_to_insensitive
 {
     typedef token key_type;
 

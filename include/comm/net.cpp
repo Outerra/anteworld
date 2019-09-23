@@ -46,10 +46,8 @@
 #endif
 
 #define WIN32_LEAN_AND_MEAN
-//#include <windows.h>
 
 #include <winsock.h>
-#include <stdarg.h>
 #include <process.h>
 
 
@@ -574,11 +572,12 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setBlocking(bool blocking)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
 
 #ifdef SYSTYPE_WIN
 
-        uint32 nblocking = blocking ? 0 : 1;
+        ulong nblocking = blocking ? 0 : 1;
         ::ioctlsocket(handle, FIONBIO, &nblocking);
 
 #else
@@ -596,7 +595,8 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setBroadcast(bool broadcast)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
         int result;
         int one = broadcast ? 1 : 0;
 #ifdef SYSTYPE_WIN
@@ -604,13 +604,15 @@ namespace coid {
 #else
         result = ::setsockopt( handle, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one) );
 #endif
-        RASSERTE(result != -1, ersFAILED);
+        if (result == -1)
+            throw ersFAILED;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setBuffers(uint rsize, uint wsize)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
         int result = -1;
 #ifdef SYSTYPE_WIN
         if(rsize)
@@ -623,13 +625,15 @@ namespace coid {
         if(wsize)
             result = ::setsockopt( handle, SOL_SOCKET, SO_SNDBUF, &wsize, sizeof(wsize) );
 #endif
-        RASSERTE(result != -1, ersFAILED);
+        if (result == -1)
+            throw ersFAILED;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setNoDelay(bool nodelay)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
 
         int one = nodelay;
 #ifdef SYSTYPE_WIN
@@ -642,7 +646,8 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setReuseAddr(bool reuse)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
 
         int one = reuse;
 #ifdef SYSTYPE_WIN
@@ -655,7 +660,8 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     void netSocket::setLinger(bool blinger, ushort sec)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
 
         struct linger lg;
         lg.l_onoff = blinger;
@@ -671,7 +677,9 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::bind(const char* host, int port)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         netAddress addr(host, port, true);
         return ::bind(handle, (const sockaddr*)&addr, sizeof(netAddress));
     }
@@ -679,14 +687,18 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::listen(int backlog)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         return ::listen(handle, backlog);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     uints netSocket::accept(netAddress* addr)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         socklen_t addr_len = (socklen_t) sizeof(netAddress);
         return ::accept(handle, (sockaddr*)addr, &addr_len);
     }
@@ -694,7 +706,9 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::connect(const token& host, int port, bool portoverride)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         netAddress addr(host, port, portoverride);
 
         if(addr.getBroadcast())
@@ -706,7 +720,9 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::connect(const netAddress& addr)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         if(addr.getBroadcast()) {
             setBroadcast(true);
         }
@@ -716,28 +732,36 @@ namespace coid {
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::send(const void * buffer, int size, int flags)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         return ::send(handle, (const char*)buffer, size, flags);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::sendto(const void * buffer, int size, int flags, const netAddress* to)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         return ::sendto(handle, (const char*)buffer, size, flags, (const sockaddr*)to, sizeof(netAddress));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::recv(void * buffer, int size, int flags)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         return ::recv(handle, (char*)buffer, size, flags);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     int netSocket::recvfrom(void * buffer, int size, int flags, netAddress* from)
     {
-        RASSERTE(handle != UMAXS, ersDISCONNECTED);  //invalid handle
+        if (handle == UMAXS)
+            throw ersDISCONNECTED;  //invalid handle
+
         socklen_t fromlen = (socklen_t) sizeof(netAddress);
         return ::recvfrom(handle, (char*)buffer, size, flags, (sockaddr*)from, &fromlen);
     }

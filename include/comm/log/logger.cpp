@@ -45,6 +45,7 @@
 #include "../binstream/stdstream.h"
 
 #include "../interface.h"
+#include "../timer.h"
 
 using namespace coid;
 
@@ -110,7 +111,7 @@ ref<logmsg> canlog(log::type type, const tokenhash & hash, const void * inst)
 class policy_msg : public policy_base
 {
 public:
-    COIDNEWDELETE("policy_msg");
+    COIDNEWDELETE(policy_msg);
 
     typedef pool<policy_msg*> pool_type;
 
@@ -220,7 +221,6 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 logmsg::logmsg()
-    : _logger(0), _type(log::none)
 {
     //reserve memory from process allocator
     _str.reserve(128, PROCWIDE_SINGLETON(comm_array_mspace).msp);
@@ -241,7 +241,12 @@ void logmsg::write()
 ////////////////////////////////////////////////////////////////////////////////
 bool logmsg::finalize( policy_msg* p )
 {
-    if(_type == log::none)
+    if (_type == log::perf) {
+        int64 ns = nsec_timer::current_time_ns() - _time;
+        _str << " (" << (ns * 1.0e-6f) << "ms)";
+    }
+
+    if (_type == log::none)
         _type = deduce_type();
 
     bool flush = _str.last_char() == '\r';
@@ -292,7 +297,7 @@ ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash, const voi
     if (type > _minlevel)
         return ref<logmsg>();
 
-    ref<logmsg> rmsg = operator()(type, mstime);
+    ref<logmsg> rmsg = operator()(type, hash, mstime);
     if (hash)
         rmsg->str() << '[' << hash << "] ";
 
@@ -300,9 +305,9 @@ ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash, const voi
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> logger::operator()( log::type t, const int64* time_ms )
+ref<logmsg> logger::operator()( log::type t, const tokenhash& hash, const int64* time_ms )
 {
-    ref<logmsg> msg = create_msg(t);
+    ref<logmsg> msg = create_msg(t, hash);
     if (!msg)
         return msg;
 
@@ -320,21 +325,33 @@ ref<logmsg> logger::operator()( log::type t, const int64* time_ms )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> logger::create_msg( log::type type )
+ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash )
 {
     if (type > _minlevel)
         return ref<logmsg>();
 
     ref<logmsg> msg = ref<logmsg>(policy_msg::create());
     msg->set_type(type);
+    msg->set_hash(hash);
     msg->set_logger(this);
+
+    if (type == log::perf)
+        msg->set_time(nsec_timer::current_time_ns());
 
     return msg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void logger::enqueue( ref<logmsg>&& msg )
-{
+{   
+    _filters.for_each([&](const log_filter& f) {
+        if (msg->get_type() <= (log::type)f._log_level
+            && f._module.cmpeq(msg->get_hash()))
+        {
+            f._filter_fun(msg);
+        }
+    });
+
     SINGLETON(log_writer).addmsg(std::forward<ref<logmsg>>(msg));
 }
 

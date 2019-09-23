@@ -95,7 +95,6 @@
     <ClCompile Include="log\logger.cpp" />
     <ClCompile Include="metastream\metastream.cpp" />
     <ClCompile Include="net.cpp" />
-    <ClCompile Include="net\asyncrcv.cpp" />
     <ClCompile Include="pthreadx.cpp" />
     <ClCompile Include="regex\regcomp.cpp" />
     <ClCompile Include="regex\regexec.cpp" />
@@ -185,6 +184,7 @@
     <ClInclude Include="dir.h" />
     <ClInclude Include="dynarray.h" />
     <ClInclude Include="fastdelegate.h" />
+    <ClInclude Include="function.h" />
     <ClInclude Include="hash\hashfunc.h" />
     <ClInclude Include="hash\hashkeyset.h" />
     <ClInclude Include="hash\hashmap.h" />
@@ -214,7 +214,6 @@
     <ClInclude Include="metastream\metavar.h" />
     <ClInclude Include="namespace.h" />
     <ClInclude Include="net.h" />
-    <ClInclude Include="net\asyncrcv.h" />
     <ClInclude Include="net_ul.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="password.h" />
@@ -255,32 +254,38 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <CppLanguageStandard>c++1y</CppLanguageStandard>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
-      <CppLanguageStandard>c++1y</CppLanguageStandard>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <CppLanguageStandard>c++1y</CppLanguageStandard>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
-      <CppLanguageStandard>c++1y</CppLanguageStandard>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <ClCompile>
-      <CppLanguageStandard>c++1y</CppLanguageStandard>
+      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

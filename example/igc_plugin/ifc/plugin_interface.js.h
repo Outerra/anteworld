@@ -19,9 +19,9 @@ public:
 
     ///Interface creator
     //@param scriptpath path to js script to bind to
-    static iref<::plugin_interface> get( const script_handle& script, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
+    static iref<::plugin_interface> get( const ::js::script_handle& script, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
     {
-        typedef iref<::plugin_interface> (*fn_bind)(const script_handle&, const coid::token&, v8::Handle<v8::Context>*);
+        typedef iref<::plugin_interface> (*fn_bind)(const ::js::script_handle&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "plugin_interface.get@creator.js";
 

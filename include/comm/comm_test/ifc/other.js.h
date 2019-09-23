@@ -19,9 +19,9 @@ class other
 public:
 
     //@param scriptpath path to js script to bind to
-    static iref<ns::other> create( const script_handle& script, const coid::charstr& str, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
+    static iref<ns::other> create( const ::js::script_handle& script, const coid::charstr& str, const coid::token& bindvar = coid::token(), v8::Handle<v8::Context>* ctx=0 )
     {
-        typedef iref<ns::other> (*fn_bind)(const script_handle&, const coid::charstr&, const coid::token&, v8::Handle<v8::Context>*);
+        typedef iref<ns::other> (*fn_bind)(const ::js::script_handle&, const coid::charstr&, const coid::token&, v8::Handle<v8::Context>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::other.create@creator.js";
 
