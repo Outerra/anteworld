@@ -2617,7 +2617,7 @@ def fbx_header_elements(root, scene_data, time=None):
     elem_data_single_int32(elem, b"Second", time.second)
     elem_data_single_int32(elem, b"Millisecond", time.microsecond // 1000)
 
-    elem_data_single_string_unicode(header_ext, b"Creator", "%s - %s - %d.%d.%d"
+    elem_data_single_string_unicode(header_ext, b"Creator", "Outerra fixed version of %s - %s - %d.%d.%d"
                                                 % (app_name, app_ver, addon_ver[0], addon_ver[1], addon_ver[2]))
 
     # 'SceneInfo' seems mandatory to get a valid FBX file...

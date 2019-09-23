@@ -19,7 +19,7 @@
 # <pep8 compliant>
 
 bl_info = {
-    "name": "FBX format",
+    "name": "FBX format(Outerra version)",
     "author": "Campbell Barton, Bastien Montagne, Jens Restemeier",
     "version": (3, 7, 7),
     "blender": (2, 77, 0),
@@ -603,7 +603,7 @@ def menu_func_import(self, context):
 
 
 def menu_func_export(self, context):
-    self.layout.operator(ExportFBX.bl_idname, text="FBX (.fbx)")
+    self.layout.operator(ExportFBX.bl_idname, text="Outerra FBX (.fbx)")
 
 
 def register():
