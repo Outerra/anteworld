@@ -75,6 +75,13 @@ template <> inline void* __del(void* &ptr, uints nfrom, uints nlen, uints ndel) 
 
 
 ////////////////////////////////////////////////////////////////////////////////
+enum class reserve_mode
+{
+    memory,                     //< reserve & commit memory to use initially, resizeable with rebase allowed
+    virtual_space,              //< reserve virtual address space for use for the whole lifetime, allocated dynamically
+};
+
+////////////////////////////////////////////////////////////////////////////////
 //Fw
 template<class T, class COUNT, class A> class dynarray;
 template<class T, class COUNT, class A>
@@ -122,6 +129,21 @@ public:
     explicit dynarray(uints reserve_count) : _ptr(0) {
         A::instance();
         reserve(reserve_count, false);
+    }
+
+    //@param count number of items to reserve meomory or virtual address space for
+    //@param mode reservation mode
+    dynarray(uints count, reserve_mode mode)
+    {
+        if (mode == reserve_mode::virtual_space) {
+            _ptr = A::template reserve<T>(count);
+            _set_count(0);
+        }
+        else {
+            A::instance();
+            _ptr = 0;
+            reserve(count, false);
+        }
     }
 
     ~dynarray() {
@@ -504,13 +526,14 @@ public:
             if (nalloc < 2 * n)
                 nalloc = 2 * n;
 
-            A::template free<T>(_ptr);
-
-            _ptr = A::template alloc<T>(nalloc);
+            if (!A::template realloc_in_place<T>(_ptr, nalloc)) {
+                A::template free<T>(_ptr);
+                _ptr = A::template alloc<T>(nalloc);
+            }
         }
 
         if (nitems) {
-            if (!has_trivial_default_constructor<T>::value)
+            if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
                 for (uints i = 0; i < nitems; ++i)  ::new(_ptr + i) T;
         }
 
@@ -535,14 +558,16 @@ public:
             if (nalloc < 2 * n)
                 nalloc = 2 * n;
 
-            A::template free<T>(_ptr);
-            _ptr = A::template alloc<T>(nalloc);
+            if (!A::template realloc_in_place<T>(_ptr, nalloc)) {
+                A::template free<T>(_ptr);
+                _ptr = A::template alloc<T>(nalloc);
+            }
         }
 
         if (nitems) {
             ::memset(_ptr, toones ? 0xff : 0x00, nitems * sizeof(T));
 
-            if (!has_trivial_default_constructor<T>::value)
+            if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
                 for (uints i = 0; i < nitems; ++i)  ::new(_ptr + i) T;
         }
 
@@ -563,7 +588,7 @@ public:
 
         if (nitems == n)  return _ptr;
         if (nitems < n) {
-            if (!std::is_trivially_destructible<T>::value)
+            if coid_constexpr_if (!std::is_trivially_destructible<T>::value)
                 for (uints i = n - 1; i > nitems; --i)  _ptr[i].~T();
             _set_count(nitems);
             return _ptr;
@@ -573,7 +598,7 @@ public:
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
 
         if (_ptr)  _set_count(nitems);
@@ -606,7 +631,7 @@ public:
 
         ::memset(_ptr + n, toones ? 0xff : 0x00, (nitems - n) * sizeof(T));
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
 
         if (_ptr)  _set_count(nitems);
@@ -656,7 +681,7 @@ public:
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (uints i = n; i < nto; ++i)  ::new(_ptr + i) T(std::forward<Args>(args)...);
 
         _set_count(nto);
@@ -681,7 +706,7 @@ public:
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (uints i = n; i < nto; ++i)  ::new(_ptr + i) T;
 
         _set_count(nto);
@@ -706,7 +731,7 @@ public:
 
         ::memset(_ptr + n, toones ? 0xff : 0, (nto - n) * sizeof(T));
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (uints i = n; i < nto; ++i)  ::new(_ptr + i) T;
 
         _set_count(nto);
@@ -895,7 +920,7 @@ public:
         if (n > 0) {
             dest = *last();
 
-            if (!std::is_trivially_destructible<T>::value)
+            if coid_constexpr_if (!std::is_trivially_destructible<T>::value)
                 _ptr[n - 1].~T();
 
             _set_count(n - 1);
@@ -912,7 +937,7 @@ public:
         uints cnt = _count();
         if (!cnt)  return 0;
 
-        if (!std::is_trivially_destructible<T>::value)
+        if coid_constexpr_if (!std::is_trivially_destructible<T>::value)
             _ptr[cnt - 1].~T();
 
         _set_count(cnt - 1);
@@ -1463,7 +1488,7 @@ public:
         addnc(nitems);
         T* p = __ins(_ptr, pos, _count() - nitems, nitems);
 
-        if (!has_trivial_default_constructor<T>::value)
+        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
             for (; nitems > 0; --nitems, ++p)  ::new (p) T;
         return _ptr + pos;
     }
@@ -1521,7 +1546,7 @@ public:
             return;
 
         uints i = nitems;
-        if (!std::is_trivially_destructible<T>::value)
+        if coid_constexpr_if (!std::is_trivially_destructible<T>::value)
             for (T* p = _ptr + pos; i > 0; --i, ++p)  p->~T();
 
         __del(_ptr, pos, _count(), nitems);
@@ -1688,7 +1713,7 @@ private:
             throw ersEXCEPTION "invalid pointer";
 #endif
         uints c = _count();
-        if (!std::is_trivially_destructible<T>::value)
+        if coid_constexpr_if (!std::is_trivially_destructible<T>::value)
             for (uints i = 0; i < c; ++i)  _ptr[i].~T();
     }
 
@@ -1821,7 +1846,7 @@ struct binstream_adapter_readable< dynarray<T, COUNT, A> > {
 /// region changes after call to realloc/add etc.
 struct dynarray_relocator
 {
-    ///Construct & initialize the relocator before resizing 
+    ///Construct & initialize the relocator before resizing
     template<class T, class COUNT>
     dynarray_relocator(dynarray<T, COUNT>& a)
         : _p(a._ptr), _a((void**)&a._ptr)

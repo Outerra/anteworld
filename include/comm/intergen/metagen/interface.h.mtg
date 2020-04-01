@@ -10,17 +10,20 @@
 
 #include <comm/commexception.h>
 #include <comm/intergen/ifc.h>
+$-(if base?)$
 
-$-(if base?)$#include "$baseclass$.h"$(/if)$
+#include "$baseclass$.h"
+$(/if)$
+$-[pasters]$
 
-$-[pasters]-$
 $@value$
 $-[/pasters]$
 
-$-[classnsx after="    "]$namespace $@value$ {
+$[classnsx after="    "]$namespace $@value$ {
 $[/classnsx]-$
 class $class$;
-$[classnsx]$}$[/classnsx]$
+$-[classnsx first="\r\n"]$}$[/classnsx]$
+
 
 $-[ns]$
 namespace $@value$ {
@@ -33,6 +36,10 @@ $-[/comments]$$(/if)$
 class $name$
     : public $(if base?)$$base$$(elif)$intergen_interface$(/if)$
 {
+$-(if inhmask?)$
+    const uint _inhmask = $inhmask$;
+
+$-(/if)$
 public:
 
     // --- interface methods ---
@@ -41,7 +48,7 @@ $-[method !static? !destroy?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
-    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ $-(if ..virtual?)$ = 0$(/if)$;
+    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $(if fnarg?)$( $-memfnclass after="::"-$ *$name$)($fnargs$)$(elif)$$name$$(/if)$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ $-(if ..virtual?)$ = 0$(/if)$;
 $[/method]-$
 $-(if !event.empty?)$
 
@@ -55,8 +62,8 @@ $-[event !static?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
-    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$
-    $-(if return.type?="void")$ {}$(elif default_event_body?)$ { $default_event_body$ }$(elif)${ throw coid::exception("handler not implemented"); }$(/if)$
+    virtual $return.type$ $name$($[args rest="," after=" "]$ $type$ $(if fnarg?)$(*$name$)($fnargs$)$(elif)$$name$$(/if)$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$
+    $-(if pure?)$ = 0;$(elif return.type?="void")$ {}$(elif default_event_body?)$ { $default_event_body$ }$(elif)${ throw coid::exception("handler not implemented"); }$(/if)$
 $[/event]-$
 
     virtual void force_bind_script_events() {}
@@ -71,7 +78,7 @@ $-[/event]$
 public:
 $-(/if)$
     // --- creators ---
-$-[method static? !ifccr?]$
+$-[method creator? !ifccr?]$
 
 $(if !comments.empty?)$$[comments]-$
     $@value$
@@ -84,7 +91,7 @@ $[/comments]$$(/if)-$
     template<class T>
     static iref<T> $name$( T* _subclass_$[args]$, $type$ $name$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$ );
 $-[/method]$
-$-[method static? ifccr?]$
+$-[method creator? ifccr?]$
 
 $(if !comments.empty?)$$[comments]-$
     $@value$
@@ -103,11 +110,11 @@ $-(if varname? destroy.name.empty?)$
 $-(/if)$
 
     ///Interface revision hash
-    static const int HASHID = $hash$;
+    static const int HASHID = $hash$u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "$ns rest="::" after="::"$$name$";
+        static const coid::tokenhash _name = "$ns rest="::" after="::"$$name$"_T;
         return _name;
     }
 
@@ -121,22 +128,22 @@ $-(/if)$
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
+    static const coid::token& intergen_default_creator_static( backend bck ) {
 $-(if default_creator.name.empty?)$
-        static const coid::token _dc("");
+        static const coid::token _dc(""_T);
 $-(elif)$
-        static const coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$");
+        static const coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$"_T);
 $-(/if)$
-        static const coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js");
-        static const coid::token _djsc("$ns rest="::" after="::"$$name$@wrapper.jsc");
-        static const coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua");
+        static const coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js"_T);
+        static const coid::token _djsc("$ns rest="::" after="::"$$name$@wrapper.jsc"_T);
+        static const coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -147,7 +154,7 @@ $-(if varname?)$
     static iref<$name$> intergen_active_interface(::$classnsx rest="::" after="::"$$class$* host);
 
 $-(/if)$
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -157,18 +164,18 @@ $-(/if)$
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override $-(if !virtual?)$ final$(/if)$ {
+    void* intergen_wrapper( backend bck ) const override $-(if !virtual?)$ final$(/if)$ {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override $-(if !virtual?)$ final$(/if)$ {
+    const coid::token& intergen_default_creator( backend bck ) const override $-(if !virtual?)$ final$(/if)$ {
         return intergen_default_creator_static(bck);
     }
 
@@ -178,15 +185,15 @@ $-(/if)$
     {
         static_assert(std::is_base_of<$name$, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "$ns rest="::" after="::"$$name$";
-        tmp << "@client-$hash$" << '.' << type;
+        coid::charstr tmp = "$ns rest="::" after="::"$$name$"_T;
+        tmp << "@client-$hash$"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -200,9 +207,18 @@ $-(if varname?)$
         return _mx;
     }
 
+    ///Cleanup routine called from ~$name$()
+    static void _cleaner_callback($name$* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
+
+    bool assign_safe(intergen_interface* client__, iref<$name$>* pout);
+
     typedef void (*cleanup_fn)($name$*, intergen_interface*);
-    cleanup_fn _cleaner;
+    cleanup_fn _cleaner = 0;
 $-(/if)$
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<$name$>* pout);
 $-(if destroy.name.empty!)$
 
     ~$name$() {
@@ -213,12 +229,13 @@ $-(if varname?)$
 $-(/if)$
     }
 $-(/if)$
-
-    $name$()$(if varname?)$ : _cleaner(0)$(/if)$
-    {}
 };
+$-[pasteafters]$
 
-$-[method static? !ifccr?]$
+$@value$
+$-[/pasteafters]$
+
+$-[method creator? !ifccr?]$
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
 inline iref<T> $..name$::$name$( T* _subclass_
@@ -227,14 +244,14 @@ inline iref<T> $..name$::$name$( T* _subclass_
     typedef iref<T> (*fn_creator)($..name$*$[args]$, $type$$[/args]$);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$";
+    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("$name$", "$..ns rest="::" after="::"$$..name$.$name$", "@$..hash$");
+        log_mismatch("$name$"_T, "$..ns rest="::" after="::"$$..name$.$name$"_T, "@$..hash$"_T);
         return 0;
     }
 
@@ -249,14 +266,14 @@ inline iref<$..name$> $..name$::$name$($-[args rest=", "]$$type$ $name$$size$$[/
     typedef iref<$..name$> (*fn_creator)($[args rest=", "]$$type$$[/args]$);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc";
+    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("$name$", "$..ns rest="::" after="::"$$..name$.$name$", "@$..hash$");
+        log_mismatch("$name$"_T, "$..ns rest="::" after="::"$$..name$.$name$"_T, "@$..hash$"_T);
         return 0;
     }
 
@@ -269,8 +286,8 @@ $-(if !virtual?)$
 #pragma warning(disable : 4191)
 
 $-[method !static? !destroy?]$
-inline $return.type$ $..name$::$name$($[args rest="," after=" "]$ $type$ $name$$size$$[/args]$) $-(if const?)$ const$(/if)$
-{ return VT_CALL($return.type$,($[args rest=","]$$type$$size$$[/args]$) $-(if const?)$ const$(/if)$,$index$)($[args rest=","]$ $-(if xref?)$std::forward<$basetype$>($(/if)-$ $name$ $-(if xref?)$)$(/if)-$ $[/args]$); }
+inline $return.type$ $..name$::$name$($[args rest="," after=" "]$ $type$ $(if fnarg?)$( $-memfnclass after="::"-$ *$name$)($fnargs$)$(elif)$$name$$(/if)$$size$$[/args]$) $-(if const?)$ const$(/if)$
+{ return VT_CALL($return.type$,($[args rest=","]$ $-(if fnarg?)$$type$($memfnclass after="::"$*)($fnargs$)$(elif)$$type$$(/if)-$ $size$$[/args]$) $-(if const?)$ const$(/if)$,$index$)($[args rest=","]$ $-(if xref?)$std::forward<$basetype$>($(/if)-$ $name$ $-(if xref?)$)$(/if)-$ $[/args]$); }
 $[/method]-$
 
 #pragma warning(pop)

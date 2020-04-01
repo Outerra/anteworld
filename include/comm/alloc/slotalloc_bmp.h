@@ -40,7 +40,7 @@ public:
     void clear()
     {
         uints id = first();
-        while (id != -1) {
+        while (id != UINTS_MAX) {
             get_item(id)->~T();
             id = next(id);
         }
@@ -125,7 +125,7 @@ public:
     {
         ++id;
 
-        DASSERT(id != -1 && id <= _bmp.size() * 32);
+        DASSERT(id != UINTS_MAX && id <= _bmp.size() * 32);
 
         const BLOCK_TYPE * b = _bmp.ptr() + (id >> 5);
         const BLOCK_TYPE * const be = _bmp.ptre();

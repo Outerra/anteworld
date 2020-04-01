@@ -187,15 +187,17 @@ public:
             else if (c == 'c')  flg |= _O_CREAT;
             else if (c == 't' || c == '-')  flg |= _O_TRUNC;
             else if (c == 'a' || c == '+')  flg |= _O_APPEND;
+            else if (c == 'S')  flg |= _O_SEQUENTIAL;
+            else if (c == 'R')  flg |= _O_RANDOM;
 #else
             else if (c == 'e')  flg |= O_EXCL;
             else if (c == 'c')  flg |= O_CREAT;
             else if (c == 't' || c == '-')  flg |= O_TRUNC;
             else if (c == 'a' || c == '+')  flg |= O_APPEND;
+            //else if (c == 'S')  flg |= O_SEQUENTIAL;
+            //else if (c == 'R')  flg |= O_RANDOM;
 #endif
-            else if (c == 'b');  //ignored - always binary mode
-            else if (c == 'S') flg |= _O_SEQUENTIAL;
-            else if (c == 'R') flg |= _O_RANDOM;
+            //else if (c == 'b');  //ignored - always binary mode
 
             //other letters ignored for forward compatibility
         }
@@ -288,7 +290,7 @@ public:
 
     ///Get file size
     uint64 get_size() const
-	{
+    {
 #ifdef SYSTYPE_MSVC
         struct _stat64 s;
         if( 0 == ::_fstat64(_handle, &s) )
@@ -298,8 +300,8 @@ public:
         if( 0 == ::fstat64(_handle, &s) )
             return s.st_size;
 #endif
-		return 0;
-	}
+        return 0;
+    }
 
     filestream() { _handle = -1; _wpos = _rpos = 0; _op = 1; }
 
@@ -393,7 +395,7 @@ public:
     {
         open(name, attr);
     }
-    
+
     ~bofstream() { }
 };
 

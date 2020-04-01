@@ -15,6 +15,7 @@
 #include <ot/geomob.h>
 #include <ot/jsb.h>
 #include <ot/sndgrp.h>
+#include <ot/action_cfg.h>
 #include <ot/vehicle_cfg.h>
 #include <ot/explosion_params.h>
 
@@ -115,11 +116,12 @@ public:
     void solar_time( ifc_out double& time, ifc_out float& sun_coef ) const;
 
     ///Set model space position for FPS camera
-    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32 );
+    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable );
 
     ///Set model space rotation frame
     //@param rot model space rotation
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
+    //@param use bone rotation if true, bone rotation is applied
     void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation );
 
     ///Set temporary camera FOV in FPS mode
@@ -127,12 +129,23 @@ public:
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
     void set_fps_camera_fov( float hfov, float vfov = 0 );
 
+    //@return current FPS camera position
+    float3 get_fps_camera_pos() const;
+
+    //@return current FPS camera rotation in model space
+    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
+    quat get_fps_camera_rot( bool base = false ) const;
+
     ///Set model space orientation for FPS camera
     //@param yaw yaw angle in radians, positive values to the right
     //@param pitch pitch angle in radians, positive up
     //@param roll roll angle in radians, positive clockwise
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
     void set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation );
+
+    //@return current yaw/pitch/roll angles of the camera in model space in radians
+    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
+    float3 get_fps_camera_ypr( bool base = false ) const;
 
     
     //@param target ECEF coordinates of the point
@@ -147,25 +160,6 @@ public:
 
     ///Disable tracking
     bool set_fps_camera_tracking_off();
-
-    ///Set FPS camera model-space offset and initial rotation
-    //@param pos offset position, relative to the object or bone
-    //@param rot rotation from default camera orientation (model -z forward, +y up)
-    //@param head_sim true if head movement should be simulated
-    //@param cam_enabled true if camera rotation controls are enabled
-    //@param joint_id bone id to attach to
-    void set_fps_camera( const float3& pos, const quat& rot, bool head_sim = true, bool cam_enabled = true, uint joint_id = UMAX32 );
-
-    //@return current FPS camera position
-    float3 get_fps_camera_pos() const;
-
-    //@return current FPS camera rotation in model space
-    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    quat get_fps_camera_rot( bool base = false ) const;
-
-    //@return current yaw/pitch/roll angles of the camera in model space in radians
-    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    float3 get_fps_camera_ypr( bool base = false ) const;
 
     ///Get heading/pitch/roll angles of the object in radians
     float3 heading_pitch_roll() const;
@@ -195,11 +189,11 @@ public:
 
     bool engine_running() const;
 
-    //@return current camera mode or seat (negative values), or ot::CamFree if camera isn't bound to this object
-    ot::ECameraMode get_camera_mode() const;
-
     ///
     void activate_event_group( const coid::token& name );
+
+    //@return current camera mode or seat (negative values), or ot::CamFree if camera isn't bound to this object
+    ot::ECameraMode get_camera_mode() const;
 
     ///Post message to the fading log
     void fade( const coid::token& text ) const;
@@ -307,11 +301,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 310730840;
+    static const int HASHID = 2956713601u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::aircraft_physics";
+        static const coid::tokenhash _name = "ot::aircraft_physics"_T;
         return _name;
     }
 
@@ -325,18 +319,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("");
-        static const coid::token _djs("ot::aircraft_physics@wrapper.js");
-        static const coid::token _djsc("ot::aircraft_physics@wrapper.jsc");
-        static const coid::token _dlua("ot::aircraft_physics@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc(""_T);
+        static const coid::token _djs("ot::aircraft_physics@wrapper.js"_T);
+        static const coid::token _djsc("ot::aircraft_physics@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::aircraft_physics@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -345,7 +339,7 @@ public:
     //@note host side helper
     static iref<aircraft_physics> intergen_active_interface(::jsbsim_plane* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -355,18 +349,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -376,15 +370,15 @@ public:
     {
         static_assert(std::is_base_of<aircraft_physics, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::aircraft_physics";
-        tmp << "@client-310730840" << '.' << type;
+        coid::charstr tmp = "ot::aircraft_physics"_T;
+        tmp << "@client-2956713601"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -397,11 +391,17 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(aircraft_physics*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~aircraft_physics()
+    static void _cleaner_callback(aircraft_physics* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    aircraft_physics() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<aircraft_physics>* pout);
+
+    typedef void (*cleanup_fn)(aircraft_physics*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<aircraft_physics>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,14 +411,14 @@ inline iref<T> aircraft_physics::get( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(aircraft_physics*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::aircraft_physics.get@310730840";
+    static const coid::token ifckey = "ot::aircraft_physics.get@2956713601"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::aircraft_physics.get", "@310730840");
+        log_mismatch("get"_T, "ot::aircraft_physics.get"_T, "@2956713601"_T);
         return 0;
     }
 
@@ -482,8 +482,8 @@ inline void aircraft_physics::lights_off( bool instant )
 inline void aircraft_physics::solar_time( double& time, float& sun_coef ) const
 { return VT_CALL(void,(double&,float&) const,17)(time,sun_coef); }
 
-inline void aircraft_physics::set_fps_camera_pos( const float3& pos, uint joint_id )
-{ return VT_CALL(void,(const float3&,uint),18)(pos,joint_id); }
+inline void aircraft_physics::set_fps_camera_pos( const float3& pos, uint joint_id, ot::EJointRotationMode joint_rotation )
+{ return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),18)(pos,joint_id,joint_rotation); }
 
 inline void aircraft_physics::set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
 { return VT_CALL(void,(const quat&,ot::ERotationMode),19)(rot,mouse_rotation); }
@@ -491,80 +491,77 @@ inline void aircraft_physics::set_fps_camera_rot( const quat& rot, ot::ERotation
 inline void aircraft_physics::set_fps_camera_fov( float hfov, float vfov )
 { return VT_CALL(void,(float,float),20)(hfov,vfov); }
 
-inline void aircraft_physics::set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
-{ return VT_CALL(void,(float,float,float,ot::ERotationMode),21)(yaw,pitch,roll,mouse_rotation); }
-
-inline bool aircraft_physics::set_fps_camera_tracking_point( const double3& target, bool level_horizon )
-{ return VT_CALL(bool,(const double3&,bool),22)(target,level_horizon); }
-
-inline bool aircraft_physics::set_fps_camera_tracking( bool level_horizon )
-{ return VT_CALL(bool,(bool),23)(level_horizon); }
-
-inline bool aircraft_physics::set_fps_camera_tracking_off()
-{ return VT_CALL(bool,(),24)(); }
-
-inline void aircraft_physics::set_fps_camera( const float3& pos, const quat& rot, bool head_sim, bool cam_enabled, uint joint_id )
-{ return VT_CALL(void,(const float3&,const quat&,bool,bool,uint),25)(pos,rot,head_sim,cam_enabled,joint_id); }
-
 inline float3 aircraft_physics::get_fps_camera_pos() const
-{ return VT_CALL(float3,() const,26)(); }
+{ return VT_CALL(float3,() const,21)(); }
 
 inline quat aircraft_physics::get_fps_camera_rot( bool base ) const
-{ return VT_CALL(quat,(bool) const,27)(base); }
+{ return VT_CALL(quat,(bool) const,22)(base); }
+
+inline void aircraft_physics::set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
+{ return VT_CALL(void,(float,float,float,ot::ERotationMode),23)(yaw,pitch,roll,mouse_rotation); }
 
 inline float3 aircraft_physics::get_fps_camera_ypr( bool base ) const
-{ return VT_CALL(float3,(bool) const,28)(base); }
+{ return VT_CALL(float3,(bool) const,24)(base); }
+
+inline bool aircraft_physics::set_fps_camera_tracking_point( const double3& target, bool level_horizon )
+{ return VT_CALL(bool,(const double3&,bool),25)(target,level_horizon); }
+
+inline bool aircraft_physics::set_fps_camera_tracking( bool level_horizon )
+{ return VT_CALL(bool,(bool),26)(level_horizon); }
+
+inline bool aircraft_physics::set_fps_camera_tracking_off()
+{ return VT_CALL(bool,(),27)(); }
 
 inline float3 aircraft_physics::heading_pitch_roll() const
-{ return VT_CALL(float3,() const,29)(); }
+{ return VT_CALL(float3,() const,28)(); }
 
 inline void aircraft_physics::set_pitch_roll( float pitch, float roll )
-{ return VT_CALL(void,(float,float),30)(pitch,roll); }
+{ return VT_CALL(void,(float,float),29)(pitch,roll); }
 
 inline void aircraft_physics::reset_ic()
-{ return VT_CALL(void,(),31)(); }
+{ return VT_CALL(void,(),30)(); }
 
 inline void aircraft_physics::initialize_ic()
-{ return VT_CALL(void,(),32)(); }
+{ return VT_CALL(void,(),31)(); }
 
 inline bool aircraft_physics::engine_running() const
-{ return VT_CALL(bool,() const,33)(); }
+{ return VT_CALL(bool,() const,32)(); }
+
+inline void aircraft_physics::activate_event_group( const coid::token& name )
+{ return VT_CALL(void,(const coid::token&),33)(name); }
 
 inline ot::ECameraMode aircraft_physics::get_camera_mode() const
 { return VT_CALL(ot::ECameraMode,() const,34)(); }
 
-inline void aircraft_physics::activate_event_group( const coid::token& name )
-{ return VT_CALL(void,(const coid::token&),35)(name); }
-
 inline void aircraft_physics::fade( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,36)(text); }
+{ return VT_CALL(void,(const coid::token&) const,35)(text); }
 
 inline void aircraft_physics::log( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,37)(text); }
+{ return VT_CALL(void,(const coid::token&) const,36)(text); }
 
 inline void aircraft_physics::log_err( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),38)(text); }
+{ return VT_CALL(void,(const coid::token&),37)(text); }
 
 inline void aircraft_physics::log_dbg( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),39)(text); }
+{ return VT_CALL(void,(const coid::token&),38)(text); }
 
 inline void aircraft_physics::log_inf( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),40)(text); }
+{ return VT_CALL(void,(const coid::token&),39)(text); }
 
 inline void aircraft_physics::fire( const float3& pos, const float3& dir, float speed, float caliber, const float3& color, uint joint )
-{ return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),41)(pos,dir,speed,caliber,color,joint); }
+{ return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),40)(pos,dir,speed,caliber,color,joint); }
 
 inline void aircraft_physics::explode_ground( const ot::ground_explosion& ge )
-{ return VT_CALL(void,(const ot::ground_explosion&),42)(ge); }
+{ return VT_CALL(void,(const ot::ground_explosion&),41)(ge); }
 
 inline float aircraft_physics::elevation_above_terrain( const float3& pos, float maxheight, uint joint ) const
-{ return VT_CALL(float,(const float3&,float,uint) const,43)(pos,maxheight,joint); }
+{ return VT_CALL(float,(const float3&,float,uint) const,42)(pos,maxheight,joint); }
 
 inline float aircraft_physics::ray_test( const float3& pos, const float3& dir, float maxdist, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,44)(pos,dir,maxdist,norm,hitpoint,joint); }
+{ return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,43)(pos,dir,maxdist,norm,hitpoint,joint); }
 
 inline iref<ot::object> aircraft_physics::object_test( const float3& pos, const float3& dir, float maxdist, bool exclude_self, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,45)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
+{ return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,44)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
 
 #pragma warning(pop)
 

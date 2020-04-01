@@ -87,7 +87,7 @@ class global_singleton_manager
         }
 
         killer( void* ptr, void (*fn_destroy)(void*), const token& type, const char* file, int line, bool invisible )
-            : ptr(ptr), fn_destroy(fn_destroy), type_name(type.ptr()), type(type), file(file), line(line), invisible(invisible)
+            : ptr(ptr), fn_destroy(fn_destroy), type_name(type.ptr()), file(file), line(line), type(type), invisible(invisible)
         {
             DASSERT(ptr);
         }
@@ -129,6 +129,24 @@ public:
         _t_creator_key.set(0);
 
         return k->ptr;
+    }
+
+    void destroy_singleton(void* p)
+    {
+        killer** pkill = &last;
+
+        while (*pkill) {
+            if ((*pkill)->ptr == p) {
+                killer* tmp = *pkill;
+                *pkill = tmp->next;
+
+                tmp->destroy();
+                delete tmp;
+                return;
+            }
+
+            pkill = &(*pkill)->next;
+        }
     }
 
     void destroy()
@@ -196,6 +214,12 @@ void* singleton_register_instance(
     return gsm.find_or_add_singleton(
         fn_create, fn_destroy, fn_initmod,
         type, file, line, invisible);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void singleton_unregister_instance(void* p)
+{
+    global_singleton_manager::get_local().destroy_singleton(p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

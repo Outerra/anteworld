@@ -3,8 +3,47 @@
 
 using namespace coid;
 
+static void test_miki()
+{
+    auto test = []() {
+        struct XX {
+            coid::dynarray<uint> a;
+            coid::dynarray<uint> b;
+        };
+        coid::dynarray<XX*> xxs;
+        int mip = 0;
+        int col = 0;
+        for (;;) {
+            coid::dynarray<uint> gb0;
+            coid::dynarray<uint> gb1;
+            uint tile_size = 256 >> mip;
+            if (tile_size == 0) break;
+
+            XX* xx = new XX;
+            xx->a.resize(tile_size * tile_size * 4 * 4);
+            xx->b.resize(gb0.size());
+            xxs.push(xx);
+
+            ++col;
+            if (col >= 81) {
+                col = 0;
+                ++mip;
+            }
+        }
+
+        for (uints i = 0; i < xxs.size(); ++i) {
+            delete xxs[i];
+        }
+    };
+    for (int i = 0; i < 100; ++i) {
+        test();
+    }
+}
+
 void test_malloc()
 {
+    //test_miki();
+
     /*while(1)
     {
         dynarray<uint8> buf, buf2, buf3;
@@ -38,7 +77,14 @@ void test_malloc()
     p = buf.add(8000);
     p[8000 - 1] = 2;
 
+    p = buf.alloc(24560);
+    p[24560 - 1] = 3;
+
     buf.discard();
 
     buf.reserve_virtual(s);
+    buf.discard();
+
+    dlfree(r);
+    dlfree(r0);
 }

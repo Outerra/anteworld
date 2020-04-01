@@ -103,7 +103,7 @@ struct token
     // and the preceding char is not 0
     // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
-    token(const char(&str)[N])
+    coid_constexpr_for token(const char(&str)[N])   //VS2015 has a broken constexpr, hence coid_constexpr_for
         : _ptr(str), _pte(str + N - 1)
     {
 #if defined(_DEBUG) || defined(COID_TOKEN_LITERAL_CHECK)
@@ -114,7 +114,7 @@ struct token
 
     ///Character array constructor
     template <int N>
-    token(char(&str)[N])
+    coid_constexpr_for token(char(&str)[N])
         : _ptr(str), _pte(str + strnlen(str, N))
     {}
 
@@ -169,7 +169,7 @@ struct token
         return tok;
     }
 
-    token(const token& src) : _ptr(src._ptr), _pte(src._pte) {}
+    constexpr token(const token& src) : _ptr(src._ptr), _pte(src._pte) {}
 
     token(const token& src, uints offs, uints len)
     {
@@ -191,11 +191,11 @@ struct token
         std::swap(_pte, other._pte);
     }
 
-    friend uint hash(const token& tok) {
+    friend coid_constexpr_for uint hash(const token& tok) {
         return tok.hash();
     }
 
-    uint hash() const {
+    coid_constexpr_for uint hash() const {
         return __coid_hash_string(ptr(), len());
     }
 
@@ -205,15 +205,15 @@ struct token
     ///Rebase token pointing into one string to point into the same region in another string
     token rebase(const charstr& from, const charstr& to) const;
 
-    const char* ptr() const { return _ptr; }
-    const char* ptre() const { return _pte; }
+    constexpr const char* ptr() const { return _ptr; }
+    constexpr const char* ptre() const { return _pte; }
 
-    const char* begin() const { return _ptr; }
-    const char* end() const { return _pte; }
+    constexpr const char* begin() const { return _ptr; }
+    constexpr const char* end() const { return _pte; }
 
     ///Return length of token
-    uint len() const { return uint(_pte - _ptr); }
-    uints lens() const { return _pte - _ptr; }
+    constexpr uint len() const { return uint(_pte - _ptr); }
+    constexpr uints lens() const { return _pte - _ptr; }
 
     ///Return number of unicode characters within utf8 encoded token
     uint len_utf8() const
@@ -243,10 +243,6 @@ struct token
         else if ((uints)n < lens())
             _pte = _ptr + n;
     }
-
-
-    static const token& TK_whitespace() { static token _tk(" \t\n\r");  return _tk; }
-    static const token& TK_newlines() { static token _tk("\n\r");  return _tk; }
 
 
     char operator[] (ints i) const {
@@ -842,15 +838,34 @@ struct token
     }
 
     ///Cut sep-character separated arguments. Handles strings enclosed in '' or ""
-    token cut_left_argument(char sep = ' ')
+    //@param sep separator char to look for
+    //@param end terminator char to stop at
+    //@note consumes the separator but not the end character
+    token cut_left_argument(char sep = ' ', char end = 0)
     {
         skip_whitespace();
 
         char c = first_char();
-        if (c == '\'' || c == '"')
-            return cut_left_string(0);
+        if (c == '\'' || c == '"') {
+            token r = cut_left_string(0);
+            skip_whitespace();
+            consume_char(sep);
+            return r;
+        }
 
-        return cut_left(sep);
+        const char* b = _ptr;
+        const char* p = strchr2(sep, end);
+
+        if (p) {
+            _ptr = *p == sep ? p + 1 : p;
+        }
+        else {
+            //return all if no separator found
+            _ptr = _pte;
+            p = _pte;
+        }
+
+        return token(b, p).trim_whitespace();
     }
 
     ///Cut left token up to specified character delimiter
@@ -858,6 +873,19 @@ struct token
     {
         token r;
         const char* p = strchr(c);
+        if (p) {
+            token sep(p, 1);
+            return ctr.process_found(*this, r, sep);
+        }
+        else
+            return ctr.process_notfound(*this, r);
+    }
+
+    ///Cut left token up to specified character delimiters
+    token cut_left(char c1, char c2, cut_trait ctr = cut_trait_remove_sep())
+    {
+        token r;
+        const char* p = strchr2(c1, c2);
         if (p) {
             token sep(p, 1);
             return ctr.process_found(*this, r, sep);
@@ -1679,6 +1707,15 @@ struct token
         return *this;
     }
 
+    ///Skip the leading part until after given token, or do nothing if token not found
+    //@return true if token was found
+    bool skip_until_after(const token& tok) {
+        const char* p = contains(tok);
+        if (p)
+            _ptr = const_cast<char*>(p + tok.len());
+        return p != 0;
+    }
+
 
     ///Cut line terminated by \r\n or \n
     //@param terminated_only if true, it won't return a line that wasn't terminated by EOL (will keep it)
@@ -1732,10 +1769,10 @@ struct token
 
 
 
-    static uints strnlen(const char* str, uints n)
+    static coid_constexpr_for uints strnlen(const char* str, uints n)
     {
-        uints i;
-        for (i = 0; i < n; ++i)
+        uints i = 0;
+        for (; i < n; ++i)
             if (str[i] == 0) break;
         return i;
     }
@@ -1745,6 +1782,14 @@ struct token
         const char* p = _ptr + off;
         for (; p < _pte; ++p)
             if (*p == c)  return p;
+        return 0;
+    }
+
+    const char* strchr2(char c1, char c2, uints off = 0) const
+    {
+        const char* p = _ptr + off;
+        for (; p < _pte; ++p)
+            if (*p == c1 || *p == c2)  return p;
         return 0;
     }
 
@@ -2010,14 +2055,18 @@ struct token
         }
 
         ///Convert part of the token to unsigned integer deducing the numeric base (0x, 0o, 0b or decimal)
-        T xtouint(token& t, T defval = 0, uint maxchars = 0)
+        T xtouint_and_shift(token& t, T defval = 0, uint maxchars = 0)
         {
             get_num_base(t);
-            return touint(t, defval, maxchars);
+            return touint_and_shift(t, defval, maxchars);
+        }
+
+        T xtouint(const token& t, T defval = 0, uint maxchars = 0) {
+            token tx = t; return xtouint_and_shift(tx, defval, maxchars);
         }
 
         ///Convert part of the token to unsigned integer
-        T touint(token& t, T defval = 0, uint maxchars = 0)
+        T touint_and_shift(token& t, T defval = 0, uint maxchars = 0)
         {
             success = false;
             T r = 0;
@@ -2048,31 +2097,44 @@ struct token
             return success ? r : defval;
         }
 
+        T touint(const token& t, T defval = 0, uint maxchars = 0) {
+            token tx = t; return touint_and_shift(tx, defval, maxchars);
+        }
+
         ///Convert part of the token to signed integer deducing the numeric base (0x, 0o, 0b or decimal)
-        T xtoint(token& t, T defval = 0, uint maxchars = 0)
+        T xtoint_and_shift(token& t, T defval = 0, uint maxchars = 0)
         {
             if (t.is_empty()) {
                 success = false;
                 return 0;
             }
             char c = t[0];
-            if (c == '-')  return (T)-xtouint(t.shift_start(1), defval, maxchars);
-            if (c == '+')  return (T)xtouint(t.shift_start(1), defval, maxchars);
-            return (T)xtouint(t, defval, maxchars);
+            if (c == '-')  return (T)-xtouint_and_shift(t.shift_start(1), defval, maxchars);
+            if (c == '+')  return (T)xtouint_and_shift(t.shift_start(1), defval, maxchars);
+            return (T)xtouint_and_shift(t, defval, maxchars);
+        }
+
+        T xtoint(const token& t, T defval = 0, uint maxchars = 0) {
+            token tx = t; return xtoint_and_shift(tx, defval, maxchars);
         }
 
         ///Convert part of the token to signed integer
-        T toint(token& t, T defval = 0, uint maxchars = 0)
+        T toint_and_shift(token& t, T defval = 0, uint maxchars = 0)
         {
             if (t.is_empty()) {
                 success = false;
                 return 0;
             }
             char c = t[0];
-            if (c == '-')  return (T)-touint(t.shift_start(1), defval, maxchars);
-            if (c == '+')  return (T)touint(t.shift_start(1), defval, maxchars);
-            return (T)touint(t, defval, maxchars);
+            if (c == '-')  return (T)-touint_and_shift(t.shift_start(1), defval, maxchars);
+            if (c == '+')  return (T)touint_and_shift(t.shift_start(1), defval, maxchars);
+            return (T)touint_and_shift(t, defval, maxchars);
         }
+
+        T toint(const token& t, T defval = 0, uint maxchars = 0) {
+            token tx = t; return toint_and_shift(tx, defval, maxchars);
+        }
+
 
         T touint(const char* s, T defval = 0, uint maxchars = 0)
         {
@@ -2140,42 +2202,42 @@ struct token
     uint touint_and_shift(uint defval = 0, uint maxchars = 0)
     {
         tonum<uint> conv(10);
-        return conv.touint(*this, defval, maxchars);
+        return conv.touint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert the token to unsigned int using as much digits as possible
     uint64 touint64_and_shift(uint64 defval = 0, uint maxchars = 0)
     {
         tonum<uint64> conv(10);
-        return conv.touint(*this, defval, maxchars);
+        return conv.touint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     uint xtouint_and_shift(uint defval = 0, uint maxchars = 0)
     {
         tonum<uint> conv;
-        return conv.xtouint(*this, defval, maxchars);
+        return conv.xtouint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     uint64 xtouint64_and_shift(uint64 defval = 0, uint maxchars = 0)
     {
         tonum<uint64> conv;
-        return conv.xtouint(*this, defval, maxchars);
+        return conv.xtouint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     uint touint_base_and_shift(uint base, uint defval = 0, uint maxchars = 0)
     {
         tonum<uint> conv(base);
-        return conv.touint(*this, defval, maxchars);
+        return conv.touint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     uint64 touint64_base_and_shift(uint base, uint64 defval = 0, uint maxchars = 0)
     {
         tonum<uint64> conv(base);
-        return conv.touint(*this, defval, maxchars);
+        return conv.touint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert the token to signed int using as much digits as possible
@@ -2214,88 +2276,32 @@ struct token
     int toint_and_shift(int defval = 0, uint maxchars = 0)
     {
         tonum<int> conv(10);
-        return conv.toint(*this, defval, maxchars);
+        return conv.toint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert the token to signed int using as much digits as possible
     int64 toint64_and_shift(int64 defval = 0, uint maxchars = 0)
     {
         tonum<int64> conv(10);
-        return conv.toint(*this, defval, maxchars);
+        return conv.toint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     int xtoint_and_shift(int defval = 0, uint maxchars = 0)
     {
         tonum<int> conv;
-        return conv.xtoint(*this, defval, maxchars);
+        return conv.xtoint_and_shift(*this, defval, maxchars);
     }
 
     ///Convert a hexadecimal, decimal, octal or binary token to unsigned int using as much digits as possible
     int64 xtoint64_and_shift(int64 defval = 0, uint maxchars = 0)
     {
         tonum<int64> conv;
-        return conv.xtoint(*this, defval, maxchars);
+        return conv.xtoint_and_shift(*this, defval, maxchars);
     }
 
     //@{ Conversion to numbers, given size of the integer type and a destination address
     bool toint_any(void* dst, uints size, uint maxchars = 0) const
-    {
-        token tok = *this;
-        switch (size) {
-        case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.toint(tok, 0, maxchars); } break;
-        case sizeof(int16) : { tonum<int16> conv; *(int16*)dst = conv.toint(tok, 0, maxchars); } break;
-        case sizeof(int32) : { tonum<int32> conv; *(int32*)dst = conv.toint(tok, 0, maxchars); } break;
-        case sizeof(int64) : { tonum<int64> conv; *(int64*)dst = conv.toint(tok, 0, maxchars); } break;
-        default:
-            return false;
-        }
-        return true;
-    }
-
-    bool touint_any(void* dst, uints size, uint maxchars = 0) const
-    {
-        token tok = *this;
-        switch (size) {
-        case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.touint(tok, 0, maxchars); } break;
-        case sizeof(uint16) : { tonum<uint16> conv; *(uint16*)dst = conv.touint(tok, 0, maxchars); } break;
-        case sizeof(uint32) : { tonum<uint32> conv; *(uint32*)dst = conv.touint(tok, 0, maxchars); } break;
-        case sizeof(uint64) : { tonum<uint64> conv; *(uint64*)dst = conv.touint(tok, 0, maxchars); } break;
-        default:
-            return false;
-        }
-        return true;
-    }
-
-    bool xtoint_any(void* dst, uints size, uint maxchars = 0) const
-    {
-        token tok = *this;
-        switch (size) {
-        case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.xtoint(tok, 0, maxchars); } break;
-        case sizeof(int16) : { tonum<int16> conv; *(int16*)dst = conv.xtoint(tok, 0, maxchars); } break;
-        case sizeof(int32) : { tonum<int32> conv; *(int32*)dst = conv.xtoint(tok, 0, maxchars); } break;
-        case sizeof(int64) : { tonum<int64> conv; *(int64*)dst = conv.xtoint(tok, 0, maxchars); } break;
-        default:
-            return false;
-        }
-        return true;
-    }
-
-    bool xtouint_any(void* dst, uints size, uint maxchars = 0) const
-    {
-        token tok = *this;
-        switch (size) {
-        case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.xtouint(tok, 0, maxchars); } break;
-        case sizeof(uint16) : { tonum<uint16> conv; *(uint16*)dst = conv.xtouint(tok, 0, maxchars); } break;
-        case sizeof(uint32) : { tonum<uint32> conv; *(uint32*)dst = conv.xtouint(tok, 0, maxchars); } break;
-        case sizeof(uint64) : { tonum<uint64> conv; *(uint64*)dst = conv.xtouint(tok, 0, maxchars); } break;
-        default:
-            return false;
-        }
-        return true;
-    }
-
-    bool toint_any_and_shift(void* dst, uints size, uint maxchars = 0)
     {
         switch (size) {
         case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.toint(*this, 0, maxchars); } break;
@@ -2308,7 +2314,7 @@ struct token
         return true;
     }
 
-    bool touint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    bool touint_any(void* dst, uints size, uint maxchars = 0) const
     {
         switch (size) {
         case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.touint(*this, 0, maxchars); } break;
@@ -2321,7 +2327,7 @@ struct token
         return true;
     }
 
-    bool xtoint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    bool xtoint_any(void* dst, uints size, uint maxchars = 0) const
     {
         switch (size) {
         case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.xtoint(*this, 0, maxchars); } break;
@@ -2334,7 +2340,7 @@ struct token
         return true;
     }
 
-    bool xtouint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    bool xtouint_any(void* dst, uints size, uint maxchars = 0) const
     {
         switch (size) {
         case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.xtouint(*this, 0, maxchars); } break;
@@ -2347,17 +2353,74 @@ struct token
         return true;
     }
 
+    bool toint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    {
+        switch (size) {
+        case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.toint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int16) : { tonum<int16> conv; *(int16*)dst = conv.toint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int32) : { tonum<int32> conv; *(int32*)dst = conv.toint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int64) : { tonum<int64> conv; *(int64*)dst = conv.toint_and_shift(*this, 0, maxchars); } break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    bool touint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    {
+        switch (size) {
+        case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.touint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint16) : { tonum<uint16> conv; *(uint16*)dst = conv.touint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint32) : { tonum<uint32> conv; *(uint32*)dst = conv.touint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint64) : { tonum<uint64> conv; *(uint64*)dst = conv.touint_and_shift(*this, 0, maxchars); } break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    bool xtoint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    {
+        switch (size) {
+        case sizeof(int8) : { tonum<int8> conv;  *(int8*)dst = conv.xtoint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int16) : { tonum<int16> conv; *(int16*)dst = conv.xtoint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int32) : { tonum<int32> conv; *(int32*)dst = conv.xtoint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(int64) : { tonum<int64> conv; *(int64*)dst = conv.xtoint_and_shift(*this, 0, maxchars); } break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
+    bool xtouint_any_and_shift(void* dst, uints size, uint maxchars = 0)
+    {
+        switch (size) {
+        case sizeof(uint8) : { tonum<uint8> conv;  *(uint8*)dst = conv.xtouint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint16) : { tonum<uint16> conv; *(uint16*)dst = conv.xtouint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint32) : { tonum<uint32> conv; *(uint32*)dst = conv.xtouint_and_shift(*this, 0, maxchars); } break;
+        case sizeof(uint64) : { tonum<uint64> conv; *(uint64*)dst = conv.xtouint_and_shift(*this, 0, maxchars); } break;
+        default:
+            return false;
+        }
+        return true;
+    }
+
     //@}
 
 
-    ///Convert token to double value, consuming as much as possible
+    ///Convert token to a double value, consuming as much as possible
     double todouble() const
     {
         token t = *this;
         return t.todouble_and_shift();
     }
 
-    ///Convert token to double value, shifting the consumed part
+    ///Convert token to a float value, consuming as much as possible
+    float tofloat() const {
+        return float(todouble());
+    }
+
+    ///Convert token to a double value, shifting the consumed part
     double todouble_and_shift()
     {
         bool invsign = false;
@@ -2386,6 +2449,11 @@ struct token
         }
 
         return invsign ? -val : val;
+    }
+
+    ///Convert token to a float value, shifting the consumed part
+    float tofloat_and_shift() {
+        return float(todouble_and_shift());
     }
 
     ///Convert string (in local time) to datetime value
@@ -2676,10 +2744,10 @@ inline uint string_hash(const token& tok) {
 class tokenhash : public token
 {
 public:
-    tokenhash() : _hash(0)
+    constexpr tokenhash() : _hash(0)
     {}
 
-    tokenhash(std::nullptr_t) : token(nullptr), _hash(0)
+    constexpr tokenhash(std::nullptr_t) : token(nullptr), _hash(0)
     {}
 
     ///String literal constructor, optimization to have fast literal strings available as tokens
@@ -2705,7 +2773,7 @@ public:
         _hash = __coid_hash_string(ptr(), len());
     }
 
-    tokenhash(const token& tok)
+    coid_constexpr_for tokenhash(const token& tok)
         : token(tok), _hash(__coid_hash_string(tok.ptr(), tok.len()))
     {}
 
@@ -2853,8 +2921,13 @@ COID_NAMESPACE_END
 
 #ifdef COID_USER_DEFINED_LITERALS
 
+#ifdef _T
+#pragma message("_T macro will conflict with token string literal")
+#undef _T
+#endif
+
 ///String literal returning token (_T suffix)
-inline coid_constexpr coid::token operator "" _T(const char* s, size_t len)
+inline constexpr coid::token operator "" _T(const char* s, size_t len)
 {
     return coid::token(s, len);
 }

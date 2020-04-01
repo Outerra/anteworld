@@ -115,30 +115,27 @@ inline T* align_ptr(T * ptr, const uints align = 0x10)
 }
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline coid_constexpr uints align_to_chunks( uints uval, uints usize )
-{ return uints((uval+usize-1)/usize); }
-
-/// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline coid_constexpr uint64 align_to_chunks64( uint64 uval, uint64 usize )
-{ return (uval+usize-1)/usize; }
+template<class UINT>
+inline constexpr UINT align_to_chunks( UINT uval, uints usize )
+{
+    return UINT((uval + usize - 1) / usize);
+}
 
 
 /// Aligns value to nearest multiplier of 2 pow rsize chunk size
-inline coid_constexpr uints align_value_to_power2( uints uval, uchar rsize )
-{ return uints((uval+(uints(1)<<rsize)-1) &~ ((uints(1)<<rsize)-1)); }
+template<class UINT>
+inline constexpr UINT align_value_to_power2( UINT uval, uchar rsize )
+{
+    return UINT((uval + (UINT(1) << rsize) - 1) & ~((UINT(1) << rsize) - 1));
+}
 
-/// Aligns value to nearest multiplier of 2 pow rsize chunk size
-inline coid_constexpr uint64 align_value_to_power2_64( uint64 uval, uchar rsize )
-{ return (uval+(uint64(1)<<rsize)-1) &~ ((uint64(1)<<rsize)-1); }
-
-
-/// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline coid_constexpr uints align_to_chunks_pow2( uints uval, uchar rsize )
-{ return uints((uval+((uints(1)<<rsize)-1))>>rsize); }
 
 /// Aligns value to given chunk size (enlarges to next chunk boundary)
-inline coid_constexpr uint64 align_to_chunks_pow2_64( uint64 uval, uchar rsize )
-{ return (uval+((uint64(1)<<rsize)-1))>>rsize; }
+template <class UINT>
+inline constexpr UINT align_to_chunks_pow2( UINT uval, uchar rsize )
+{
+    return UINT((uval + ((UINT(1) << rsize) - 1)) >> rsize);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +177,7 @@ inline INT int_change_sign( INT pattern, INT val )
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Always return unsigned modulo, a difference between the \a v number and its nearest
-/// lower multiple of \a m 
+/// lower multiple of \a m
 template< class INT >
 inline typename SIGNEDNESS<INT>::UNSIGNED int_umod( INT v, INT m )
 {

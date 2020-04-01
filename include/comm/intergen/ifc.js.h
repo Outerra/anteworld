@@ -17,7 +17,7 @@
  *
  * The Initial Developer of the Original Code is
  * Outerra.
- * Portions created by the Initial Developer are Copyright (C) 2013-2018
+ * Portions created by the Initial Developer are Copyright (C) 2013-2019
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -40,14 +40,34 @@
 #ifndef __INTERGEN_IFC_JS_H__
 #define __INTERGEN_IFC_JS_H__
 
-#include <comm/token.h>
-#include <comm/dir.h>
-#include <comm/metastream/metastream.h>
-#include <comm/metastream/fmtstream_v8.h>
-#include <comm/binstream/filestream.h>
+#include "../token.h"
+#include "../dir.h"
+#include "../metastream/metastream.h"
+#include "../metastream/fmtstream_v8.h"
+#include "../binstream/filestream.h"
 #include <v8/v8.h>
 
 namespace js {
+
+enum exception_behavior {
+    rethrow_in_cxx,                     //< rethrow js exceptions in c++
+    rethrow_in_js,                      //< rethrow js exceptions in js
+};
+
+struct interface_context
+{
+    //v8::Persistent<v8::Context> _context;
+    //v8::Persistent<v8::Script> _script;
+    v8::Persistent<v8::Object> _object;
+
+    v8::Local<v8::Context> context(v8::Isolate* iso) const {
+        if (_object.IsEmpty())
+            return iso->GetCurrentContext();
+
+        return _object.Get(iso)->CreationContext();
+    }
+};
+
 
  ///Helper for script loading
 struct script_handle
@@ -56,7 +76,7 @@ struct script_handle
     //@param path_or_script path or script content
     //@param is_path true if path_or_script is a path to the script file, false if it's the script itself
     //@param url string to use when identifying script origin
-    //@param context 
+    //@param context
     script_handle(
         const coid::token& path_or_script,
         bool is_path,
@@ -121,18 +141,18 @@ struct script_handle
     //@param path relative path (an include path) or absolute path from root
     //@param frame v8 stack frame number to be made relative to
     //@param dst [out] resulting path, using / for directory separators
-    //@param relpath [out] path relative 
+    //@param relpath [out] path relative
     //@return 0 if succeeded, 1 invalid stack frame, 2 invalid path
     static int get_target_path(coid::token path, uint frame, coid::charstr& dst, coid::token* relpath)
     {
-        V8_DECL_ISO(iso);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
 
-        v8::Local<v8::StackTrace> trace = v8::StackTrace::CurrentStackTrace(V8_OPTARG(iso) frame + 1, v8::StackTrace::kScriptName);
+        v8::Local<v8::StackTrace> trace = v8::StackTrace::CurrentStackTrace(iso, frame + 1, v8::StackTrace::kScriptName);
 
         if ((int)frame >= trace->GetFrameCount())
             return 1;
 
-        v8::String::Utf8Value uber(V8_OPTARG(iso) trace->GetFrame(V8_OPTARG(iso) frame)->GetScriptName());
+        v8::String::Utf8Value uber(iso, trace->GetFrame(iso, frame)->GetScriptName());
         coid::token curpath = coid::token(*uber, uber.length());
         curpath.cut_right_group_back("\\/", coid::token::cut_trait_keep_sep_with_source());
 
@@ -142,31 +162,34 @@ struct script_handle
         return coid::interface_register::include_path(curpath, path, dst, relpath) ? 0 : 2;
     }
 
-    static v8::Handle<v8::Script> load_script( const coid::token& script, const coid::token& fname )
+    static v8::Handle<v8::Script> load_script( const coid::token& script, const coid::token& fname, exception_behavior exb )
     {
-        V8_DECL_ISO(iso);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
         v8::Local<v8::String> scriptv8 = v8::string_utf8(script, iso);
 
         // set up an error handler to catch any exceptions the script might throw.
-        V8_TRYCATCH(iso, js_trycatch);
+        v8::TryCatch js_trycatch(iso);
 
-#ifdef V8_MAJOR_VERSION
         v8::ScriptOrigin so(v8::string_utf8(fname, iso));
         v8::Local<v8::Script> compiled_script;
         v8::MaybeLocal<v8::Script> maybe_compiled_script = v8::Script::Compile(iso->GetCurrentContext(), scriptv8, &so);
         maybe_compiled_script.ToLocal(&compiled_script);
-#else
-        v8::Handle<v8::Script> compiled_script =
-            v8::Script::Compile(scriptv8, v8::string_utf8(fname, iso));
-#endif
 
-        if (js_trycatch.HasCaught())
-            ::js::script_handle::throw_exception_from_js_error(js_trycatch, "load_script");
-        else {
-            compiled_script->Run(V8_OPTARG1(iso->GetCurrentContext()));
-
-            if (js_trycatch.HasCaught())
+        if (js_trycatch.HasCaught()) {
+            if (exb == rethrow_in_js)
+                js_trycatch.ReThrow();
+            else
                 ::js::script_handle::throw_exception_from_js_error(js_trycatch, "load_script");
+        }
+        else {
+            compiled_script->Run(iso->GetCurrentContext());
+
+            if (js_trycatch.HasCaught()) {
+                if (exb == rethrow_in_js)
+                    js_trycatch.ReThrow();
+                else
+                    ::js::script_handle::throw_exception_from_js_error(js_trycatch, "load_script");
+            }
         }
 
         return compiled_script;
@@ -176,12 +199,12 @@ struct script_handle
     ///Load and run script referenced to by the script_handle object
     v8::Handle<v8::Script> load_script()
     {
-        V8_DECL_ISO(iso);
-        V8_ESCAPABLE_SCOPE(iso, scope);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::EscapableHandleScope scope(iso);
 
         v8::Handle<v8::Context> context = has_context()
             ? _context
-            : V8_CUR_CONTEXT(iso);
+            : iso->GetCurrentContext();
         v8::Context::Scope context_scope(context);
 
         coid::token script_tok, script_path = _url;
@@ -211,36 +234,32 @@ struct script_handle
             script_tok = _str;
         }
 
-#ifdef V8_MAJOR_VERSION
         v8::Local<v8::String> scriptv8 = v8::String::NewFromUtf8(iso,
-            script_tok.ptr(), v8::String::kNormalString, script_tok.len());
-#else
-        v8::Local<v8::String> scriptv8 = v8::String::New(script_tok.ptr(), script_tok.len());
-#endif
+            script_tok.ptr(), v8::NewStringType::kNormal, script_tok.len()).ToLocalChecked();
 
         // set up an error handler to catch any exceptions the script might throw.
-        V8_TRYCATCH(iso, js_trycatch);
+        v8::TryCatch js_trycatch(iso);
 
-#ifdef V8_MAJOR_VERSION
-        v8::ScriptOrigin so(v8::string_utf8(script_path, iso));
+        v8::ScriptOrigin so = [&](){
+            if (script_path.begins_with("file:///")) {
+                return v8::ScriptOrigin(v8::string_utf8(script_path, iso));
+            }
+
+            coid::zstring tmp;
+            tmp.get_str() << "file:///" << script_path;
+            return v8::ScriptOrigin(v8::string_utf8(tmp, iso));
+        }();
         v8::Handle<v8::Script> compiled_script = v8::Script::Compile(context, scriptv8, &so).ToLocalChecked();
-#else
-        v8::Handle<v8::Script> compiled_script =
-            v8::Script::Compile(scriptv8, v8::string_utf8(script_path, iso));
-#endif
-        if (js_trycatch.HasCaught())
-            throw_exception_from_js_error(js_trycatch);
-
-        compiled_script->Run(V8_OPTARG1(iso->GetCurrentContext()));
 
         if (js_trycatch.HasCaught())
             throw_exception_from_js_error(js_trycatch);
 
-#ifdef V8_MAJOR_VERSION
+        compiled_script->Run(iso->GetCurrentContext());
+
+        if (js_trycatch.HasCaught())
+            throw_exception_from_js_error(js_trycatch);
+
         return scope.Escape(compiled_script);
-#else
-        return scope.Close(compiled_script);
-#endif
     }
 
 public:
@@ -248,9 +267,9 @@ public:
     ///Throw C++ exception from caught JS exception
     static void throw_exception_from_js_error(v8::TryCatch& tc, const coid::token& str = coid::token())
     {
-        V8_DECL_ISO(iso);
-        V8_HANDLE_SCOPE(iso, handle_scope);
-        v8::String::Utf8Value exc(V8_OPTARG(iso) tc.Exception());
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::HandleScope handle_scope(iso);
+        v8::String::Utf8Value exc(iso, tc.Exception());
 
         v8::Handle<v8::Message> message = tc.Message();
         coid::exception cexc;
@@ -258,9 +277,9 @@ public:
             cexc << *exc;
         }
         else {
-            v8::String::Utf8Value filename(V8_OPTARG(iso) message->GetScriptResourceName());
+            v8::String::Utf8Value filename(iso, message->GetScriptResourceName());
             const char* filename_string = *filename;
-            int linenum = message->GetLineNumber(V8_OPTARG1(iso->GetCurrentContext())) V8_FROMJUST;
+            int linenum = message->GetLineNumber(iso->GetCurrentContext()).FromJust();
 
             cexc << filename_string << '(' << linenum << "): " << *exc;
         }
@@ -271,41 +290,37 @@ public:
     }
 
     ///Function called from scripts to include a script
-    static v8::CBK_RET js_include(const v8::ARGUMENTS& args)
+    static void js_include(const v8::ARGUMENTS& args)
     {
         coid::charstr dst;
         coid::token relpath;
 
-        V8_DECL_ISO(iso);
-        V8_ESCAPABLE_SCOPE(iso, scope);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::HandleScope scope(iso);
 
         if (args.Length() < 1)
         {
             //return current path of the 0th stack frame when called without arguments
 
             if (!script_handle::get_target_path("", 0, dst, &relpath))
-                return (v8::CBK_RET)V8_UNDEFINED(iso);
+                return (void)v8::Undefined(iso);
 
             coid::charstr urlenc = "file:///";
             urlenc.append_encode_url(relpath, false);
 
             v8::Handle<v8::String> source = v8::string_utf8(urlenc, iso);
 
-#ifdef V8_MAJOR_VERSION
             args.GetReturnValue().Set(source);
             return;
-#else
-            return scope.Close(source);
-#endif
         }
 
-        v8::Local<v8::Context> ctx = V8_CUR_CONTEXT(iso);
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
 
         uint frame = args.Length() > 1
-            ? (uint)args[1]->IntegerValue(V8_OPTARG1(ctx)) V8_FROMJUST
+            ? (uint)args[1]->IntegerValue(ctx).FromJust()
             : 0;
 
-        v8::String::Utf8Value str(V8_OPTARG(iso) args[0]);
+        v8::String::Utf8Value str(iso, args[0]);
         coid::token path = coid::token(*str, str.length());
         path.trim_whitespace();
 
@@ -326,9 +341,9 @@ public:
         coid::token js = buf;
 
 
-        V8_TRYCATCH(iso, js_trycatch);
+        v8::TryCatch js_trycatch(iso);
         v8::Handle<v8::String> result = v8::string_utf8("$result", iso);
-        ctx->Global()->Set(result, V8_UNDEFINED(iso));
+        ctx->Global()->Set(ctx, result, v8::Undefined(iso)) V8_CHECK;
 
         coid::zstring filepath;
         filepath.get_str() << "file:///" << relpath;
@@ -336,43 +351,92 @@ public:
         v8::Handle<v8::String> source = v8::string_utf8(js, iso);
         v8::Handle<v8::String> spath = v8::string_utf8(filepath, iso);
 
-#ifdef V8_MAJOR_VERSION
         v8::ScriptOrigin so(spath);
 
         v8::Handle<v8::Script> script =
             v8::Script::Compile(ctx, source, &so).ToLocalChecked();
-#else
-        v8::Handle<v8::Script> script = v8::Script::Compile(source, spath);
-#endif
 
         if (js_trycatch.HasCaught()) {
             js_trycatch.ReThrow();
-#ifdef V8_MAJOR_VERSION
             return;
-#else
-            return v8::Undefined();
-#endif
         }
 
-        script->Run(V8_OPTARG1(ctx));
+        script->Run(ctx);
 
         if (js_trycatch.HasCaught()) {
             js_trycatch.ReThrow();
-#ifdef V8_MAJOR_VERSION
             return;
-#else
-            return v8::Undefined();
-#endif
         }
 
-        v8::Handle<v8::Value> rval = ctx->Global()->Get(result);
-        ctx->Global()->Set(result, V8_UNDEFINED(iso));
+        v8::Handle<v8::Value> rval = ctx->Global()->Get(ctx, result).ToLocalChecked();
+        ctx->Global()->Set(ctx, result, v8::Undefined(iso)) V8_CHECK;
 
-#ifdef V8_MAJOR_VERSION
         args.GetReturnValue().Set(rval);
-#else
-        return scope.Close(rval);
-#endif
+    }
+
+    ///Log msg from JS
+    static void js_log(const v8::ARGUMENTS& args)
+    {
+        v8::Isolate* iso = args.GetIsolate();
+
+        if (args.Length() == 0)
+            return (void)args.GetReturnValue().Set(v8::Undefined(iso));
+
+        intergen_interface* inst = 0;
+
+        v8::Local<v8::Object> obj__ = args.Holder();
+        if (!obj__.IsEmpty() && obj__->InternalFieldCount() > 0) {
+            v8::Local<v8::Value> intobj = obj__->GetInternalField(0);
+            if (intobj->IsExternal()) {
+                inst = static_cast<intergen_interface*>
+                    (v8::Handle<v8::External>::Cast(intobj)->Value());
+            }
+        }
+
+        v8::HandleScope handle_scope__(iso);
+        v8::String::Utf8Value key(iso, args[0]);
+
+        coid::token tokey(*key, key.length());
+
+        intergen_interface::ifclog_ext(
+            coid::log::none,
+            inst ? inst->intergen_interface_name() : coid::tokenhash("js"_T),
+            inst, tokey);
+
+        args.GetReturnValue().Set(v8::Undefined(iso));
+    }
+
+    ///Query interface from JS
+    static  void js_query_interface(const v8::ARGUMENTS& args)
+    {
+        v8::Isolate* iso = args.GetIsolate();
+
+        if (args.Length() < 1)
+            return v8::queue_js_exception(iso, &v8::Exception::Error, "Interface creator name missing");
+
+        v8::HandleScope handle_scope__(iso);
+        v8::String::Utf8Value key(iso, args[0]);
+        coid::token tokey(*key, key.length());
+
+        typedef v8::Handle<v8::Value>(*fn_get)(const v8::ARGUMENTS&);
+        fn_get get = reinterpret_cast<fn_get>(
+            coid::interface_register::get_interface_creator(tokey));
+
+        if (!get) {
+            coid::charstr tmp = "interface creator ";
+            tmp << tokey << " not found";
+            return v8::queue_js_exception(iso, v8::Exception::Error, tmp);
+        }
+
+        args.GetReturnValue().Set(get(args));
+    }
+
+    static void register_global_context_methods(v8::Handle<v8::Object> gobj, v8::Isolate* iso) {
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+
+        gobj->Set(ctx, v8::symbol("$include", iso), v8::FunctionTemplate::New(iso, &js_include)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
+        gobj->Set(ctx, v8::symbol("$query_interface", iso), v8::FunctionTemplate::New(iso, &js_query_interface)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
+        gobj->Set(ctx, v8::symbol("$log", iso), v8::FunctionTemplate::New(iso, &js_log)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
     }
 
 private:
@@ -386,26 +450,6 @@ private:
     v8::Handle<v8::Context> _context;
 };
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-struct interface_context
-{
-    //v8::Persistent<v8::Context> _context;
-    //v8::Persistent<v8::Script> _script;
-    v8::Persistent<v8::Object> _object;
-
-    v8::Local<v8::Context> context(v8::Isolate* iso) const {
-        if (_object.IsEmpty())
-            return V8_CUR_CONTEXT(iso);
-
-#ifdef V8_MAJOR_VERSION
-        return _object.Get(iso)->CreationContext();
-#else
-        return _object->CreationContext();
-#endif
-    }
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
@@ -430,7 +474,7 @@ inline T* unwrap_object(const v8::Handle<v8::Value> &arg)
     if (arg.IsEmpty()) return 0;
     if (!arg->IsObject()) return 0;
 
-    v8::Handle<v8::Object> obj = arg->ToObject(V8_OPTARG1(v8::Isolate::GetCurrent()));
+    v8::Handle<v8::Object> obj = arg->ToObject(v8::Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
     if (obj->InternalFieldCount() != 2) return 0;
 
     intergen_interface* p = static_cast<intergen_interface*>(
@@ -449,27 +493,16 @@ inline T* unwrap_object(const v8::Handle<v8::Value> &arg)
 ////////////////////////////////////////////////////////////////////////////////
 inline v8::Handle<v8::Value> wrap_object(intergen_interface* orig, v8::Handle<v8::Context> context)
 {
-#ifdef V8_MAJOR_VERSION
     v8::Isolate* iso = v8::Isolate::GetCurrent();
     if (!orig) return v8::Null(iso);
     v8::EscapableHandleScope handle_scope(iso);
-#else
-    if (!orig) return v8::Null();
-    v8::HandleScope handle_scope;
-#endif
 
     typedef v8::Handle<v8::Value>(*fn_wrapper)(intergen_interface*, v8::Handle<v8::Context>);
-    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::IFC_BACKEND_JS));
+    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::backend::js));
 
-#ifdef V8_MAJOR_VERSION
     if (fn)
         return handle_scope.Escape(fn(orig, context));
-    return V8_UNDEFINED(iso);
-#else
-    if (fn)
-        return handle_scope.Close(fn(orig, context));
-    return v8::Undefined();
-#endif
+    return v8::Undefined(iso);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,22 +510,14 @@ inline bool bind_object(const coid::token& bindname, intergen_interface* orig, v
 {
     if (!orig) return false;
 
-#ifdef V8_MAJOR_VERSION
     v8::Isolate* iso = v8::Isolate::GetCurrent();
     v8::HandleScope handle_scope(iso);
-#else
-    v8::HandleScope handle_scope;
-#endif
 
     typedef v8::Handle<v8::Value>(*fn_wrapper)(intergen_interface*, v8::Handle<v8::Context>);
-    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::IFC_BACKEND_JS));
+    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::backend::js));
 
-#ifdef V8_MAJOR_VERSION
-    return fn && context->Global()->Set(v8::String::NewFromOneByte(iso,
-        (const uint8*)bindname.ptr(), v8::NewStringType::kNormal, bindname.len()).ToLocalChecked(), fn(orig, context));
-#else
-    return fn && context->Global()->Set(v8::String::New(bindname.ptr(), bindname.len()), fn(orig, context));
-#endif
+    return fn && context->Global()->Set(iso->GetCurrentContext(), v8::String::NewFromOneByte(iso,
+        (const uint8*)bindname.ptr(), v8::NewStringType::kNormal, bindname.len()).ToLocalChecked(), fn(orig, context)).IsJust();
 }
 
 } //namespace js

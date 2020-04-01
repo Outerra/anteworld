@@ -66,8 +66,14 @@ public:
 
     COIDNEWDELETE(charstr);
 
-    struct output_iterator : std::iterator<std::output_iterator_tag, char>
+    struct output_iterator
     {
+        typedef std::output_iterator_tag iterator_category;
+        typedef char value_type;
+        typedef int difference_type;
+        typedef char* pointer_type;
+        typedef char& reference_type;
+
         charstr* _p;                    //<ptr to the managed item
 
         char& operator *(void) const {
@@ -939,7 +945,7 @@ public:
         return *this;
     }
 
-    ///Append n characters 
+    ///Append n characters
     charstr& appendn(uints n, char c)
     {
         char *p = uniadd(n);
@@ -1005,7 +1011,7 @@ public:
     template<typename ...Args>
     void print( const token& fmt, Args&& ...args )
     {
-        coid_constexpr int N = sizeof...(args);
+        constexpr int N = sizeof...(args);
         token substrings[N+1];
 
         int n = 0;
@@ -1321,8 +1327,8 @@ public:
     {
         for (char* p = (char*) ptr(), *pe = (char*) ptre(); p < pe; ++p) {
             uchar c = *p;
-            
-            if ((c >= 'A') && (c <= 'Z') || (c >= 'a') && (c <= 'z') || (c >= '0') && (c <= '9')) {
+
+            if (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || ((c >= '0') && (c <= '9'))) {
                 continue;
             }
 
@@ -1627,7 +1633,7 @@ public:
         char* pe = (char*)ptre();
         for(char* p = (char*)ptr(); p < pe; ++p)
             *p = (char) ::toupper(*p);
-        
+
         return *this;
     }
 
@@ -2130,7 +2136,7 @@ public:
 
 protected:
 
-    ///Add n uninitialized characters, plus one character for the terminating zero if it's not there already 
+    ///Add n uninitialized characters, plus one character for the terminating zero if it's not there already
     char* uniadd(uints n)
     {
         uints cn = _tstr.sizes();
@@ -2173,7 +2179,7 @@ inline token token::rebase(const charstr& from, const charstr& to) const
 inline uint token::replace(const token& from, const token& to, charstr& dst, bool icase) const
 {
     uint n = 0;
-    token str = *this, tok;
+    token str = *this;
 
     while (str) {
         token tok = str.cut_left(from, icase);

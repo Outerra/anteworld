@@ -66,7 +66,7 @@ thread_t thread::invalid()
 bool thread::is_invalid() const
 {
 #ifdef SYSTYPE_WIN
-    return _thread == UMAXS;
+    return _thread == UMAX32;
 #else
     return _thread == 0;
 #endif
@@ -95,7 +95,7 @@ thread thread::create_new( fnc_entry fn, void* arg, void* context, const token& 
 void thread::set_affinity_mask(uint64 mask)
 {
 #ifdef SYSTYPE_WIN
-    SetThreadAffinityMask(GetCurrentThread(), mask);
+    SetThreadAffinityMask(GetCurrentThread(), (DWORD_PTR)mask);
 #else
     cpu_set_t set;
     CPU_ZERO(&set);
@@ -109,7 +109,7 @@ void thread::set_affinity_mask(uint64 mask)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-thread thread::create_new( const std::function<void*()>& fn, void* context, const token& name )
+thread thread::create_new_fn( const function<void*()>& fn, void* context, const token& name )
 {
     return SINGLETON(thread_manager).thread_create(fn, context, name);
 }
@@ -149,7 +149,7 @@ bool thread::should_cancel() const
 ////////////////////////////////////////////////////////////////////////////////
 bool thread::self_should_cancel()
 {
-	return SINGLETON(thread_manager).self_test_cancellation();
+    return SINGLETON(thread_manager).self_test_cancellation();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

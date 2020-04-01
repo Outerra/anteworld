@@ -14,7 +14,7 @@ struct Foo
 
     friend metastream& operator || (metastream& m, Foo& v) {
         return m.operator_indirect(v,
-            [&](coid::charstr && s) { v.x = s.toint(); },
+            [&](coid::charstr && s) { v.x = (int)s.toint(); },
             [&]() -> coid::charstr { return coid::charstr(v.x); });
     }
 };

@@ -29,34 +29,58 @@ typedef glm::bvec2 bool2;
 typedef glm::bvec3 bool3;
 typedef glm::bvec4 bool4;
 
-typedef glm::detail::tvec4<int64> i64vec4;
-typedef glm::detail::tvec3<int64> i64vec3;
-typedef glm::detail::tvec2<int64> i64vec2;
+typedef glm::i64vec4 i64vec4;
+typedef glm::i64vec3 i64vec3;
+typedef glm::i64vec2 i64vec2;
 
-typedef glm::detail::tvec4<uint64> u64vec4;
-typedef glm::detail::tvec3<uint64> u64vec3;
-typedef glm::detail::tvec2<uint64> u64vec2;
+typedef glm::u64vec4 u64vec4;
+typedef glm::u64vec3 u64vec3;
+typedef glm::u64vec2 u64vec2;
 
-typedef glm::detail::tvec4<int16> short4;
-typedef glm::detail::tvec3<int16> short3;
-typedef glm::detail::tvec2<int16> short2;
+typedef glm::i16vec4 short4;
+typedef glm::i16vec3 short3;
+typedef glm::i16vec2 short2;
 
-typedef glm::detail::tvec4<uint16> ushort4;
-typedef glm::detail::tvec3<uint16> ushort3;
-typedef glm::detail::tvec2<uint16> ushort2;
+typedef glm::u16vec4 ushort4;
+typedef glm::u16vec3 ushort3;
+typedef glm::u16vec2 ushort2;
 
-typedef glm::detail::tvec4<int8> schar4;
-typedef glm::detail::tvec3<int8> schar3;
-typedef glm::detail::tvec2<int8> schar2;
+typedef glm::i16vec4 i16vec4;
+typedef glm::i16vec3 i16vec3;
+typedef glm::i16vec2 i16vec2;
 
-typedef glm::detail::tvec4<uint8> uchar4;
-typedef glm::detail::tvec3<uint8> uchar3;
-typedef glm::detail::tvec2<uint8> uchar2;
+typedef glm::u16vec4 u16vec4;
+typedef glm::u16vec3 u16vec3;
+typedef glm::u16vec2 u16vec2;
 
-typedef glm::hvec4 half4;
-typedef glm::hvec3 half3;
-typedef glm::hvec2 half2;
-typedef glm::detail::half half;
+typedef glm::i8vec4 i8vec4;
+typedef glm::i8vec3 i8vec3;
+typedef glm::i8vec2 i8vec2;
+
+typedef glm::u8vec4 u8vec4;
+typedef glm::u8vec3 u8vec3;
+typedef glm::u8vec2 u8vec2;
+
+template <int N>
+struct hvec {
+    glm::detail::hdata data[N];
+
+    glm::vec<N, float> to_float_vec() const {
+        glm::vec<N, float> v;
+        for (int i = 0; i<N; ++i)
+            v[i] = glm::detail::toFloat32(data[i]);
+        return v;
+    }
+
+    void from_float_vec(const glm::vec<N, float>& v) {
+        for (int i = 0; i<N; ++i)
+            data[i] = glm::detail::toFloat16(v[i]);
+    }
+};
+
+using half2 = hvec<2>;
+using half3 = hvec<3>;
+using half4 = hvec<4>;
 
 //matrices
 

@@ -17,7 +17,7 @@
 *
 * The Initial Developer of the Original Code is
 * Outerra.
-* Portions created by the Initial Developer are Copyright (C) 2017-2018
+* Portions created by the Initial Developer are Copyright (C) 2017-2020
 * the Initial Developer. All Rights Reserved.
 *
 * Contributor(s):
@@ -47,18 +47,27 @@ COID_NAMESPACE_BEGIN
 template<class T, class KEY>
 struct extractor
 {
+    using value_type = T;
+    using key_type = KEY;
+
     KEY operator()(const T& value) const { return value; }
 };
 
 template<class T, class KEY>
 struct extractor<T*, KEY*>
 {
+    using value_type = T;
+    using key_type = KEY;
+
     KEY* operator()(T* value) const { return value; }
 };
 
 template<class T, class KEY>
 struct extractor<T*, KEY>
 {
+    using value_type = T;
+    using key_type = KEY;
+
     KEY operator()(T* value) const { return *value; }
 };
 
@@ -79,7 +88,8 @@ template<
 class slothash
     : public slotalloc_base<T, MODE, Es..., uint>
 {
-    typedef slotalloc_base<T, MODE, Es..., uint> base;
+    using base = slotalloc_base<T, MODE, Es..., uint>;
+    using extract_value_type = typename EXTRACTOR::value_type;
 
     //static constexpr int SEQTABLE_ID = sizeof...(Es);
 
@@ -101,11 +111,7 @@ public:
     T* get_or_create(uints, bool*) = delete;
 
     slothash(uint reserve_items = 64)
-        : base(reserve_items)
     {
-        //append related array for hash table sequences
-        //base::append_relarray(&_seqtable);
-
         reserve(reserve_items);
     }
 
@@ -256,6 +262,14 @@ public:
         return p;
     }
 
+    T* push_keyless(const T& val) {
+        return base::push(val);
+    }
+
+    T* push_keyless(T&& val) {
+        return base::push(std::forward<T>(val));
+    }
+
     ///Delete item from hash map
     void del(T* p)
     {
@@ -315,6 +329,7 @@ public:
             return;
 
         base::reserve(nitems);
+
         resize(nitems, UMAX32);
     }
 
@@ -367,11 +382,29 @@ protected:
     uint* find_object_entry(uint bucket, const FKEY& k)
     {
         uint* n = &_buckets[bucket];
-        while (*n != UMAX32)
+        uint id = *n;
+
+        if (id == UMAX32)
+            return n;
+
+        dynarray<uint>& seq = seqtable();
+
+        do
         {
-            if (_EXTRACTOR(*base::get_item(*n)) == k)
+            if (_EXTRACTOR(*base::get_item(id)) == k)
                 return n;
-            n = &seqtable()[*n];
+            n = &seq[id];
+            id = *n;
+        }
+        while (id != UMAX32);
+
+        //make sure rebase won't break the returned pointer
+        if coid_constexpr_if(!base::LINEAR) {
+            if (seq.reserved_remaining() < sizeof(uint)) {
+                uints offs = n - seq.ptr();
+                uint* ps = seq.reserve(seq.size() + 1, true);
+                n = ps + offs;
+            }
         }
 
         return n;

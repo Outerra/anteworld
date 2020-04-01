@@ -203,7 +203,9 @@ public:
 
     /// DO NOT USE !!!
     policy* add_refcount() const {
-        if(_p) _p->add_refcount(); return _p;
+        if (_p)
+            _p->add_refcount();
+        return _p;
     }
 
     policy* can_add_refcount() const {

@@ -89,7 +89,7 @@ public:
     void insert( const value_type* f, const value_type* l )
     {   insert_unique( f, l );   }
 
-    void insert( const_iterator f, const_iterator l ) 
+    void insert( const_iterator f, const_iterator l )
     {   insert_unique( f, l );   }
 
     const VAL* insert_value( const value_type& val )
@@ -107,13 +107,13 @@ public:
 
     const VAL* find_value( const key_type& k ) const
     {
-        const typename _HT::Node* v = find_node(k);
+        const typename _HT::Node* v = this->find_node(k);
         return v ? &v->_val : 0;
     }
 
     const VAL* find_value( uint hash, const key_type& k ) const
     {
-        const typename _HT::Node* v = find_node(hash,k);
+        const typename _HT::Node* v = this->find_node(hash,k);
         return v ? &v->_val : 0;
     }
 
@@ -206,14 +206,14 @@ public:
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
-    
+
     iterator insert( const value_type& val )
     {   return insert_equal(val);    }
 
     void insert( const value_type* f, const value_type* l )
     {   insert_equal( f, l );   }
 
-    void insert( const_iterator f, const_iterator l ) 
+    void insert( const_iterator f, const_iterator l )
     {   insert_equal( f, l );   }
 
     const VAL* insert_value( const value_type& val )
@@ -221,7 +221,7 @@ public:
         typename _HT::Node** v = this->__insert_equal(val);
         return v  ?  &(*v)->_val  :  0;
     }
-    
+
     const VAL* insert_value( value_type&& val )
     {
         typename _HT::Node** v = this->__insert_equal(std::forward<value_type>(val));

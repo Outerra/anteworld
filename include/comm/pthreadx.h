@@ -42,6 +42,7 @@
 #include "retcodes.h"
 #include "net_ul.h"
 #include "token.h"
+#include "function.h"
 
 #ifndef SYSTYPE_WIN
 #   include <pthread.h>
@@ -68,7 +69,7 @@ public:
     typedef void* (*fnc_entry) (void*);
 
     struct Exception {};
-	struct CancelException : Exception { uint _code; CancelException(uint code):_code(code) {} };
+    struct CancelException : Exception { uint _code; CancelException(uint code):_code(code) {} };
     struct ExitException : Exception {};
 
 public:
@@ -79,7 +80,7 @@ public:
 
     thread& operator = (thread_t t) { _thread = t;  return *this; }
 
-    
+
     bool operator == (thread_t t) const;
     bool operator != (thread_t t) const  { return !(*this == t); }
 
@@ -102,14 +103,14 @@ public:
     ///Spawn new thread, setting up this object with reference to the new thread
     //@param fn function to execute
     //@param context thread context, queryable from thread
-    thread& create( const std::function<void*()>& fn, void* context=0, const token& name = token() )
+    thread& create_fn( const function<void*()>& fn, void* context=0, const token& name = token() )
     {
-        _thread = create_new(fn, context, name);
+        _thread = create_new_fn(fn, context, name);
         return *this;
     }
 
     ///Spawn new thread, returning the thread object
-    static thread create_new( const std::function<void*()>& fn, void* context=0, const token& name = token() );
+    static thread create_new_fn( const function<void*()>& fn, void* context=0, const token& name = token() );
 
     ///Spawn new thread, setting up this object with reference to the new thread
     //@param f function to execute
@@ -191,15 +192,16 @@ struct thread_key
 #endif
 
     thread_key();
+    thread_key(const thread_key&) = delete;
     ~thread_key();
 
     void set( void* v );
     void* get() const;
 };
 
-///Get per-thread on-demand created variable 
+///Get per-thread on-demand created variable
 template<class T>
-T* thread_object( thread_key tk ) {
+T* thread_object( thread_key& tk ) {
     T* t = (T*)tk.get();
     if(!t)
         tk.set( t = new T );

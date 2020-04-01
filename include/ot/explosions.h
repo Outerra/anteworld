@@ -43,7 +43,7 @@ public:
     //@param tracer_id tracer id to reuse
     //@param entid object id to be dragged by tracer
     //@param uservalue custom value
-    uint launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout = 0.5f, float trail = 0.2f, float timeout = 0.0f, float age = 0, uint tracer_id = UMAX32, uint entid = UMAX32, uint uservalue = 0 );
+    uint launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout = 0.5f, float trail = 0.2f, float timeout = 0.0f, float age = 0, uint tracer_id = UMAX32, entity_handle entid = entity_handle(), uint uservalue = 0 );
 
     void flash( const double3& pos, float intensity, const float4& color, float range, float timeout );
 
@@ -116,11 +116,11 @@ public:
     // --- internal helpers ---
 
     ///Interface revision hash
-    static const int HASHID = 1231380986;
+    static const int HASHID = 817026320u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::explosions";
+        static const coid::tokenhash _name = "ot::explosions"_T;
         return _name;
     }
 
@@ -134,23 +134,23 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::explosions.get@1231380986");
-        static const coid::token _djs("ot::explosions@wrapper.js");
-        static const coid::token _djsc("ot::explosions@wrapper.jsc");
-        static const coid::token _dlua("ot::explosions@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc("ot::explosions.get@817026320"_T);
+        static const coid::token _djs("ot::explosions@wrapper.js"_T);
+        static const coid::token _djsc("ot::explosions@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::explosions@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -160,18 +160,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -181,15 +181,15 @@ public:
     {
         static_assert(std::is_base_of<explosions, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::explosions";
-        tmp << "@client-1231380986" << '.' << type;
+        coid::charstr tmp = "ot::explosions"_T;
+        tmp << "@client-817026320"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -197,8 +197,7 @@ public:
 
 protected:
 
-    explosions()
-    {}
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<explosions>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,14 +207,14 @@ inline iref<T> explosions::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(explosions*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::explosions.get@1231380986";
+    static const coid::token ifckey = "ot::explosions.get@817026320"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::explosions.get", "@1231380986");
+        log_mismatch("get"_T, "ot::explosions.get"_T, "@817026320"_T);
         return 0;
     }
 
@@ -228,8 +227,8 @@ inline iref<T> explosions::get( T* _subclass_ )
 inline uint explosions::launch_combo( const double3& pos, const float3& speed, float size, const float3& color, const float3& smoke_color, float emitter_radius, float emitter_speed, float particle_size, float smoke_timeout, bool crater, bool solids, bool smoke )
 { return VT_CALL(uint,(const double3&,const float3&,float,const float3&,const float3&,float,float,float,float,bool,bool,bool),0)(pos,speed,size,color,smoke_color,emitter_radius,emitter_speed,particle_size,smoke_timeout,crater,solids,smoke); }
 
-inline uint explosions::launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout, float trail, float timeout, float age, uint tracer_id, uint entid, uint uservalue )
-{ return VT_CALL(uint,(const double3&,const float3&,float,const float3&,float,float,float,float,uint,uint,uint),1)(pos,speed,size,color,fadeout,trail,timeout,age,tracer_id,entid,uservalue); }
+inline uint explosions::launch_tracer( const double3& pos, const float3& speed, float size, const float3& color, float fadeout, float trail, float timeout, float age, uint tracer_id, entity_handle entid, uint uservalue )
+{ return VT_CALL(uint,(const double3&,const float3&,float,const float3&,float,float,float,float,uint,entity_handle,uint),1)(pos,speed,size,color,fadeout,trail,timeout,age,tracer_id,entid,uservalue); }
 
 inline void explosions::flash( const double3& pos, float intensity, const float4& color, float range, float timeout )
 { return VT_CALL(void,(const double3&,float,const float4&,float,float),2)(pos,intensity,color,range,timeout); }

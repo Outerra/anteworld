@@ -18,7 +18,7 @@
 *
 * The Initial Developer of the Original Code is
 * Outerra.
-* Portions created by the Initial Developer are Copyright (C) 2016-2018
+* Portions created by the Initial Developer are Copyright (C) 2016-2020
 * the Initial Developer. All Rights Reserved.
 *
 * Contributor(s):
@@ -48,7 +48,9 @@ enum class slotalloc_mode
     base = 0,
     pool = 1,               //< pool mode, destructors not called on item deletion, only on container deletion
 
-    atomic = 4,             //< ins/del operations are done as atomic operations
+    linear = 2,             //< linear memory layout with reserved normal or virtual memory, no rebasing allowed, otherwise paged
+
+    atomic = 4,             //< ins/del operations are done atomically, one inserter, multiple deleters allowed
     tracking = 8,           //< adds data and methods needed for tracking the modifications
     versioning = 16,        //< adds data and methods needed to track version of array items, to handle cases when a new item occupies the same slot and old references to the slot should be invalid
 
@@ -66,6 +68,112 @@ inline constexpr bool operator & (slotalloc_mode a, slotalloc_mode b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace slotalloc_detail {
+
+
+template <bool ATOMIC>
+struct atomic_base
+{
+    using uint_type = uints;
+};
+
+template <>
+struct atomic_base<true>
+{
+    using uint_type = std::atomic<uints>;
+};
+
+
+///Linear storage
+template <bool LINEAR, bool ATOMIC, class T>
+struct storage
+    : public atomic_base<ATOMIC>
+{
+    using atomic_base_t = atomic_base<ATOMIC>;
+    using uint_type = typename atomic_base_t::uint_type;
+
+    static constexpr int MASK_BITS = 8 * sizeof(uints);
+
+    ///Allocation page
+    struct page
+    {
+        static const uint ITEMS = 256;
+        static const uint NMASK = ITEMS / MASK_BITS;
+
+        T* data;
+
+        T* ptr() { return data; }
+        const T* ptr() const { return data; }
+
+        T* ptre() { return data + ITEMS; }
+        const T* ptre() const { return data + ITEMS; }
+
+        page() {
+            data = (T*)dlmalloc(ITEMS * sizeof(T));
+        }
+
+        ~page() {
+            dlfree(data);
+            data = 0;
+        }
+    };
+
+    dynarray<page> _pages;              //< pages of memory (paged mode)
+
+    uint_type _created = 0;             //< contigous elements created total
+
+//#ifndef COID_CONSTEXPR_IF // commented out to keep data layout with VS2017 and newer
+    dynarray<T> _array;                 //< main data array (when using contiguous memory)
+//#endif
+
+
+    void swap_storage(storage& other) {
+        _pages.swap(other._pages);
+        std::swap(_created, other._created);
+
+#ifndef COID_CONSTEXPR_IF
+        _array.swap(other._array);
+#endif
+    }
+};
+
+#ifdef COID_CONSTEXPR_IF
+
+///Paged storage
+template <bool ATOMIC, class T>
+struct storage<true, ATOMIC, T>
+    : public atomic_base<ATOMIC>
+{
+    using atomic_base_t = atomic_base<ATOMIC>;
+
+    static constexpr int MASK_BITS = 8 * sizeof(uints);
+
+    dynarray<T> _array;                 //< main data array (when using contiguous memory)
+
+
+    void swap_storage(storage& other) {
+        _array.swap(other._array);
+    }
+};
+
+#endif //COID_CONSTEXPR_IF
+
+
+template<class...Es>
+struct base_ext
+{
+protected:
+
+    typedef std::tuple<dynarray<Es>...>
+        extarray_t;
+
+    extarray_t _exts;
+
+    enum : size_t { extarray_size = sizeof...(Es) };
+
+    void swap_exts(base_ext<Es...>& other) {
+        std::swap(_exts, other._exts);
+    }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Bitmask for tracking item modifications
@@ -126,13 +234,8 @@ struct changeset
 ///Non-versioning base class
 template<bool VERSIONING, class...Es>
 struct base_versioning
-    : public std::tuple<dynarray<Es>...>
+    : public base_ext<Es...>
 {
-    typedef std::tuple<dynarray<Es>...>
-        extarray_t;
-
-    enum : size_t { extarray_size = sizeof...(Es) };
-
 #ifndef COID_CONSTEXPR_IF
     versionid get_versionid(uints id) const {
         DASSERT_RET(id < 0x00ffffffU, versionid());
@@ -147,17 +250,25 @@ struct base_versioning
 #endif
 };
 
+///Helper to initialize version to zero
+struct uint8_zero {
+    uint8 value = 0;
+
+    uint8_zero()
+    {}
+
+    uint8_zero(uint8 value) : value(value)
+    {}
+
+    operator uint8() const { return value; }
+    operator uint8& () { return value; }
+};
+
 ///Versioning base class specialization
 template<class...Es>
 struct base_versioning<true, Es...>
-    : public std::tuple<dynarray<Es>..., dynarray<uint8>>
+    : public base_ext<Es..., uint8_zero>
 {
-    typedef std::tuple<dynarray<Es>..., dynarray<uint8>>
-        extarray_t;
-
-    enum : size_t { extarray_size = sizeof...(Es) + 1 };
-
-
 #ifndef COID_CONSTEXPR_IF
     versionid get_versionid(uints id) const {
         DASSERT_RET(id < 0x00ffffffU, versionid());
@@ -176,28 +287,27 @@ struct base_versioning<true, Es...>
 
 protected:
 
-    dynarray<uint8>& version_array() {
-        return std::get<sizeof...(Es)>(*this);
+    dynarray<uint8_zero>& version_array() {
+        return std::get<sizeof...(Es)>(this->_exts);
     }
 
-    const dynarray<uint8>& version_array() const {
-        return std::get<sizeof...(Es)>(*this);
+    const dynarray<uint8_zero>& version_array() const {
+        return std::get<sizeof...(Es)>(this->_exts);
     }
 };
 
 
 /**
-@brief Slot allocator base with optional modification tracking. Adds an extra array with change tracking mask per item
+    @brief Slot allocator base with optional modification tracking
 **/
 template<bool VERSIONING, bool TRACKING, class...Es>
 struct base
     : public base_versioning<VERSIONING, Es...>
 {
-    typedef base_versioning<VERSIONING, Es...>
-        base_t;
+    using base_versioning_t = base_versioning<VERSIONING, Es...>;
 
     void swap(base& other) {
-        static_cast<typename base_t::extarray_t*>(this)->swap(other);
+        this->swap_exts(other);
     }
 
 #ifndef COID_CONSTEXPR_IF
@@ -209,16 +319,19 @@ struct base
 #endif
 };
 
-///
-template<bool VERSIONING, class...Es>
+
+///Partial specialization with tracking enabled
+/**
+    @note Adds an extra array with change tracking mask per item
+**/
+template <bool VERSIONING, class...Es>
 struct base<VERSIONING, true, Es...>
     : public base_versioning<VERSIONING, Es..., changeset>
 {
-    typedef base_versioning<VERSIONING, Es..., changeset>
-        base_t;
+    using base_versioning_t = base_versioning<VERSIONING, Es..., changeset>;
 
     void swap(base& other) {
-        static_cast<typename base_t::extarray_t*>(this)->swap(other);
+        this->swap_exts(other);
         std::swap(_frame, other._frame);
     }
 
@@ -227,13 +340,13 @@ struct base<VERSIONING, true, Es...>
     {
         //current frame is always at bit position 0
         dynarray<changeset>& mods = const_cast<dynarray<changeset>&>(
-            std::get<sizeof...(Es)>(*this));
+            std::get<sizeof...(Es)>(_exts));
         mods[k].mask |= 1;
     }
 #endif
 
-    dynarray<changeset>* get_changeset() { return &std::get<sizeof...(Es)>(*this); }
-    const dynarray<changeset>* get_changeset() const { return &std::get<sizeof...(Es)>(*this); }
+    dynarray<changeset>* get_changeset() { return &std::get<sizeof...(Es)>(this->_exts); }
+    const dynarray<changeset>* get_changeset() const { return &std::get<sizeof...(Es)>(this->_exts); }
     uint* get_frame() { return &_frame; }
 
 private:

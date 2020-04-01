@@ -91,6 +91,7 @@ class metagen //: public binstream
             int ie = def_escape("escape", '\\', 0);
             def_escape_pair(ie, "\\", "\\");
             def_escape_pair(ie, "n", "\n");
+            def_escape_pair(ie, "r", "\r");
             def_escape_pair(ie, "t", "    ");
             def_escape_pair(ie, "\n", nullptr);
 
@@ -646,7 +647,7 @@ class metagen //: public binstream
         virtual void parse_content(mtglexer& lex, ParsedTag& hdr) = 0;
     };
 
-    ///Empty tag for tagless leading static text 
+    ///Empty tag for tagless leading static text
     struct TagEmpty : Tag
     {
         virtual void process_content(metagen& mg, const Varx& var) const {}

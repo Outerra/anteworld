@@ -15,14 +15,15 @@ iglexer::iglexer()
     def_keywords( "const:volatile" );
 
     RLCMD = def_keywords( "rl_cmdr:rl_cmdr_p:rl_cmdr_s:rl_cmdp:rl_cmdp_p:rl_cmdp_s:rl_cmdi:rl_cmdi_p:rl_cmdi_s" );
-        
-    IGKWD = def_keywords( "ifc_class:ifc_class_var:ifc_class_virtual:ifc_fn:ifc_fnx:ifc_event:ifc_eventx:ifc_in:ifc_out:ifc_inout:ifc_ret" );
+
+    IGKWD = def_keywords( "ifc_class:ifc_classx:ifc_class_var:ifc_classx_var:ifc_class_virtual:ifc_fn:ifc_fnx:ifc_event:ifc_eventx:ifc_in:ifc_out:ifc_inout:ifc_ret" );
 
     int ie = def_escape( "escape", '\\', 0 );
     def_escape_pair( ie, "\\", "\\" );
     def_escape_pair( ie, "\"", "\"" );
     def_escape_pair( ie, "\'", "\'" );
     def_escape_pair( ie, "n", "\n" );
+    def_escape_pair( ie, "r", "\r" );
     def_escape_pair( ie, "\r\n", token() );
     def_escape_pair( ie, "\n", token() );
 
@@ -41,15 +42,15 @@ iglexer::iglexer()
     def_string( ".macro", "#", "\r", "escape" );
     def_string( ".macro", "#", "", "escape" );
 
-    IFC1 = def_block( "ifc1", "//ifc{", "//}ifc", "" );
-    IFC2 = def_block( "ifc2", "/*ifc{", "}ifc*/", "" );
+    IFC_LINE_COMMENT = def_block( "ifc1", "//ifc{", "//}ifc", "" );
+    IFC_BLOCK_COMMENT = def_block( "ifc2", "/*ifc{", "}ifc*/", "" );
 
     MLCOM = def_block( ".blkcomment", "/*", "*/", "" );
 
     ANGLE = def_block( "!angle", "<", ">", "angle .comment .blkcomment" );    //by default disabled
     SQUARE = def_block( "!square", "[", "]", "square .comment .blkcomment" );
     ROUND = def_block( "!round", "(", ")", "round .comment .blkcomment" );
-    CURLY = def_block( "curly", "{", "}", "curly .comment .blkcomment .macro" );
+    CURLY = def_block( "curly", "{", "}", "curly ifc1 ifc2 .comment .blkcomment .macro" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////

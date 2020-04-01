@@ -273,6 +273,8 @@ public:
     charstr& module_path(charstr& dst, bool append = false);
     charstr& module_name(charstr& dst, bool append = false);
 
+    uints module_handle() const { return (uints)_handle; }
+
 private:
 
     handle _handle;

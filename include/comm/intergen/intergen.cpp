@@ -13,6 +13,8 @@
 //debug string:
 // [inputs] $(ProjectDir)..\..\..\intergen\metagen
 
+//#define ENABLE_JSC
+
 stdoutstream out;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +27,9 @@ const token iglexer::TEMPL = "template";
 const token iglexer::NAMESPC = "namespace";
 
 const token iglexer::IFC_CLASS = "ifc_class";
+const token iglexer::IFC_CLASSX = "ifc_classx";
 const token iglexer::IFC_CLASS_VAR = "ifc_class_var";
+const token iglexer::IFC_CLASSX_VAR = "ifc_classx_var";
 const token iglexer::IFC_CLASS_VIRTUAL = "ifc_class_virtual";
 const token iglexer::IFC_FN = "ifc_fn";
 const token iglexer::IFC_FNX = "ifc_fnx";
@@ -236,7 +240,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
             ifc.relpathjsc = ifc.relpath;
             ifc.relpathjsc.ins(-(int)end.len(), ".jsc");
 
-			ifc.relpathlua = ifc.relpath;
+            ifc.relpathlua = ifc.relpath;
             ifc.relpathlua.ins(-(int)end.len(), ".lua");
 
             ifc.basepath = ifc.relpath;
@@ -266,7 +270,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
 
             if (generate(ni, ifc, tdir, fdir, mtime) < 0)
                 return;
-
+#if ENABLE_JSC
             //interface.jsc.h
             fdir.resize(flen);
             fdir << ifc.relpathjsc;
@@ -276,8 +280,8 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
 
             if (generate(ni, ifc, tdir, fdir, file.mtime) < 0)
                 return;
-
-			//iterface.lua.h
+#endif
+            //iterface.lua.h
             tdir.resize(tlen);
             tdir << "interface.lua.h.mtg";
 
@@ -317,16 +321,16 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
     tdir.ins(-8, ".js");
 
     generate(nifc, file, tdir, fdir, mtime);
-
-	//file.intergen.js.cpp
-	fdir.resize(flen);
+#if ENABLE_JSC
+    //file.intergen.jsc.cpp
+    fdir.resize(flen);
     fdir << file.fname << ".intergen.jsc.cpp";
 
     tdir.resize(tlen);
     tdir << "file.intergen.jsc.cpp.mtg";
 
     generate(nifc, file, tdir, fdir, mtime);
-
+#endif
     //file.intergen.lua.cpp
     fdir.resize(flen);
     fdir << file.fname << ".intergen.lua.cpp";
@@ -390,15 +394,16 @@ bool File::find_class(iglexer& lex, dynarray<charstr>& namespc, charstr& templar
     do {
         lex.next();
 
-        if (tok == lex.IFC1 || tok == lex.IFC2) {
+        if (tok == lex.IFC_LINE_COMMENT || tok == lex.IFC_BLOCK_COMMENT) {
             lex.complete_block();
             paste_block* pb = pasters.add();
 
             token t = tok;
-            t.skip_space();
-            pb->cond = t.get_line();
-
+            t.skip_space().trim_whitespace();
+            pb->condx = t.get_line();
             pb->block = t;
+            pb->namespc = namespc;
+
             continue;
         }
 
@@ -484,7 +489,6 @@ int File::parse(token path)
     hdrname.toupper();
 
     uint nm = 0;
-    uint ne = 0;
     int mt;
     charstr templarg;
     dynarray<charstr> namespc;
@@ -496,7 +500,7 @@ int File::parse(token path)
         {
             Class* pc = classes.add();
             if (!pc->parse(lex, templarg, namespc, &pasters, irefargs)
-                || pc->method.size() == 0 && pc->iface.size() == 0) {
+                || (pc->method.size() == 0 && pc->iface.size() == 0)) {
                 classes.resize(-1);
             }
         }

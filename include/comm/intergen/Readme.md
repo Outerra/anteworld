@@ -69,6 +69,53 @@ The generated client interface class can be used like this:
 Note that one host class can have multiple interfaces defined by `ifc_class` or `ifc_class_var` macros. All decorated methods that follow the interface class macro belong to the interface, up until the end of file or until the next interface class declaration.
 
 
+### Reference table
+
+#### Interface declaration
+
+Interface declaration can occur anywhere within a C++ class, also multiple times. Subsequent `ifc_fn*` or `ifc_event*` markers define which methods belong to the interface.
+
+| interface declaration |   |
+| --------------------- | - |
+| `ifc_class`           | one-directional interface, allows external code to call class methods exposed in the interface |
+| `ifc_class_var`       | bi-directional interface, also allows the host class to call methods of the connected clients |
+| `ifc_class_virtual`   | virtual interface for interface inheritance |
+
+#### Interface methods
+
+Valid after an `ifc_class*` declaration.
+
+| method prefix   | meaning |
+| ----------------- | ------- |
+| `ifc_fn`          | interface function that can be called from clients connecting to host class objects |
+| `ifc_fnx(name)`   | interface function like above, but with a different name in the clients |
+| `ifc_fnx(!)`      | interface function not visible from script clients, only from c++ |
+| `ifc_fnx(!name)`  | interface function with custom client name, not visible from script clients |
+| `ifc_fnx(~)`      | interface destructor |
+| - | |
+| `ifc_event`       | function that is implemented in connected clients, allowing to call outside handlers |
+| `ifc_eventx(name)` | event function with a custom name in clients |
+
+Interface events are methods not implemented in the host class, but expected to be implemented in the clients that connect to the interface. Normally, calling such methods would throw an exception if no client is connected, but if it doesn't matter, it's possible to tell intergen to use a specific method body in case no client is connected (yet).
+
+| event suffix   | meaning |
+| ----------------- | ------- |
+| `ifc_default_body(x)` | default method body to be used in case no client is connected to this host |
+| `ifc_default_empty`   | use an empty body in case no client is connected, otherwise there would be an exception thrown on use |
+
+#### Method arguments
+
+For interface methods used from script clients it's necessary to provide additional info about the direction of method arguments.
+
+| argument prefix   | meaning |
+| ----------------- | ------- |
+| `ifc_in`          | input argument |
+| `ifc_out`         | output argument |
+| `ifc_inout`       | in-out argument |
+| `ifc_volatile`    | (events) memory holding the value may be temporary and valid only for the duration of the call |
+
+
+
 ### Interface methods
 
 Normal methods callable from the interface can be simply declared by prefixing the method with `ifc_fn` or `ifc_fnx` keyword. Additionally, any out and in-out parameters have to be decorated by `ifc_out` or `ifc_inout` prefix keywords, respectively.
@@ -90,7 +137,7 @@ Normal methods callable from the interface can be simply declared by prefixing t
         //enum type parameters must have explicit enum keyword
         ifc_fn bool something( enum ESomething p );
     };
-```    
+```
 
 Interface destructor can be propagated as a special method of the host class, decorated by `ifc_fnx(~)`. This method is not exposed in the interface directly, it gets called only when the interface is released.
 
@@ -104,7 +151,6 @@ Interface destructor can be propagated as a special method of the host class, de
         //a method called when interface client is released
         ifc_fnx(~) void destroy();
 ```
-
 
 ### Obtaining interfaces to C++ objects
 

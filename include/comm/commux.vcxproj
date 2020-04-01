@@ -73,6 +73,12 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <IntDir>$(ProjectDir)bin\obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IntDir>$(ProjectDir)bin\obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="alloc\memtrack.cpp" />
     <ClCompile Include="alloc\slotalloc_bmp.cpp" />
@@ -267,7 +273,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <CppLanguageStandard>c++17</CppLanguageStandard>
-      <CppAdditionalWarning>no-conversion;%(CppAdditionalWarning)</CppAdditionalWarning>
+      <CppAdditionalWarning>%(CppAdditionalWarning);no-conversion</CppAdditionalWarning>
+      <CAdditionalWarning>%(CAdditionalWarning);no-conversion</CAdditionalWarning>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

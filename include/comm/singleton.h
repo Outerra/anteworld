@@ -45,50 +45,50 @@
 #include <type_traits>
 
 ///Retrieves module (current dll/exe) singleton object of given type T
-# define SINGLETON(T) \
-    coid::singleton<T>::instance(true, __FILE__,__LINE__)
+# define SINGLETON(...) \
+    coid::singleton<__VA_ARGS__>::instance(true, __FILE__, __LINE__)
 
 ///Retrieves process-wide global singleton object of given type T
-# define PROCWIDE_SINGLETON(T) \
-    coid::singleton<T>::instance(false, __FILE__,__LINE__)
+# define PROCWIDE_SINGLETON(...) \
+    coid::singleton<__VA_ARGS__>::instance(false, __FILE__, __LINE__)
 
 
 ///Used for function-local singleton objects, unique for each module (dll)
 /// usage:
 /// LOCAL_SINGLETON_DEF(class) name = new class;
-#define LOCAL_SINGLETON_DEF(T) \
-    static coid::singleton<T>
+#define LOCAL_SINGLETON_DEF(...) \
+    static coid::singleton<__VA_ARGS__>
 
 ///Used for function-local singleton objects returning process-wide singleton
 /// usage:
 /// LOCAL_PROCWIDE_SINGLETON_DEF(class) name = new class;
-#define LOCAL_PROCWIDE_SINGLETON_DEF(T) \
-    static coid::singleton<T,false>
+#define LOCAL_PROCWIDE_SINGLETON_DEF(...) \
+    static coid::singleton<__VA_ARGS__, false>
 
 
 ///Same as LOCAL_SINGLETON_DEF (compatibility)
-#define LOCAL_SINGLETON(T) LOCAL_SINGLETON_DEF(T)
+#define LOCAL_SINGLETON(...) LOCAL_SINGLETON_DEF(__VA_ARGS__)
 
 
 ///Returns thread singleton instance (the same one when called from different code within module)
-#define THREAD_SINGLETON(T) \
-    coid::thread_singleton<T>::instance(true)
+#define THREAD_SINGLETON(...) \
+    coid::thread_singleton<__VA_ARGS__>::instance(true)
 
 ///Returns a global thread singleton instance
-#define THREAD_GLOBAL_SINGLETON(T) \
-    coid::thread_singleton<T>::instance(false)
+#define THREAD_GLOBAL_SINGLETON(...) \
+    coid::thread_singleton<__VA_ARGS__>::instance(false)
 
 ///Used for function-local thread singleton objects
 /// usage:
 /// THREAD_LOCAL_SINGLETON_DEF(class) name = new class;
-#define THREAD_LOCAL_SINGLETON_DEF(T) \
-    static coid::thread_singleton<T>
+#define THREAD_LOCAL_SINGLETON_DEF(...) \
+    static coid::thread_singleton<__VA_ARGS__>
 
 
 
 ///Evaluates to true if a singleton of given type exists
-#define SINGLETON_EXISTS(T) \
-    (coid::singleton<T>::ptr() != 0)
+#define SINGLETON_EXISTS(...) \
+    (coid::singleton<__VA_ARGS__>::ptr() != 0)
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +106,8 @@ void* singleton_register_instance(
     const char* file,
     int line,
     bool invisible);
+
+void singleton_unregister_instance(void*);
 
 void singletons_destroy();
 
@@ -217,6 +219,11 @@ public:
         _p = (T*)singleton_register_instance(
             singleton_local_creator(new T(std::forward<T>(obj))), &destroy, &init_module,
             typeid(T).name(), 0, 0, Module);
+    }
+
+    ~singleton() {
+        if (_p)
+            singleton_unregister_instance(_p);
     }
 
     T* operator -> () { return _p; }

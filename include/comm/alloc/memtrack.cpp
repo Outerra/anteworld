@@ -105,16 +105,15 @@ memtrack_hash_t;
 ///
 struct memtrack_registrar
 {
-    volatile bool running;
+    volatile bool running = false;
 
-    memtrack_hash_t* hash;
-    comm_mutex* mux;
+    memtrack_hash_t* hash = 0;
+    comm_mutex* mux = 0;
 
-    bool enabled;
-    bool ready;
+    bool enabled = default_enabled;
+    bool ready = false;
 
-    memtrack_registrar() : mux(0), hash(0), enabled(default_enabled),
-        ready(false), running(false)
+    memtrack_registrar()
     {
         mux = new comm_mutex(500, false);
         hash = new memtrack_hash_t;

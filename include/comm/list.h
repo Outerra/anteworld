@@ -45,7 +45,6 @@ public:
     };
 
     struct _list_iterator_base
-        : std::iterator < std::bidirectional_iterator_tag, T >
     {
         node*  _node;
 
@@ -71,11 +70,11 @@ public:
 #pragma warning( disable : 4284 )
 #endif //SYSTYPE_MSVC
 
-        _list_iterator& operator ++() { _node = _node->_next; return *this; }
-        _list_iterator& operator --() { _node = _node->_prev; return *this; }
+        _list_iterator& operator ++() { this->_node = this->_node->_next; return *this; }
+        _list_iterator& operator --() { this->_node = this->_node->_prev; return *this; }
 
-        _list_iterator  operator ++(int) { _list_iterator x(_node); _node = _node->_next;  return x; }
-        _list_iterator  operator --(int) { _list_iterator x(_node); _node = _node->_prev;  return x; }
+        _list_iterator  operator ++(int) { _list_iterator x(this->_node); this->_node = this->_node->_next;  return x; }
+        _list_iterator  operator --(int) { _list_iterator x(this->_node); this->_node = this->_node->_prev;  return x; }
 
         _list_iterator() : _list_iterator_base() {}
         explicit _list_iterator(node* p) : _list_iterator_base(p) {}
@@ -90,11 +89,11 @@ public:
 #pragma warning( disable : 4284 )
 #endif //SYSTYPE_MSVC
 
-        _list_reverse_iterator& operator ++() { _node = _node->_prev; return *this; }
-        _list_reverse_iterator& operator --() { _node = _node->_next; return *this; }
+        _list_reverse_iterator& operator ++() { this->_node = this->_node->_prev; return *this; }
+        _list_reverse_iterator& operator --() { this->_node = this->_node->_next; return *this; }
 
-        _list_reverse_iterator operator ++(int) { _list_reverse_iterator x(_node); _node = _node->_prev;  return x; }
-        _list_reverse_iterator operator --(int) { _list_reverse_iterator x(_node); _node = _node->_next;  return x; }
+        _list_reverse_iterator operator ++(int) { _list_reverse_iterator x(this->_node); this->_node = this->_node->_prev;  return x; }
+        _list_reverse_iterator operator --(int) { _list_reverse_iterator x(this->_node); this->_node = this->_node->_next;  return x; }
 
         _list_reverse_iterator() : _list_iterator_base() {}
         explicit _list_reverse_iterator(node* p) : _list_iterator_base(p) {}
@@ -109,11 +108,11 @@ public:
 #pragma warning( disable : 4284 )
 #endif //SYSTYPE_MSVC
 
-        _list_const_iterator& operator ++() { _node = _node->_next; return *this; }
-        _list_const_iterator& operator --() { _node = _node->_prev; return *this; }
+        _list_const_iterator& operator ++() { this->_node = this->_node->_next; return *this; }
+        _list_const_iterator& operator --() { this->_node = this->_node->_prev; return *this; }
 
-        _list_const_iterator operator ++(int) { _list_const_iterator x(_node); _node = _node->_next;  return x; }
-        _list_const_iterator operator --(int) { _list_const_iterator x(_node); _node = _node->_prev;  return x; }
+        _list_const_iterator operator ++(int) { _list_const_iterator x(this->_node); this->_node = this->_node->_next;  return x; }
+        _list_const_iterator operator --(int) { _list_const_iterator x(this->_node); this->_node = this->_node->_prev;  return x; }
 
         _list_const_iterator() {}
         explicit _list_const_iterator(const node* p) : _list_iterator_base(const_cast<node*>(p)) {}
@@ -128,11 +127,11 @@ public:
 #pragma warning( disable : 4284 )
 #endif //SYSTYPE_MSVC
 
-        _list_const_reverse_iterator& operator ++() { _node = _node->_prev; return *this; }
-        _list_const_reverse_iterator& operator --() { _node = _node->_next; return *this; }
+        _list_const_reverse_iterator& operator ++() { this->_node = this->_node->_prev; return *this; }
+        _list_const_reverse_iterator& operator --() { this->_node = this->_node->_next; return *this; }
 
-        _list_const_reverse_iterator operator ++(int) { _list_const_reverse_iterator x(_node); _node = _node->_prev;  return x; }
-        _list_const_reverse_iterator operator --(int) { _list_const_reverse_iterator x(_node); _node = _node->_next;  return x; }
+        _list_const_reverse_iterator operator ++(int) { _list_const_reverse_iterator x(this->_node); this->_node = this->_node->_prev;  return x; }
+        _list_const_reverse_iterator operator --(int) { _list_const_reverse_iterator x(this->_node); this->_node = this->_node->_next;  return x; }
 
         _list_const_reverse_iterator() : _list_iterator_base() {}
         explicit _list_const_reverse_iterator(const node* p) : _list_iterator_base(const_cast<node*>(p)) {}

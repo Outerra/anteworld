@@ -110,12 +110,18 @@
 # define COID_VARIADIC_TEMPLATES
 #endif
 
-#if defined(__cpp_constexpr) || _MSC_VER >= 1900
-# define coid_constexpr constexpr
-# define COID_CONSTEXPR
-#else
-# define coid_constexpr const
+#if !defined(__cpp_constexpr) && _MSC_VER < 1900
+#error this compiler does not support constexpr
 #endif
+
+//handle VS2015 incomplete constexpr support
+#if defined(_MSC_VER) && _MSC_VER < 1910
+#define coid_constexpr_for
+#else
+#define coid_constexpr_for constexpr
+# define COID_CONSTEXPR_FOR COID_CONSTEXPR
+#endif
+
 
 #if defined(__cpp_if_constexpr) || _MSC_VER >= 1910
 # define coid_constexpr_if constexpr
@@ -240,18 +246,37 @@ using coid::ushort;
 COID_NAMESPACE_BEGIN
 
 ///Versioned item id for slot allocators
+//@note static cast to uint64 is safe, but must be called explicitly 
 struct versionid
 {
-    uint id : 24;
-    uint version : 8;
+    uint64 id : 48;
+    uint64 version : 16;
 
-    versionid() : id(0x00ffffff), version(0xff)
+    versionid() : id(0x0000ffffffffffffull), version(0xffffull)
     {}
 
     versionid(uint id, uint8 version) : id(id), version(version)
     {}
 
-    bool valid() const { return ((id << 8) | version) != 0xffffffffU; }
+    void reset() { id = 0x0000ffffffffffffull; version = 0xffffull; }
+    
+    bool valid() const { return ((uint64(id) << 16ull) | version) != 0xffffffffffffffffull; }
+
+    bool operator==(const versionid& rhs) const {
+        return id == rhs.id && version == rhs.version;
+    }
+
+    bool operator!=(const versionid& rhs) const {
+        return id != rhs.id || version != rhs.version;
+    }
+
+    bool operator<(const versionid& rhs) const {
+        return uint64(this) < uint64(rhs);
+    }
+
+    explicit operator uint64() const {
+        return id | version << 48;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,12 +330,14 @@ COID_NAMESPACE_END
 #endif
 
 
-#ifdef SYSTYPE_64 
-	#define UMAXS       static_cast<coid::uints>(0xffffffffffffffffULL)
+#ifdef SYSTYPE_64
+    #define UMAXS       static_cast<coid::uints>(0xffffffffffffffffULL)
 #else
-	#define UMAXS       static_cast<coid::uints>(0xffffffffUL)
+    #define UMAXS       static_cast<coid::uints>(0xffffffffUL)
 #endif
 
-#define UMAX32      0xffffffffUL
-#define UMAX64      0xffffffffffffffffULL
-#define WMAX        0xffff
+#define UMAX32          0xffffffffUL
+#define UMAX64          0xffffffffffffffffULL
+#define WMAX            0xffff
+
+#define UINTS_MAX       UMAXS

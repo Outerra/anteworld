@@ -88,9 +88,9 @@ struct _Select_GetRefPtr
 template <class VAL, class KEY>
 struct _Select_DeRef
 {
-	typedef KEY ret_type;
+    typedef KEY ret_type;
 
-	ret_type operator()(const VAL& t) const { return *t; }
+    ret_type operator()(const VAL& t) const { return *t; }
 };
 
 //@} EXTRACTKEY templates
@@ -134,13 +134,13 @@ public:
     typedef typename _HT::const_iterator            const_iterator;
 
     std::pair<iterator, bool> insert( const value_type& val )
-    {   return insert_unique(val);    }
+    {   return this->insert_unique(val);    }
 
     void insert( const value_type* f, const value_type* l )
-    {   insert_unique( f, l );   }
+    {   this->insert_unique(f, l);   }
 
-    void insert( const_iterator f, const_iterator l ) 
-    {   insert_unique( f, l );   }
+    void insert( const_iterator f, const_iterator l )
+    {   this->insert_unique(f, l);   }
 
     ///Insert value if it's got an unique key
     //@note the key needed for the insertion is extracted from the value using the extractor object provided in the constructor
@@ -333,14 +333,14 @@ public:
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
-    
+
     iterator insert( const value_type& val )
     {   return insert_equal(val);    }
 
     void insert( const value_type* f, const value_type* l )
     {   insert_equal( f, l );   }
 
-    void insert( const_iterator f, const_iterator l ) 
+    void insert( const_iterator f, const_iterator l )
     {   insert_equal( f, l );   }
 
     const VAL* insert_value( value_type&& val )

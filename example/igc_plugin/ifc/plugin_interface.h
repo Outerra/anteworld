@@ -11,7 +11,6 @@
 #include <comm/commexception.h>
 #include <comm/intergen/ifc.h>
 
-
 class plugin;
 
 
@@ -43,11 +42,11 @@ public:
     // --- internal helpers ---
 
     ///Interface revision hash
-    static const int HASHID = 1303242348;
+    static const int HASHID = 1303242348u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "plugin_interface";
+        static const coid::tokenhash _name = "plugin_interface"_T;
         return _name;
     }
 
@@ -61,23 +60,23 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("plugin_interface.get@1303242348");
-        static const coid::token _djs("plugin_interface@wrapper.js");
-        static const coid::token _djsc("plugin_interface@wrapper.jsc");
-        static const coid::token _dlua("plugin_interface@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc("plugin_interface.get@1303242348"_T);
+        static const coid::token _djs("plugin_interface@wrapper.js"_T);
+        static const coid::token _djsc("plugin_interface@wrapper.jsc"_T);
+        static const coid::token _dlua("plugin_interface@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -87,18 +86,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -108,15 +107,15 @@ public:
     {
         static_assert(std::is_base_of<plugin_interface, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "plugin_interface";
-        tmp << "@client-1303242348" << '.' << type;
+        coid::charstr tmp = "plugin_interface"_T;
+        tmp << "@client-1303242348"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -124,8 +123,7 @@ public:
 
 protected:
 
-    plugin_interface()
-    {}
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<plugin_interface>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,14 +133,14 @@ inline iref<T> plugin_interface::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(plugin_interface*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "plugin_interface.get@1303242348";
+    static const coid::token ifckey = "plugin_interface.get@1303242348"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "plugin_interface.get", "@1303242348");
+        log_mismatch("get"_T, "plugin_interface.get"_T, "@1303242348"_T);
         return 0;
     }
 

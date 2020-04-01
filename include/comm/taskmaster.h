@@ -53,8 +53,8 @@ COID_NAMESPACE_BEGIN
 /**
     Taskmaster runs a set of worker threads and a queue of tasks that are processed by the worker threads.
 
-    Tasks with higher priorities are processed before tasks with lower priorities. LOW priority tasks can 
-    run on a limited number of worker threads. Each job can be associated with a signal and user can wait 
+    Tasks with higher priorities are processed before tasks with lower priorities. LOW priority tasks can
+    run on a limited number of worker threads. Each job can be associated with a signal and user can wait
     for this signal. Several jobs can share single signal, but single job can not trigger multiple signals.
 
     When a thread is waiting for a signal it processes other tasks in queue.
@@ -76,8 +76,8 @@ public:
 
     struct signal_handle
     {
-        enum 
-        { 
+        enum
+        {
             invalid = 0xffFFffFF,
             index_mask = 0x0000ffFF,
             version_shift = 16
@@ -112,8 +112,7 @@ public:
         , _qsize(0)
         , _quitting(false)
     {
-        _taskdata.reserve(8192);
-        
+        _taskdata.reserve_virtual(8192 * 16);
         _signal_pool.resize(4096);
         _free_signals.reserve(4096, false);
         for (uint i = 0; i < _signal_pool.size(); ++i) {
@@ -129,6 +128,10 @@ public:
         });
     }
 
+    ~taskmaster();
+
+    uints get_workers_count() const { return _threads.size(); }
+
     ///Run fn(index) in parallel in task level 0
     //@param first begin index value
     //@param last end index value
@@ -141,6 +144,18 @@ public:
         }
 
         wait(signal);
+    }
+
+    ///Push task (functor, e.g. lamda) into queue for processing by worker threads
+    //@param priority task priority, higher priority tasks are processed before lower priority
+    //@param signal signal to trigger when the task finishes
+    //@param fn functor to run
+    template <typename Fn>
+    void push_functor(EPriority priority, signal_handle* signal, const Fn& fn)
+    {
+        push(priority, signal, [](const Fn& fn){
+            fn();
+        }, fn);
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
@@ -162,7 +177,7 @@ public:
             auto task = new(p) callfn(signal ? *signal : invalid_signal, fn, std::forward<Args>(args)...);
 
             _ready_jobs[(int)priority].push_front(task);
-        
+
             ++_qsize;
         }
         _cv.notify_one();
@@ -180,7 +195,7 @@ public:
         static_assert(std::is_member_function_pointer<Fn>::value, "fn must be a function that can be invoked as ((*obj).*fn)(args)");
 
         using callfn = invoker_memberfn<Fn, C, Args...>;
-        
+
         {
             //lock to access allocator and semaphore
             std::unique_lock<std::mutex> lock(_sync);
@@ -190,7 +205,7 @@ public:
             auto task = new(p) callfn(signal ? *signal : invalid_signal, fn, obj, std::forward<Args>(args)...);
 
             _ready_jobs[(int)priority].push_front(task);
-        
+
             ++_qsize;
         }
         _cv.notify_one();
@@ -200,7 +215,7 @@ public:
     /// Enter critical section; no two threads can be in the same critical section at the same time
     /// other threads process other tasks while waiting to enter critical section
     //@param spin_count number of spins before trying to process other tasks
-    //@note never call enter(A) enter(B) exit(A) exit(B) in that order, since it can cause 
+    //@note never call enter(A) enter(B) exit(A) exit(B) in that order, since it can cause
     // deadlock thanks to taskmaster's nature
     void enter_critical_section(critical_section& critical_section, int spin_count = 1024)
     {
@@ -280,8 +295,8 @@ public:
         });
     }
 
-    
-    ///Create standalone signal not associated with any task. It can be used to wait for any arbitrary stuff. 
+
+    ///Create standalone signal not associated with any task. It can be used to wait for any arbitrary stuff.
     //@note The signal's counter is initialized = 1 -> wait(signal) will wait untill counter == 0)
     // use taskmaster::trigger_signal(signal) do decrement the counter
     // if you just want to wait until some task finishes, you do not need to use this, see "Basic usage"
@@ -291,14 +306,14 @@ public:
 
         signal_handle handle;
         if(!_free_signals.pop(handle)) return invalid_signal;
-        
+
         signal& s = _signal_pool[handle.index()];
         s.ref = 1;
 
         return handle;
     }
 
-    ///Manually decrements signal's counter. When the counter reaches 0, the signal is in signaled state 
+    ///Manually decrements signal's counter. When the counter reaches 0, the signal is in signaled state
     ///and waiting entities can progress further.
     void trigger_signal(signal_handle handle)
     {
@@ -413,7 +428,7 @@ protected:
             return sizeof(*this);
         }
     };
-    
+
     ///invoker for member functions (on copied objects)
     template <typename Fn, typename C, typename ...Args>
     struct invoker_memberfn : invoker_common<Fn, Args...>
@@ -530,7 +545,7 @@ private:
         DASSERT_RET(handle.is_valid(), false);
 
         signal& s = _signal_pool[handle.index()];
-        
+
         if (lock) _signal_sync.lock();
         const uint version = s.version;
         const uint ref = s.ref;
@@ -543,7 +558,7 @@ private:
     {
         signal_handle handle;
         if(!_free_signals.pop(handle)) return invalid_signal;
-        
+
         signal& s = _signal_pool[handle.index()];
         s.ref = 1;
 
@@ -554,7 +569,7 @@ private:
     {
         std::unique_lock<std::mutex> lock(_signal_sync);
         if (!handle) return;
-        
+
         if (handle->is_valid()) {
             signal& s = _signal_pool[handle->index()];
             if (is_signaled(*handle, false)) {
@@ -610,8 +625,6 @@ private:
     volatile bool _quitting;
 
     slotalloc_atomic<granule> _taskdata;
-
-    queue<invoker_base*> _queue;
 
     dynarray<threadinfo> _threads;
     volatile int _nlowprio_threads;

@@ -75,11 +75,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2856641786;
+    static const int HASHID = 2856641786u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::tracker_arm";
+        static const coid::tokenhash _name = "ot::tracker_arm"_T;
         return _name;
     }
 
@@ -93,18 +93,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("");
-        static const coid::token _djs("ot::tracker_arm@wrapper.js");
-        static const coid::token _djsc("ot::tracker_arm@wrapper.jsc");
-        static const coid::token _dlua("ot::tracker_arm@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc(""_T);
+        static const coid::token _djs("ot::tracker_arm@wrapper.js"_T);
+        static const coid::token _djsc("ot::tracker_arm@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::tracker_arm@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -113,7 +113,7 @@ public:
     //@note host side helper
     static iref<tracker_arm> intergen_active_interface(::app* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -123,18 +123,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -144,15 +144,15 @@ public:
     {
         static_assert(std::is_base_of<tracker_arm, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::tracker_arm";
-        tmp << "@client-2856641786" << '.' << type;
+        coid::charstr tmp = "ot::tracker_arm"_T;
+        tmp << "@client-2856641786"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -165,11 +165,17 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(tracker_arm*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~tracker_arm()
+    static void _cleaner_callback(tracker_arm* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    tracker_arm() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<tracker_arm>* pout);
+
+    typedef void (*cleanup_fn)(tracker_arm*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<tracker_arm>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,14 +185,14 @@ inline iref<T> tracker_arm::create( T* _subclass_, const char* name )
     typedef iref<T> (*fn_creator)(tracker_arm*, const char*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::tracker_arm.create@2856641786";
+    static const coid::token ifckey = "ot::tracker_arm.create@2856641786"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("create", "ot::tracker_arm.create", "@2856641786");
+        log_mismatch("create"_T, "ot::tracker_arm.create"_T, "@2856641786"_T);
         return 0;
     }
 

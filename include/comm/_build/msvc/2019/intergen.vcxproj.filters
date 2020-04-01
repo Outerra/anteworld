@@ -15,6 +15,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\intergen\ig.h" />
+    <ClInclude Include="..\..\..\intergen\ifc.h" />
+    <ClInclude Include="..\..\..\intergen\ifc.js.h" />
+    <ClInclude Include="..\..\..\intergen\ifc.lua.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\intergen\metagen\interface.js.h.mtg">
@@ -33,6 +36,12 @@
       <Filter>metagen</Filter>
     </None>
     <None Include="..\..\..\intergen\metagen\interface.doc.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\file.intergen.lua.cpp.mtg">
+      <Filter>metagen</Filter>
+    </None>
+    <None Include="..\..\..\intergen\metagen\interface.lua.h.mtg">
       <Filter>metagen</Filter>
     </None>
   </ItemGroup>

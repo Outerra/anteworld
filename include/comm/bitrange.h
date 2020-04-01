@@ -114,7 +114,7 @@ inline bool valid_int_range( int64 v, uint bytes )
 {
     if (bytes >= 8)
         return true;
-    
+
     int64 vmax = ((uint64)1<<(8*bytes-1)) - 1;
     int64 vmin = ~vmax;
     return v >= vmin  &&  v <= vmax;
@@ -129,7 +129,7 @@ inline bool valid_uint_range( uint64 v, uint bytes )
 
 //@return 2's exponent of nearest higher power of two number
 //@note least number of bits needed for representation of given max value
-inline coid_constexpr uints constexpr_int_higher_pow2(uints maxval) {
+inline constexpr uints constexpr_int_higher_pow2(uints maxval) {
     return maxval < 2
         ? maxval
         : 1 + constexpr_int_higher_pow2(maxval >> 1);
@@ -137,14 +137,14 @@ inline coid_constexpr uints constexpr_int_higher_pow2(uints maxval) {
 
 //@return 2's exponent of nearest equal or higher power of two number
 //@note number of bits needed for representation of x values
-inline coid_constexpr uints constexpr_int_high_pow2(uints x) {
+inline constexpr uints constexpr_int_high_pow2(uints x) {
     return x == 0
         ? 0
         : constexpr_int_higher_pow2(x - 1);
 }
 
 //@return 2's exponent of nearest equal or lower power of two number
-inline coid_constexpr uints constexpr_int_low_pow2(uints x) {
+inline constexpr uints constexpr_int_low_pow2(uints x) {
     return x < 2
         ? 0
         : 1 + constexpr_int_low_pow2(x >> 1);
@@ -267,7 +267,7 @@ inline uints find_zero_bitrange( uints n, const T* begin, const T* end )
         bit += nend;
         mask >>= nend;
 
-        uint8 nset = lsb_bit_set(~mask);
+        uint8 nset = ~mask != 0 ? lsb_bit_set(~mask) : NBITS;
         bit += nset;
         mask >>= nset;
     }

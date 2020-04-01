@@ -51,7 +51,6 @@ struct index_sequence
 {
     using type = index_sequence;
     using value_type = size_t;
-    //static coid_constexpr std::size_t size() { return sizeof...(Ints); }
 };
 
 // --------------------------------------------------------------
@@ -114,6 +113,10 @@ inline void variadic_call( const Func& fn ) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
+template <class Fn>
+struct callback;
+
+
 ///Helper to get types and count of lambda arguments
 /// http://stackoverflow.com/a/28213747/2435594
 
@@ -146,7 +149,8 @@ struct closure_traits_base
         COIDNEWDELETE(callable);
 
         callable(const Fn& fn) : fn(fn) {}
-
+        callable(Fn&& fn) : fn(std::forward<Fn>(fn)) {}
+        
         R operator()(Args ...args) const override final {
             return fn(std::forward<Args>(args)...);
         }
@@ -176,6 +180,12 @@ struct closure_traits_base
             c = new callable<Fn>(fn);
         }
 
+        template <typename Fn>
+        function(Fn&& fn) : c(0) {
+            typedef std::remove_cv_t<std::remove_reference_t<Fn>> Fn_cv;
+            c = new callable<Fn_cv>(std::forward<Fn>(fn));
+        }
+
         function() : c(0) {}
         function(nullptr_t) : c(0) {}
 
@@ -188,6 +198,12 @@ struct closure_traits_base
             c = other.c;
             other.c = 0;
         }
+
+        template <typename Fn>
+        function(callback<Fn>&& fn);
+
+        template <typename Fn>
+        function(const callback<Fn>& fn);
 
         ~function() { if (c) delete c; }
 
@@ -217,6 +233,12 @@ struct closure_traits_base
         ///Automatic cast to unconvertible bool for checking via if
         operator unspecified_bool_type() const { return c ? &function::c : 0; }
 
+        callbase* eject() {
+            callbase* r = c;
+            c = 0;
+            return r;
+        }
+
     protected:
         callbase* c;
     };
@@ -245,6 +267,297 @@ COID_CLOSURE_TRAIT(, (), 0)
 
 template <typename Fn>
 using function = typename closure_traits<Fn>::function;
+
+
+////////////////////////////////////////////////////////////////////////////////
+///A callback function that may contain a member function, a static one or a lambda.
+/**
+    callback<R(Args...)>
+
+    Callback function invoked with a "this" context.
+    Binds either to a member function with (Args... args) arguments, or to a static
+    or lambda functions with (void* this__, Args... args) arguments.
+    
+    The value of "this" is passed on by the caller.
+
+    Size: 2*sizeof(ptr_t)
+
+    Usage:
+        struct something
+        {
+            static int funs(void* this__, int, void*) { return 0; }
+            int funm(int, void*) { return value; }
+
+            int value = 1;
+        };
+
+        int z = 2;
+        callback<int(int, void*)> fns = &something::funs;
+        callback<int(int, void*)> fnm = &something::funm;
+        callback<int(int, void*)> fnl = [](void* this__, int, void*) { return -1; };
+        callback<int(int, void*)> fnz = [z](void* this__, int, void*) { return z; };
+
+        something s;
+
+        DASSERT(fns(&s, 1, 0) == 0);
+        DASSERT(fnm(&s, 1, 0) == 1);
+        DASSERT(fnl(&s, 1, 0) == -1);
+        DASSERT(fnz(&s, 1, 0) == 2);
+
+**/
+template <class Fn>
+struct callback
+{};
+
+template <class R, class ...Args>
+struct callback<R(Args...)>
+{
+private:
+
+    union hybrid {
+        void* ptr = 0;
+        R(*function)(void*, Args...);
+        callable_base<R, void*, Args...>* flambda;
+        callable_base<R, void*, Args...>* mlambda;
+    };
+
+    hybrid _fn;
+    R(*_caller)(const hybrid&, void*, Args...) = 0;
+
+
+
+    static R call_static(const hybrid& h, void* this__, Args ...args) {
+        return h.function(this__, std::forward<Args>(args)...);
+    }
+
+    static R call_flambda(const hybrid& h, void* this__, Args ...args) {
+        return (*h.flambda)(this__, std::forward<Args>(args)...);
+    }
+
+    static R call_mlambda(const hybrid& h, void* this__, Args ...args) {
+        return (*h.mlambda)(this__, std::forward<Args>(args)...);
+    }
+
+public:
+
+    callback() {}
+
+    callback(nullptr_t) {}
+
+    ///A plain function
+    callback(R(*fn)(void*, Args...)) {
+        _fn.function = fn;
+        _caller = &call_static;
+    }
+
+    ///A member function pointer
+    template <class T>
+    callback(R(T::* fn)(Args...))
+    {
+        union caster {
+            R(*function)(Args...);
+            R(T::* method)(Args...);
+        };
+
+        if coid_constexpr_if (sizeof(caster) == sizeof(caster::function)) {
+            //optimized case of single-inheritance member function pointer
+            caster tmp;
+            tmp.method = fn;
+            _fn.ptr = tmp.function;
+
+            _caller = [](const hybrid& h, void* this__, Args ...args) {
+                caster v;
+                v.function = static_cast<R(*)(Args...)>(h.ptr);
+                return (static_cast<T*>(this__)->*(v.method))(std::forward<Args>(args)...);
+            };
+        }
+        else {
+            //a complex member pointer, wrap in a lambda
+            function<R(void*, Args...)> fnx = [fn](void* this__, Args ...args) -> R {
+                return (static_cast<T*>(this__)->*fn)(std::forward<Args>(args)...);
+            };
+
+            _fn.mlambda = fnx.eject();
+            _caller = &call_mlambda;
+        }
+    }
+
+    ///A const member function pointer
+    template <class T>
+    callback(R(T::* fn)(Args...) const)
+    {
+        union caster {
+            R(*function)(Args...);
+            R(T::* method)(Args...) const;
+        };
+
+        if coid_constexpr_if (sizeof(caster) == sizeof(caster::function)) {
+            //optimized case of single-inheritance member function pointer
+            caster tmp;
+            tmp.method = fn;
+            _fn.ptr = tmp.function;
+
+            _caller = [](const hybrid& h, void* this__, Args ...args) {
+                caster v;
+                v.function = static_cast<R(*)(Args...)>(h.ptr);
+                return (static_cast<const T*>(this__)->*(v.method))(std::forward<Args>(args)...);
+            };
+        }
+        else {
+            //a complex member pointer, wrap in a lambda
+            function<R(void*, Args...)> fnx = [fn](void* this__, Args ...args) -> R {
+                return (static_cast<const T*>(this__)->*fn)(std::forward<Args>(args)...);
+            };
+
+            _fn.mlambda = fnx.eject();
+            _caller = &call_mlambda;
+        }
+    }
+
+    ///A direct function object
+    callback(function<R(void*, Args...)>&& fn) {
+        _fn.flambda = fn.eject();
+        _caller = &call_flambda;
+    }
+
+    ///A non-capturing lambda
+    template <class Fn, typename std::enable_if<std::is_constructible<R(*)(void*, Args...), Fn>::value, bool>::type = true>
+    callback(Fn&& lambda) {
+        _fn.function = lambda;
+        _caller = &call_static;
+    }
+
+    ///A capturing lambda
+    template <class Fn, typename std::enable_if<!std::is_constructible<R(*)(void*, Args...), Fn>::value, bool>::type = true>
+    callback(Fn&& lambda) {
+        function<R(void*, Args...)> fn = std::move(lambda);
+        _fn.flambda = fn.eject();
+        _caller = &call_flambda;
+    }
+
+    ~callback() {
+        destroy();
+    }
+
+    callback(const callback& fn) {
+        _caller = fn._caller;
+        if (_fn.ptr) {
+            if (_caller == &call_flambda)
+                _fn.flambda = fn._fn.flambda->clone();
+            else if (_caller == &call_mlambda)
+                _fn.mlambda = fn._fn.mlambda->clone();
+            else
+                _fn.ptr = fn._fn.ptr;
+        }
+    }
+
+    callback(callback&& fn) {
+        _fn.ptr = fn._fn.ptr;
+        fn._fn.ptr = 0;
+        _caller = fn._caller;
+    }
+
+
+    callback& operator = (nullptr_t) {
+        destroy();
+        _caller = 0;
+        return *this;
+    }
+
+    callback& operator = (const callback& fn) {
+        destroy();
+        new(this) callback(fn);
+        return *this;
+    }
+
+    callback& operator = (callback&& fn) {
+        destroy();
+        _fn.ptr = fn._fn.ptr;
+        fn._fn.ptr = 0;
+        _caller = fn._caller;
+        return *this;
+    }
+
+    callback& operator = (R(*fn)(void*, Args...)) {
+        destroy();
+        _fn.function = fn;
+        _caller = &call_static;
+        return *this;
+    }
+
+    ///A member function pointer
+    template <class T>
+    callback& operator = (R(T::* fn)(Args...))
+    {
+        destroy();
+        new(this) callback(fn);
+        return *this;
+    }
+
+    ///A const member function pointer
+    template <class T>
+    callback& operator = (R(T::* fn)(Args...) const)
+    {
+        destroy();
+        new(this) callback(fn);
+        return *this;
+    }
+
+    ///A direct function object
+    callback& operator = (function<R(void*, Args...)>&& fn) {
+        destroy();
+        _fn.flambda = fn.eject();
+        _caller = &call_flambda;
+        return *this;
+    }
+
+    ///A non-capturing lambda
+    template <class Fn, typename std::enable_if<std::is_constructible<R(*)(void*, Args...), Fn>::value, bool>::type = true>
+    callback& operator = (Fn&& lambda) {
+        destroy();
+        _fn.function = lambda;
+        _caller = &call_static;
+        return *this;
+    }
+
+    ///A capturing lambda
+    template <class Fn, typename std::enable_if<!std::is_constructible<R(*)(void*, Args...), Fn>::value, bool>::type = true>
+    callback& operator = (Fn&& lambda) {
+        destroy();
+        function<R(void*, Args...)> fn = std::move(lambda);
+        _fn.flambda = fn.eject();
+        _caller = &call_flambda;
+        return *this;
+    }
+
+
+
+    ///Invoked with T* pointer, which is used only if the bound function was a member pointer
+    R operator()(const void* this__, Args ...args) const {
+        return _caller(_fn, const_cast<void*>(this__), std::forward<Args>(args)...);
+    }
+
+    ///Automatic cast to unconvertible bool for checking via if
+    typedef hybrid callback::* unspecified_bool_type;
+
+    operator unspecified_bool_type() const { return _fn.ptr ? &callback::_fn : 0; }
+
+private:
+
+    void destroy()
+    {
+        if (_fn.ptr) {
+            if (_caller == &call_flambda)
+                delete _fn.flambda;
+            else if (_caller == &call_mlambda)
+                delete _fn.mlambda;
+        }
+        _fn.ptr = 0;
+
+    }
+};
+
+
 
 COID_NAMESPACE_END
 

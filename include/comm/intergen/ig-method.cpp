@@ -3,25 +3,26 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Parse function declaration after ifc_fn
-bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, const charstr& nsifc, dynarray<Arg>& irefargs, bool isevent )
+bool MethodIG::parse(iglexer& lex, const charstr& host, const charstr& ns, const charstr& nsifc, dynarray<Arg>& irefargs, bool isevent)
 {
     bstatic = lex.match_optional("static");
 
     //rettype fncname '(' ...
 
-    if(!ret.parse(lex, false))
+    if (!ret.parse(lex, false))
         throw lex.exc();
 
     bhasifctargets = !ret.ifctarget.is_empty();
 
-    if(!bstatic && ret.biref)
+    if (!bstatic && ret.biref)
         ret.add_unique(irefargs);
 
     biref = bptr = bifccr = false;
     int ncontinuable_errors = 0;
 
-    if (bstatic) {
+    if (bstatic && !bimplicit) {
         charstr tmp;
+        bcreator = true;
 
         if (ret.bptr && ret.type == ((tmp = host) << '*')) {
             (ret.type = "iref<") << ns << host << '>';
@@ -30,19 +31,16 @@ bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, cons
             biref = true;
             (ret.type = "iref<") << ns << host << '>';
         }
-        else if (ret.type == ((tmp = "iref<") << ns << host << '>'))
+        else if (ret.type == ((tmp = "iref<") << ns << host << '>')) {
             biref = true;
+        }
         else if (ret.type == ((tmp = "iref<") << nsifc << '>')) {
             biref = true;
             bifccr = true;
         }
-        //else if(ret.type == ((tmp="ref<")<<ns<<host<<'>'))
-        //    ;
-        //else if(ret.type == ((tmp=ns)<<host<<'*'))
-        //    bptr = true;
         else {
             out << (lex.prepare_exception()
-                << "invalid return type for static interface creator method\n  should be iref<"
+                << "error: invalid return type for static interface creator method\n  should be iref<"
                 << host << ">");
             lex.clear_err();
             ++ncontinuable_errors;
@@ -54,7 +52,7 @@ bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, cons
     lex.match(lex.IDENT, name, "expected method name");
 
     boperator = name == "operator";
-    if(boperator) {
+    if (boperator) {
         lex.match('(');
         lex.match(')');
         name << "()";
@@ -66,32 +64,32 @@ bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, cons
 
     ninargs = noutargs = 0;
 
-    if(!lex.matches(')')) {
+    if (!lex.matches(')')) {
         do {
-            if( !args.add()->parse(lex, true) )
+            if (!args.add()->parse(lex, true))
                 throw lex.exc();
 
             Arg* arg = args.last();
 
-            if(arg->binarg) {
+            if (arg->binarg) {
                 ++ninargs;
-                if(!arg->defval)
+                if (!arg->defval)
                     ++ninargs_nondef;
             }
-            if(arg->boutarg)
+            if (arg->boutarg)
                 ++noutargs;
 
-            arg->tokenpar = arg->binarg && 
+            arg->tokenpar = arg->binarg &&
                 (arg->basetype=="token" || arg->basetype=="coid::token" || arg->basetype=="charstr" || arg->basetype=="coid::charstr");
 
-            if(!bstatic && arg->biref && (isevent ? arg->binarg : arg->boutarg))
+            if (!bstatic && arg->biref && (isevent ? arg->binarg : arg->boutarg))
                 arg->add_unique(irefargs);
 
-            if(arg->ifctarget)
+            if (arg->ifctarget)
                 bhasifctargets = true;
         }
-        while(lex.matches(','));
-        
+        while (lex.matches(','));
+
         lex.match(')');
     }
 
@@ -119,7 +117,7 @@ bool MethodIG::parse( iglexer& lex, const charstr& host, const charstr& ns, cons
     //else
     //    default_event_body = "{ throw coid::exception(\"handler not implemented\"); }";
 
-    bmandatory = !evbody && (ret.type != "void" || noutargs > 0);
+    bnoevbody = !evbody && (ret.type != "void" || noutargs > 0);
 
     //declaration parsed successfully
     return lex.no_err() && ncontinuable_errors == 0;
@@ -143,9 +141,9 @@ void MethodIG::parse_docs()
 
         if(!line) {
             if(paramdoc)
-                *paramdoc << "\n\n";
+                *paramdoc << "\r\n\r\n";
             else if(doc)
-                doc << "\n\n";
+                doc << "\r\n\r\n";
             continue;
         }
 
@@ -165,13 +163,13 @@ void MethodIG::parse_docs()
 
             token paramline = line;
             if(paramline.consume("@param ")) {
-                token param = paramline.cut_left_group(token::TK_whitespace());
+                token param = paramline.cut_left_group(" \t\n\r"_T);
                 Arg* a = find_arg(param);
 
                 if(a) {
                     paramdoc = &a->doc;
                     if(!paramdoc->is_empty())
-                        *paramdoc << '\n';
+                        *paramdoc << "\r\n";
                     //paramdoc->append_escaped(paramline);
                     *paramdoc << paramline;
                 }
@@ -182,7 +180,7 @@ void MethodIG::parse_docs()
             }
             else if(paramline.consume("@return ")) {
                 if(ret.doc)
-                    ret.doc << '\n';
+                    ret.doc << "\r\n";
                 //ret.doc.append_escaped(paramline);
                 ret.doc << paramline;
             }

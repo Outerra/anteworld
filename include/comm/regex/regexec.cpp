@@ -82,26 +82,14 @@ token regex::leading(token rt, token* sub, uint nsub) const
 
 ////////////////////////////////////////////////////////////////////////////////
 token regex_program::match(
-    token bol,	            // string to run machine on
+    const token& bol,	    // string to run machine on
     token* sub, uint nsub,  // subexpression elements
     Reljunk::MatchStyle style
 ) const
 {
     Reljunk* j = thread_object<Reljunk>(tk_regex);
 
-    j->style = style;
-    if (style == Reljunk::SEARCH) {
-        if (startinst->type == Reinst::RUNE /*&& startinst.r.r < Runeself*/) {
-            j->starttype = Reinst::RUNE;
-            j->startchar = startinst->cd;
-        }
-        if (startinst->type == Reinst::BOL)
-            j->starttype = Reinst::BOL;
-    }
-
-    // mark space
-    j->relist[0].reset();
-    j->relist[1].reset();
+    j->reset(style, startinst);
 
     return regexec(bol, sub, nsub, j);
 }
@@ -184,7 +172,7 @@ static Relist* _appendstartstate(
 ////////////////////////////////////////////////////////////////////////////////
 //@return substring that matches or an empty one
 token regex_program::regexec(
-    token bol,	            // string to run machine on
+    const token& bol,	    // string to run machine on
     token* sub, uint nsub,  // subexpression elements
     Reljunk* j
 ) const
@@ -254,7 +242,7 @@ token regex_program::regexec(
             {
                 switch (inst->type) {
                 case Reinst::RUNE:	// regular character
-                    if (inst->cd == r || (icase && inst->cd == ::tolower(r))) {
+                    if (inst->cd == r || (icase && inst->cd == (ucs4)::tolower(r))) {
                         _appendfollowstate(nl, inst->next, tlp);
                     }
                     break;

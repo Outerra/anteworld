@@ -147,7 +147,7 @@ struct forest_params
     float3 ecs_max;                     //< elevation/curvature/slope max values
     float3 ecs_trans;                   //< elevation/curvature/slope transitional width values
     float threshold;                    //< forest threshold from vegetation density value (0..1)
-    float aspect;                       //< aspect (sunny side) vegetation value bias 
+    float aspect;                       //< aspect (sunny side) vegetation value bias
 
     forest_params() {
         coid::metastream::initialize_from_defaults(this);
@@ -206,13 +206,13 @@ struct weather_params
     float wind_gradient_height;         //< gradient height: 457m large cities, 366m suburbs, 274m open terrain, 213m open sea
     float wind_stability;               //< Hellmann exponent, 0.06 .. 0.60, default 1/7
     float wind_turbulence;              //< 0..7, http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19980028448_1998081596.pdf
-	
+
     float cloud_density;                //< cloud cover density, 0..1
     float rain_density;                 //< rain density, 0..1
     float snow_density;                 //< snow density, 0..1
     float lightning_per_kmsqmin;         //< lightning bolts count per sqare kilometer and minute
 
-    float auto_weather_period;          //< period in which weather changes if auto weather enabled
+    float auto_weather_period;          //< deprecated, period in which weather changes if auto weather enabled
     bool auto_weather;                  //< automatic weather change
 
     weather_params() {
@@ -255,31 +255,31 @@ struct weather_params
 
 struct water_state_params
 {
-	float sea_dominant_wave_length;
-	float sea_wave_amplitude_multiplier;
-	float sea_foam_multiplier;
-	float sea_current_heading;
-	float sea_current_speed;
-	float sea_wind_contribution;
+    float sea_dominant_wave_length;
+    float sea_wave_amplitude_multiplier;
+    float sea_foam_multiplier;
+    float sea_current_heading;
+    float sea_current_speed;
+    float sea_wind_contribution;
     float sea_surf_amplitude_multiplier;
 
     water_state_params() {
         coid::metastream::initialize_from_defaults(this);
     }
 
-	friend coid::metastream& operator || (coid::metastream& m, water_state_params& ws)
-	{
-		return m.compound("water_state_params", [&]()
-		{
-			m.member("sea_dominant_wave_length", ws.sea_dominant_wave_length, 10.0f);
-			m.member("sea_wave_amplitude_multiplier", ws.sea_wave_amplitude_multiplier, 1.0f);
-			m.member("sea_foam_multiplier", ws.sea_foam_multiplier, 1.0f);
-			m.member("sea_current_heading", ws.sea_current_heading, 0.0f);
-			m.member("sea_current_speed", ws.sea_current_speed, 0.0f);
-			m.member("sea_wind_contribution", ws.sea_wind_contribution, 0.0f);
+    friend coid::metastream& operator || (coid::metastream& m, water_state_params& ws)
+    {
+        return m.compound("water_state_params", [&]()
+        {
+            m.member("sea_dominant_wave_length", ws.sea_dominant_wave_length, 10.0f);
+            m.member("sea_wave_amplitude_multiplier", ws.sea_wave_amplitude_multiplier, 1.0f);
+            m.member("sea_foam_multiplier", ws.sea_foam_multiplier, 1.0f);
+            m.member("sea_current_heading", ws.sea_current_heading, 0.0f);
+            m.member("sea_current_speed", ws.sea_current_speed, 0.0f);
+            m.member("sea_wind_contribution", ws.sea_wind_contribution, 0.0f);
             m.member("sea_surf_amplitude_multiplier", ws.sea_surf_amplitude_multiplier, 1.0f);
         });
-	}
+    }
 };
 
 

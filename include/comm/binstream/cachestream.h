@@ -320,7 +320,7 @@ public:
     bool set_read_pos(uint64 pos) override {
         if (pos >= _tcinread && pos <= _tcinread + _cin.size()) {
             //within current cache block
-            _cinread = pos - _tcinread;
+            _cinread = down_cast<uints>(pos - _tcinread);
             return true;
         }
 
@@ -328,7 +328,7 @@ public:
             return false;
 
         _cinread = 0;
-        _tcinread = pos;
+        _tcinread = down_cast<uints>(pos);
         _cin.reset();
         eois = false;
 
@@ -340,7 +340,7 @@ public:
             return false;
 
         flush_cache(false);
-        _tcotwritten = pos;
+        _tcotwritten = down_cast<uints>(pos);
 
         return true;
     }

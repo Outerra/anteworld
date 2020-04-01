@@ -77,12 +77,12 @@ opcd directory::open( const token& path, const token& filter )
         _curpath.resize(-1);
 
     _dir = opendir( _curpath.ptr() );
-	if(!_dir)
-		return ersFAILED;
+    if(!_dir)
+        return ersFAILED;
 
     _curpath << '/';
     _baselen = _curpath.len();
-    
+
     stat64(_curpath.ptr(), &_st);
 
     _pattern = filter ? filter : token("*");
@@ -201,7 +201,7 @@ charstr directory::get_program_path()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_module_path_func(const void* fn, charstr& dst, bool append)
+uints directory::get_module_path_func(const void* fn, charstr& dst, bool append)
 {
     Dl_info info;
     dladdr((void*)fn, &info);
@@ -211,7 +211,7 @@ charstr& directory::get_module_path_func(const void* fn, charstr& dst, bool appe
     else
         dst = info.dli_fname;
 
-    return dst;
+    return reinterpret_cast<uints>(info.dli_fbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,3 +1,4 @@
+#pragma once
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -15,7 +16,7 @@
  *
  * The Initial Developer of the Original Code is
  * Outerra
- * Portions created by the Initial Developer are Copyright (C) 2003
+ * Portions created by the Initial Developer are Copyright (C) 2003-2019
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -33,13 +34,7 @@
  * the provisions above, a recipient may use your version of this file under
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
- * ***** END LICENSE BLOCK ***** */ 
-/*
- * Copyright (C) 2012 Outerra. All Rights Reserved.
- */
-
-#ifndef __COID_COMM_FMTSTREAM_V8__HEADER_FILE__
-#define __COID_COMM_FMTSTREAM_V8__HEADER_FILE__
+ * ***** END LICENSE BLOCK ***** */
 
 #include "fmtstream.h"
 #include <v8/v8.h>
@@ -49,111 +44,52 @@
 #include "../ref.h"
 #include "metastream.h"
 
+#if V8_MAJOR_VERSION > 7 || (V8_MAJOR_VERSION == 7 && V8_MINOR_VERSION >= 7)
+#define V8_NEW2
+#endif
+
+class intergen_interface;
+
 namespace v8 {
 
-#define V8_DECL_ISO(iso)            v8::Isolate* iso = v8::Isolate::GetCurrent()
-#define V8_DECL_ISO_ARGS(iso,args)  v8::Isolate* iso = args.GetIsolate()
+typedef FunctionCallbackInfo<Value> ARGUMENTS;
+typedef PropertyCallbackInfo<Value> ACCESSOR;
 
-#ifdef V8_MAJOR_VERSION
-
-    #define V8_UNDEFINED(iso)       v8::Undefined(iso)
-    #define V8_NULL(iso)            v8::Null(iso)
-    #define V8_NAME                 v8::Name
-
-    #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs(iso)
-    #define V8_ESCAPABLE_SCOPE(iso,hs)  v8::EscapableHandleScope hs(iso)
-    #define V8_ESCAPE(hs,h)         hs.Escape(h)
-
-    typedef void                    CBK_RET;
-    typedef FunctionCallbackInfo<Value> ARGUMENTS;
-    typedef PropertyCallbackInfo<Value> ACCESSOR;
-    #define V8_RETURN(args,val)     (void)args.GetReturnValue().Set(val);
-
-    #define V8_NEWTYPE(iso,t)       v8::t::New(iso)
-    #define V8_NEWTYPE2(iso,t,a)    v8::t::New(iso, a)
-    #define V8_PERSISTENT(iso,o,n)  (o).Reset(iso, n)
-    #define V8_RESET(o)             (o).Reset()
-    #define V8_LOCAL(iso,o)         (o).Get(iso)
-    #define V8_CUR_CONTEXT(iso)     iso->GetCurrentContext()
-    #define V8_CUR_CTX_OPT(iso)     iso->GetCurrentContext()
-    #define V8_CUR_CTX_INIT(iso)    = iso->GetCurrentContext()
-    #define V8_OPTARG(v)            v,
-    #define V8_OPTARG1(v)           v
-    #define V8_FROMJUST             .FromJust()
-
-    #define V8_TRYCATCH(iso,t)      v8::TryCatch t(iso)
-   
-    inline Local<String> symbol( const coid::token& tok, Isolate* iso = 0 ) {
-        return String::NewFromOneByte(iso ? iso : Isolate::GetCurrent(), (const uint8*)tok.ptr(), NewStringType::kInternalized, tok.len()).ToLocalChecked();
-    }
-
-    inline Local<String> string_utf8( const coid::token& tok, Isolate* iso = 0 ) {
-        return String::NewFromUtf8(iso ? iso : Isolate::GetCurrent(), tok.ptr(), NewStringType::kNormal, tok.len()).ToLocalChecked();
-    }
-
-    template<class T>
-    inline auto new_object(Isolate* iso = 0) -> decltype(T::New(iso)) {
-        return T::New(iso ? iso : Isolate::GetCurrent());
-    }
-
-    template<class T, class P1>
-    inline auto new_object( const P1& p1, Isolate* iso = 0 ) -> decltype(T::New(iso, p1)) {
-        return T::New(iso ? iso : Isolate::GetCurrent(), p1);
-    }
-
-    ///Queue JS exception, to be handled when returning back to JS lib
-    inline void queue_js_exception( Isolate* iso, v8::Local<v8::Value> (*err)(v8::Local<v8::String>), const coid::token& s ) {
-        iso->ThrowException((*err)(v8::String::NewFromUtf8(iso, s.ptr(), v8::String::kNormalString, s.len())));
-    }
-
+#ifdef V8_NEW2
+    #define V8_CHECK    .Check()
 #else
-
-    #define V8_UNDEFINED(iso)       v8::Undefined()
-    #define V8_NULL(iso)            v8::Null()
-    #define V8_NAME                 v8::String
-
-    #define V8_HANDLE_SCOPE(iso,hs)     v8::HandleScope hs
-    #define V8_ESCAPABLE_SCOPE(iso,hs)  v8::HandleScope hs
-    #define V8_ESCAPE(hs,h)         hs.Close(h)
-
-    typedef Handle<Value>           CBK_RET;
-    typedef Arguments               ARGUMENTS;
-    typedef AccessorInfo            ACCESSOR;
-    #define V8_RETURN(args,val)     val
-
-    #define V8_NEWTYPE(iso,t)       v8::t::New()
-    #define V8_NEWTYPE2(iso,t,a)    v8::t::New(a)
-    #define V8_PERSISTENT(iso,o,n)  o = o.New(iso,n)
-    #define V8_RESET(o)             do { if (!(o).IsWeak()) (o).Dispose(); (o).Clear(); } while(0)
-    #define V8_LOCAL(iso,o)         o
-    #define V8_CUR_CONTEXT(iso)     v8::Context::GetCurrent()
-    #define V8_CUR_CTX_OPT(iso)
-    #define V8_CUR_CTX_INIT(iso)
-    #define V8_OPTARG(v)
-    #define V8_OPTARG1(v)
-    #define V8_FROMJUST
-
-    #define V8_TRYCATCH(iso,t)      v8::TryCatch t
-    
-    inline Local<String> symbol( const coid::token& tok, Isolate* iso = 0 ) {
-        return String::NewSymbol(tok.ptr(), tok.len());
-    }
-
-    inline Local<String> string_utf8( const coid::token& tok, Isolate* iso = 0 ) {
-        return String::New(tok.ptr(), tok.len());
-    }
-
-    template<class T>
-    inline auto new_object(Isolate* iso = 0) -> decltype(T::New()) { return T::New(); }
-
-    template<class T, class P1>
-    inline auto new_object( const P1& p1, Isolate* iso = 0 ) -> decltype(T::New(p1)) { return T::New(p1); }
-
-    inline Handle<Value> queue_js_exception( Isolate* iso, Local<Value> (*err)(Handle<String>), const coid::token& s ) {
-        return ThrowException(err(String::New(s.ptr(), s.len())));
-    }
-
+    #define V8_CHECK
 #endif
+
+
+inline Local<String> symbol( const coid::token& tok, Isolate* iso = 0 ) {
+    return String::NewFromOneByte(iso ? iso : Isolate::GetCurrent(), (const uint8*)tok.ptr(), NewStringType::kInternalized, tok.len()).ToLocalChecked();
+}
+
+inline Local<String> string_utf8( const coid::token& tok, Isolate* iso = 0 ) {
+    return String::NewFromUtf8(iso ? iso : Isolate::GetCurrent(), tok.ptr(), NewStringType::kNormal, tok.len()).ToLocalChecked();
+}
+
+template<class T>
+inline auto new_object(Isolate* iso = 0) -> decltype(T::New(iso)) {
+    return T::New(iso ? iso : Isolate::GetCurrent());
+}
+
+template<class T, class P1>
+inline auto new_object(const P1& p1, Isolate* iso = 0) -> decltype(T::New(iso, p1)) {
+    return T::New(iso ? iso : Isolate::GetCurrent(), p1);
+}
+
+inline Local<Value> get_value(Local<Object> obj, const coid::token& tok, Local<Context> ctx) {
+    Local<Value> val;
+    obj->Get(ctx, symbol(tok, ctx->GetIsolate())).ToLocal(&val);
+    return val;
+}
+
+///Queue JS exception, to be handled when returning back to JS lib
+inline void queue_js_exception(Isolate* iso, v8::Local<v8::Value>(*err)(v8::Local<v8::String>), const coid::token& s) {
+    iso->ThrowException((*err)(String::NewFromUtf8(iso, s.ptr(), NewStringType::kNormal, s.len()).ToLocalChecked()));
+}
 
 } //namespace v8
 
@@ -180,17 +116,15 @@ class from_v8
 {
 public:
     ///Generic parser from v8 type representation
-    static bool write( v8::Handle<v8::Value> src, T& res );
+    static bool write(v8::Handle<v8::Value> src, T& res);
 };
 
 
 //@{ Fast to_v8/from specializations for base types
-#ifdef V8_MAJOR_VERSION
-
 #define V8_FAST_STREAMER(T,V8T,CT) \
 template<> class to_v8<T> { public: \
     static v8::Handle<v8::Value> read(const T& v) { return v8::new_object<v8::V8T>(CT(v)); } \
-    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return V8_UNDEFINED(v8::Isolate::GetCurrent()); } \
+    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return v8::Undefined(v8::Isolate::GetCurrent()); } \
 }; \
 template<> class from_v8<T> { public: \
     static bool write( v8::Handle<v8::Value> src, T& res ) {\
@@ -199,59 +133,79 @@ template<> class from_v8<T> { public: \
         return mv.IsJust(); } \
 }
 
-#else
-
-#define V8_FAST_STREAMER(T,V8T,CT) \
+#ifdef V8_NEW2
+#define V8_FAST_STREAMER_BOOL(T,V8T,CT) \
 template<> class to_v8<T> { public: \
     static v8::Handle<v8::Value> read(const T& v) { return v8::new_object<v8::V8T>(CT(v)); } \
-    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return V8_UNDEFINED(v8::Isolate::GetCurrent()); } \
+    static v8::Handle<v8::Value> read(const T* v) { if (v) return v8::new_object<v8::V8T>(CT(*v)); return v8::Undefined(v8::Isolate::GetCurrent()); } \
 }; \
 template<> class from_v8<T> { public: \
     static bool write( v8::Handle<v8::Value> src, T& res ) {\
-        res = (T)src->V8T##Value(); \
+        res = (T)src->V8T##Value(v8::Isolate::GetCurrent()); \
         return true; } \
 }
-
+#else
+#define V8_FAST_STREAMER_BOOL(T,V8T,CT) V8_FAST_STREAMER(T,V8T,CT)
 #endif
 
-V8_FAST_STREAMER(int8,  Int32, int32);
+
+V8_FAST_STREAMER(int8, Int32, int32);
 V8_FAST_STREAMER(int16, Int32, int32);
 V8_FAST_STREAMER(int32, Int32, int32);
 V8_FAST_STREAMER(int64, Number, double);     //can lose data in conversion
 
-V8_FAST_STREAMER(uint8,  Uint32, uint32);
+V8_FAST_STREAMER(uint8, Uint32, uint32);
 V8_FAST_STREAMER(uint16, Uint32, uint32);
 V8_FAST_STREAMER(uint32, Uint32, uint32);
 V8_FAST_STREAMER(uint64, Number, double);    //can lose data in conversion
 
-V8_FAST_STREAMER(long,  Int32,  int32);
+V8_FAST_STREAMER(long, Int32, int32);
 V8_FAST_STREAMER(ulong, Uint32, uint32);
 
-V8_FAST_STREAMER(float,  Number, double);
+V8_FAST_STREAMER(float, Number, double);
 V8_FAST_STREAMER(double, Number, double);
 
-V8_FAST_STREAMER(bool, Boolean, bool);
+V8_FAST_STREAMER_BOOL(bool, Boolean, bool);
+
+///slotalloc version id
+//#define V8_FAST_STREAMER(T,V8T,CT) 
+template<> class to_v8<coid::versionid> { 
+public:
+    static v8::Handle<v8::Value> read(const coid::versionid& v) { return v8::new_object<v8::Number>(*reinterpret_cast<const double*>(&v)); }
+};
+
+template<> class from_v8<coid::versionid> {
+public:
+    static bool write(v8::Handle<v8::Value> src, coid::versionid& res) {
+        auto mv = src->NumberValue(v8::Isolate::GetCurrent()->GetCurrentContext());
+        if (mv.IsJust()) {
+            const double tmp = mv.FromJust();
+            res = *reinterpret_cast<const coid::versionid*>(&tmp);
+        };
+        
+        return mv.IsJust();
+    }
+};
 
 ///Date/time
 template<> class to_v8<timet> {
 public:
     static v8::Handle<v8::Value> read(const timet& v) {
+#ifdef V8_NEW2
+        return v8::Date::New(v8::Isolate::GetCurrent()->GetCurrentContext(), double(v.t)).ToLocalChecked();
+#else
         return v8::new_object<v8::Date>(double(v.t));
+#endif // V8_NEW2
     }
 };
-    
+
 template<> class from_v8<timet> {
 public:
-    static bool write( v8::Handle<v8::Value> src, timet& res ) {
-#if V8_MAJOR_VERSION
+    static bool write(v8::Handle<v8::Value> src, timet& res) {
         auto mv = src->NumberValue(v8::Isolate::GetCurrent()->GetCurrentContext());
         if (mv.IsJust())
             res = timet((int64)mv.FromJust());
         return mv.IsJust();
-#else
-        res = timet((int64)src->NumberValue());
-        return true;
-#endif
     }
 };
 
@@ -259,21 +213,21 @@ public:
 template<> class to_v8<charstr> {
 public:
     static v8::Handle<v8::Value> read(const charstr& v) { return v8::string_utf8(v); }
-    
+
     static v8::Handle<v8::Value> read(const token& v) { return v8::string_utf8(v); }
-    
+
     static v8::Handle<v8::Value> read(const char* v) { return v8::string_utf8(v); }
 };
 
 template<> class from_v8<charstr> {
 public:
-    static bool write( v8::Handle<v8::Value> src, charstr& res ) {
+    static bool write(v8::Handle<v8::Value> src, charstr& res) {
         if (src->IsUndefined() || src->IsNull()) {
             res.reset();
             return false;
         }
         v8::Isolate* iso = v8::Isolate::GetCurrent();
-        v8::String::Utf8Value str(V8_OPTARG(iso) src);
+        v8::String::Utf8Value str(iso, src);
         res.set_from(*str, str.length());
         return true;
     }
@@ -288,30 +242,29 @@ public:
 
 ///Helper to fill dynarray from V8 array
 template<class T>
-inline bool v8_write_dynarray( v8::Handle<v8::Value> src, dynarray<T>& a )
+inline bool v8_write_dynarray(v8::Handle<v8::Value> src, dynarray<T>& a)
 {
     if (!src->IsArray()) {
         a.reset();
         return false;
     }
 
-    V8_DECL_ISO(iso);
-    v8::Local<v8::Object> obj = src->ToObject(V8_OPTARG1(iso));
-    uint n = obj->Get(v8::symbol("length", iso))->Uint32Value(V8_CUR_CTX_OPT(iso)) V8_FROMJUST;
+    v8::Isolate* iso = v8::Isolate::GetCurrent();
+    v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+    v8::Local<v8::Object> obj = src->ToObject(ctx).ToLocalChecked();
+    uint n = obj->Get(ctx, v8::symbol("length", iso)).ToLocalChecked()->Uint32Value(ctx).FromJust();
     a.alloc(n);
 
-    for (uint i=0; i<n; ++i) {
-        from_v8<T>::write(obj->Get(i), a[i]);
+    for (uint i = 0; i < n; ++i) {
+        from_v8<T>::write(obj->Get(ctx, i).ToLocalChecked(), a[i]);
     }
 
     return true;
 }
 
-#ifdef V8_MAJOR_VERSION
-
 ///Helper to fill dynarray from V8 array
 template<class T>
-inline bool v8_write_dynarray( v8::TypedArray* src, dynarray<T>& a )
+inline bool v8_write_dynarray(v8::TypedArray* src, dynarray<T>& a)
 {
     uints n = src->Length();
     src->CopyContents(a.alloc(n), n * sizeof(T));
@@ -319,23 +272,22 @@ inline bool v8_write_dynarray( v8::TypedArray* src, dynarray<T>& a )
     return true;
 }
 
-#endif
-
 ///Generic dynarray<T> partial specialization
 template<class T> class to_v8<dynarray<T>> {
 public:
     static v8::Handle<v8::Value> read(const dynarray<T>& v) {
         uint n = (uint)v.size();
         v8::Local<v8::Array> a = v8::new_object<v8::Array>(n);
-
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
         for (uint i = 0; i < n; ++i) {
-            a->Set(i, to_v8<T>::read(v[i]));
+            a->Set(ctx, i, to_v8<T>::read(v[i])) V8_CHECK;
         }
 
         return a;
     }
 };
-    
+
 template<class T> class from_v8<dynarray<T>> {
 public:
     static bool write(v8::Handle<v8::Value> src, dynarray<T>& res) {
@@ -349,9 +301,10 @@ public:
     static v8::Handle<v8::Value> read(const range<T>& v) {
         uint n = (uint)v.size();
         v8::Local<v8::Array> a = v8::new_object<v8::Array>(n);
-
-        for(uint i=0; i<n; ++i) {
-            a->Set(i, to_v8<T>::read(v[i]));
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+        for (uint i = 0; i < n; ++i) {
+            a->Set(ctx, i, to_v8<T>::read(v[i]));
         }
 
         return a;
@@ -362,12 +315,12 @@ public:
 template<class T> class to_v8<iref<T>> {
 public:
     static v8::Handle<v8::Value> read(const iref<T>& v) {
-        v8::Isolate * iso = v8::Isolate::GetCurrent();
-        typedef v8::Handle<v8::Value>(*ifc_create_wrapper_fn)(T * orig, v8::Handle<v8::Context> context);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        typedef v8::Handle<v8::Value>(*ifc_create_wrapper_fn)(T* orig, v8::Handle<v8::Context> context);
 
-        ifc_create_wrapper_fn wrap = reinterpret_cast<ifc_create_wrapper_fn>(v->intergen_wrapper(T::IFC_BACKEND_JS));
+        ifc_create_wrapper_fn wrap = reinterpret_cast<ifc_create_wrapper_fn>(v->intergen_wrapper(intergen_interface::backend::js));
         if (!wrap) {
-            return V8_NULL(iso);
+            return v8::Null(iso);
         }
 
         return wrap(v.get(), v8::Handle<v8::Context>());
@@ -398,11 +351,11 @@ template<class T>
 class from_v8_volatile : public from_v8<T> {
 public:
     ///Generic parser from v8 type representation
-    static bool write( v8::Handle<v8::Value> src, T& res ) {
+    static bool write(v8::Handle<v8::Value> src, T& res) {
         return from_v8<T>::write(src, res);
     }
 
-    static void cleanup( v8::Handle<v8::Value> val ) {}
+    static void cleanup(v8::Handle<v8::Value> val) {}
 };
 
 /*
@@ -462,11 +415,10 @@ private:
 };*/
 
 
-#ifdef V8_MAJOR_VERSION
 
 ///Helper to map typed array from C++ to V8
 template<class T, class V8AT>
-inline v8::Handle<v8::ArrayBufferView> v8_map_array_view( const T* ptr, uint count )
+inline v8::Handle<v8::ArrayBufferView> v8_map_array_view(const T* ptr, uint count)
 {
     v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(), (void*)ptr, count * sizeof(T));
     return V8AT::New(ab, 0, count);
@@ -513,59 +465,6 @@ V8_STREAMER_MAPARRAY(long, v8::Int32Array)
 V8_STREAMER_MAPARRAY(ulong, v8::Uint32Array)
 #endif
 
-#else
-
-///Helper to map typed array from C++ to V8
-template<class T>
-inline v8::Handle<v8::Value> v8_map_range( const T* ptr, uint count, v8::ExternalArrayType type )
-{
-    v8::Handle<v8::Object> a = v8::Object::New();
-    a->SetIndexedPropertiesToExternalArrayData((void*)ptr, type, count);
-    a->Set(v8::symbol("length"), v8::Uint32::NewFromUnsigned(count));
-
-    return a;
-}
-
-///Macro for direct array mapping to V8
-#define V8_STREAMER_MAPARRAY(T, V8EXT) \
-template<> class to_v8_volatile<dynarray<T>> : public to_v8<dynarray<T>> {\
-public:\
-    static v8::Handle<v8::Value> read(const dynarray<T>& v) { \
-        return v8_map_range(v.ptr(), (uint)v.size(), V8EXT); \
-    } \
-    static void cleanup( v8::Handle<v8::Value> val ) { \
-        val->ToObject(V8_OPTARG1(v8::Isolate::GetCurrent()))->SetIndexedPropertiesToExternalArrayData(0, V8EXT, 0); \
-    } \
-}; \
-template<> class from_v8_volatile<dynarray<T>> : public from_v8<dynarray<T>> {\
-public:\
-    static bool write( v8::Handle<v8::Value> src, dynarray<T>& res ) { \
-        return v8_write_dynarray(src, res); \
-    } \
-}; \
-template<> class to_v8_volatile<range<T>> : public to_v8<range<T>> {\
-public:\
-    static v8::Handle<v8::Value> read(const range<T>& v) { \
-        return v8_map_range(v.ptr(), (uint)v.size(), V8EXT); \
-    } \
-    static void cleanup( v8::Handle<v8::Value> val ) { \
-        val->ToObject(V8_OPTARG1(v8::Isolate::GetCurrent()))->SetIndexedPropertiesToExternalArrayData(0, V8EXT, 0); \
-    } \
-};
-
-V8_STREAMER_MAPARRAY(int8, v8::kExternalByteArray)
-V8_STREAMER_MAPARRAY(uint8, v8::kExternalUnsignedByteArray)
-V8_STREAMER_MAPARRAY(int16, v8::kExternalShortArray)
-V8_STREAMER_MAPARRAY(uint16, v8::kExternalUnsignedShortArray)
-V8_STREAMER_MAPARRAY(int32, v8::kExternalIntArray)
-V8_STREAMER_MAPARRAY(uint32, v8::kExternalUnsignedIntArray)
-V8_STREAMER_MAPARRAY(float, v8::kExternalFloatArray)
-V8_STREAMER_MAPARRAY(double, v8::kExternalDoubleArray)
-
-V8_STREAMER_MAPARRAY(long, v8::kExternalIntArray)
-V8_STREAMER_MAPARRAY(ulong, v8::kExternalUnsignedIntArray)
-
-#endif
 
 
 ///V8 values
@@ -578,7 +477,7 @@ public:
 template<typename V> class from_v8<v8::Handle<V>> {
 public:
     typedef v8::Handle<V> T;
-    static bool write( v8::Handle<v8::Value> src, T& res ) { res = src.Cast<T>(src); return true; }
+    static bool write(v8::Handle<v8::Value> src, T& res) { res = src.Cast<T>(src); return true; }
 };
 
 template<> class to_v8<v8::Handle<v8::Function>> {
@@ -612,10 +511,10 @@ public:
 
     v8_token()
     {}
-    v8_token( const token& tok ) : _tok(tok)
+    v8_token(const token& tok) : _tok(tok)
     {}
 
-    void set( const token& tok ) {
+    void set(const token& tok) {
         _tok = tok;
     }
 
@@ -666,16 +565,16 @@ public:
     void set(v8::Handle<v8::Value> val) {
         _top = _stack.alloc(1);
         _top->value = val;
-        
-        if(val->IsObject())
-            _top->object = val->ToObject(V8_OPTARG1(v8::Isolate::GetCurrent()));
+
+        if (val->IsObject())
+            _top->object = val->ToObject(v8::Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
     }
 
     ///Get a v8 Value result from streaming
     v8::Handle<v8::Value> get()
     {
         DASSERT(_stack.size() == 1);
-        if(!_top) return v8::Null(v8::Isolate::GetCurrent());
+        if (!_top) return v8::Null(v8::Isolate::GetCurrent());
 
         v8::Handle<v8::Value> v = _top->value;
         _top = _stack.alloc(1);
@@ -687,7 +586,7 @@ public:
 
     virtual token fmtstream_name() { return "fmtstream_v8"; }
 
-    virtual void fmtstream_file_name( const token& file_name )
+    virtual void fmtstream_file_name(const token& file_name)
     {
         //_tokenizer.set_file_name(file_name);
     }
@@ -695,12 +594,12 @@ public:
     ///Return formatting stream error (if any) and current line and column for error reporting purposes
     //@param err [in] error text
     //@param err [out] final (formatted) error text with line info etc.
-    virtual void fmtstream_err( charstr& err, bool add_context = true )
+    virtual void fmtstream_err(charstr& err, bool add_context = true)
     {
         err.ins(0, "[js] ");
     }
 
-    void acknowledge( bool eat=false )
+    void acknowledge(bool eat = false)
     {
         _top = _stack.alloc(1);
         _top->element = 0;
@@ -714,26 +613,30 @@ public:
 
 
     ////////////////////////////////////////////////////////////////////////////////
-    opcd write_key( const token& key, int kmember )
+    opcd write_key(const token& key, int kmember)
     {
-        if(kmember > 0) {
+        if (kmember > 0) {
+            v8::Isolate* iso = v8::Isolate::GetCurrent();
+            v8::Local<v8::Context> ctx = iso->GetCurrentContext();
             //attach the previous property
-            _top->object->Set(v8::symbol(_top->key), _top->value);
+            _top->object->Set(ctx, v8::symbol(_top->key, iso), _top->value) V8_CHECK;
         }
 
         _top->key = key;
         return 0;
     }
 
-    opcd read_key( charstr& key, int kmember, const token& expected_key )
+    opcd read_key(charstr& key, int kmember, const token& expected_key)
     {
-        if(_top->object.IsEmpty())
+        if (_top->object.IsEmpty())
             return ersNO_MORE;
 
         //looks up the variable in the current object
-        _top->value = _top->object->Get(v8::symbol(expected_key));
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+        _top->value = v8::get_value(_top->object, expected_key, ctx);
 
-        if(_top->value->IsUndefined())
+        if (_top->value->IsUndefined())
             return ersNO_MORE;
 
         key = expected_key;
@@ -741,9 +644,9 @@ public:
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    opcd write( const void* p, type t ) override
+    opcd write(const void* p, type t) override
     {
-        if( t.is_array_start() )
+        if (t.is_array_start())
         {
             /*if( t.type == type::T_BINARY )
                 DASSERT(0);
@@ -752,115 +655,114 @@ public:
                 ;//postpone writing until the escape status is known
             else
                 _bufw << char('[');*/
-            if(t.type != type::T_BINARY && t.type != type::T_CHAR) {
+            if (t.type != type::T_BINARY && t.type != type::T_CHAR) {
                 _top->array = v8::new_object<v8::Array>((int)t.get_count(p));
                 _top->element = 0;
             }
         }
-        else if( t.is_array_end() )
+        else if (t.is_array_end())
         {
-            if(t.type != type::T_BINARY && t.type != type::T_CHAR)
+            if (t.type != type::T_BINARY && t.type != type::T_CHAR)
                 _top->value = _top->array;
         }
-        else if( t.type == type::T_STRUCTEND )
+        else if (t.type == type::T_STRUCTEND)
         {
+            v8::Isolate* iso = v8::Isolate::GetCurrent();
+            v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+
             //attach the last property
-            if(_top->key)
-                _top->object->Set(v8::symbol(_top->key), _top->value);
+            if (_top->key)
+                _top->object->Set(ctx, v8::symbol(_top->key), _top->value);
 
             DASSERT(_stack.size() > 1);
             _top[-1].value = _top->object;
             _top = _stack.pop();
         }
-        else if( t.type == type::T_STRUCTBGN )
+        else if (t.type == type::T_STRUCTBGN)
         {
             _top = _stack.push();
             _top->object = v8::new_object<v8::Object>();
         }
         else
         {
-            switch( t.type )
+            switch (t.type)
             {
-                case type::T_INT:
-                    switch( t.get_size() )
-                    {
-                    case 1: _top->value = to_v8<int8>() .read(*(int8*)p); break;
-                    case 2: _top->value = to_v8<int16>().read(*(int16*)p); break;
-                    case 4: _top->value = to_v8<int32>().read(*(int32*)p); break;
-                    case 8: _top->value = to_v8<int64>().read(*(int64*)p); break;
-                    }
-                    break;
+            case type::T_INT:
+                switch (t.get_size())
+                {
+                case 1: _top->value = to_v8<int8>().read(*(int8*)p); break;
+                case 2: _top->value = to_v8<int16>().read(*(int16*)p); break;
+                case 4: _top->value = to_v8<int32>().read(*(int32*)p); break;
+                case 8: _top->value = to_v8<int64>().read(*(int64*)p); break;
+                }
+                break;
 
-                case type::T_UINT:
-                    switch( t.get_size() )
-                    {
-                    case 1: _top->value = to_v8<uint8>() .read(*(uint8*)p); break;
-                    case 2: _top->value = to_v8<uint16>().read(*(uint16*)p); break;
-                    case 4: _top->value = to_v8<uint32>().read(*(uint32*)p); break;
-                    case 8: _top->value = to_v8<uint64>().read(*(uint64*)p); break;
-                    }
-                    break;
+            case type::T_UINT:
+                switch (t.get_size())
+                {
+                case 1: _top->value = to_v8<uint8>().read(*(uint8*)p); break;
+                case 2: _top->value = to_v8<uint16>().read(*(uint16*)p); break;
+                case 4: _top->value = to_v8<uint32>().read(*(uint32*)p); break;
+                case 8: _top->value = to_v8<uint64>().read(*(uint64*)p); break;
+                }
+                break;
 
-                case type::T_CHAR: {
+            case type::T_CHAR: {
 
-                    if( !t.is_array_element() ) {
-                        _top->value = v8::symbol(token((const char*)p, 1));
-                    }
-                    else {
-                        DASSERT(0); //should not get here - optimized in write_array
-                    }
+                if (!t.is_array_element()) {
+                    _top->value = v8::symbol(token((const char*)p, 1));
+                }
+                else {
+                    DASSERT(0); //should not get here - optimized in write_array
+                }
 
-                } break;
-
-                /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_FLOAT:
-                    switch( t.get_size() ) {
-                    case 4: _top->value = to_v8<float>().read(*(float*)p); break;
-                    case 8: _top->value = to_v8<double>().read(*(double*)p); break;
-                    }
-                    break;
+            } break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_BOOL:
-                    _top->value = v8::new_object<v8::Boolean>(*(bool*)p);
+            case type::T_FLOAT:
+                switch (t.get_size()) {
+                case 4: _top->value = to_v8<float>().read(*(float*)p); break;
+                case 8: _top->value = to_v8<double>().read(*(double*)p); break;
+                }
                 break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_TIME: {
-                    _top->value = to_v8<timet>().read(*(timet*)p);
-                } break;
-
-                /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_ANGLE: {
-                    _top->value = to_v8<double>().read(*(double*)p); break;
-                } break;
-
-                /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_ERRCODE:
-                    {
-                        opcd e = (const opcd::errcode*)p;
-                        _top->value = v8::new_object<v8::Integer>(e.code());
-                    }
+            case type::T_BOOL:
+                _top->value = v8::new_object<v8::Boolean>(*(bool*)p);
                 break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_BINARY: {
-                    _bufw.reset();
-                    write_binary( p, t.get_size() );
+            case type::T_TIME: {
+                _top->value = to_v8<timet>().read(*(timet*)p);
+            } break;
 
-#ifdef V8_MAJOR_VERSION
-                    v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(),
-                        (void*)_bufw.ptr(), _bufw.len());
-                    _top->value = v8::Uint8Array::New(ab, 0, _bufw.len());
-#else
-                    _top->value = v8::String::New((const char*)_bufw.ptr(), _bufw.len());
-#endif
-                } break;
+                /////////////////////////////////////////////////////////////////////////////////////
+            case type::T_ANGLE: {
+                _top->value = to_v8<double>().read(*(double*)p); break;
+            } break;
 
-                case type::T_COMPOUND:
-                    break;
+                /////////////////////////////////////////////////////////////////////////////////////
+            case type::T_ERRCODE:
+            {
+                opcd e = (const opcd::errcode*)p;
+                _top->value = v8::new_object<v8::Integer>(e.code());
+            }
+            break;
 
-                default: return ersSYNTAX_ERROR "unknown type"; break;
+            /////////////////////////////////////////////////////////////////////////////////////
+            case type::T_BINARY: {
+                _bufw.reset();
+                write_binary(p, t.get_size());
+
+                v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(),
+                    (void*)_bufw.ptr(), _bufw.len());
+                _top->value = v8::Uint8Array::New(ab, 0, _bufw.len());
+            } break;
+
+            case type::T_COMPOUND:
+                break;
+
+            default: return ersSYNTAX_ERROR "unknown type"; break;
             }
         }
 
@@ -869,27 +771,27 @@ public:
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
-    opcd read( void* p, type t ) override
+    opcd read(void* p, type t) override
     {
-        opcd e=0;
-        if( t.is_array_start() )
+        opcd e = 0;
+        if (t.is_array_start())
         {
-            if( t.type == type::T_BINARY ) {
+            if (t.type == type::T_BINARY) {
                 DASSERT(0);
             }
-            else if( t.type == type::T_CHAR ) {
-                v8::String::Utf8Value text(V8_OPTARG(v8::Isolate::GetCurrent()) _top->value);
-                if(*text == 0)
+            else if (t.type == type::T_CHAR) {
+                v8::String::Utf8Value text(v8::Isolate::GetCurrent(), _top->value);
+                if (*text == 0)
                     e = ersSYNTAX_ERROR "expected string";
                 else
                     t.set_count(text.length(), p);
             }
-            else if( t.type == type::T_KEY ) {
+            else if (t.type == type::T_KEY) {
                 DASSERT(0);
             }
             else
             {
-                if(!_top->value->IsArray())
+                if (!_top->value->IsArray())
                     e = ersSYNTAX_ERROR "expected array";
                 else {
                     _top->array = v8::Local<v8::Array>::New(v8::Isolate::GetCurrent(), _top->value.As<v8::Array>());
@@ -897,163 +799,166 @@ public:
                 }
             }
         }
-        else if( t.is_array_end() )
+        else if (t.is_array_end())
         {
         }
-        else if( t.type == type::T_STRUCTEND )
+        else if (t.type == type::T_STRUCTEND)
         {
             _top = _stack.pop();
         }
-        else if( t.type == type::T_STRUCTBGN )
+        else if (t.type == type::T_STRUCTBGN)
         {
             bool undef = _top->value->IsUndefined();
-            if(!undef && !_top->value->IsObject())
+            if (!undef && !_top->value->IsObject())
                 e = ersSYNTAX_ERROR "expected object";
             else {
                 entry* le = _stack.add(1);
-                _top = le-1;
 
-                le->object = _top->value->ToObject(V8_OPTARG1(v8::Isolate::GetCurrent()));
+                if (!undef) {
+                    _top = le - 1;
+                    le->object = _top->value->ToObject(v8::Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
+                }
                 _top = le;
             }
         }
         else
         {
-            switch( t.type )
+            switch (t.type)
             {
-                case type::T_INT:
-                    {
-                        try {
-                            switch( t.get_size() )
-                            {
-                            case 1: from_v8<int8>() .write(_top->value, *(int8*)p ); break;
-                            case 2: from_v8<int16>().write(_top->value, *(int16*)p); break;
-                            case 4: from_v8<int32>().write(_top->value, *(int32*)p); break;
-                            case 8: from_v8<int64>().write(_top->value, *(int64*)p); break;
-                            }
-                        }
-                        catch(v8::Exception) {
-                            e = ersSYNTAX_ERROR "expected number";
-                        }
-                    }
-                    break;
-                
-                case type::T_UINT:
-                    {
-                        try {
-                            switch( t.get_size() )
-                            {
-                            case 1: from_v8<uint8>() .write(_top->value, *(uint8*)p ); break;
-                            case 2: from_v8<uint16>().write(_top->value, *(uint16*)p); break;
-                            case 4: from_v8<uint32>().write(_top->value, *(uint32*)p); break;
-                            case 8: from_v8<uint64>().write(_top->value, *(uint64*)p); break;
-                            }
-                        }
-                        catch(v8::Exception) {
-                            e = ersSYNTAX_ERROR "expected number";
-                        }
-                    }
-                    break;
-
-                case type::T_KEY:
-                    return ersUNAVAILABLE;// "should be read as array";
-                    break;
-
-                case type::T_CHAR:
-                    {
-                        if( !t.is_array_element() )
-                        {
-                            v8::String::Utf8Value str(V8_OPTARG(v8::Isolate::GetCurrent()) _top->value);
-
-                            if(*str)
-                                *(char*)p = str.length() ? **str : 0;
-                            else
-                                e = ersSYNTAX_ERROR "expected string";
-                        }
-                        else
-                            //this is optimized in read_array(), non-continuous containers not supported
-                            e = ersNOT_IMPLEMENTED;
-                    }
-                    break;
-                
-                case type::T_FLOAT: {
-                    bool rv = false;
+            case type::T_INT:
+            {
+                try {
                     switch (t.get_size())
                     {
-                    case 4: rv = from_v8<float>().write(_top->value, *(float*)p); break;
-                    case 8: rv = from_v8<double>().write(_top->value, *(double*)p); break;
+                    case 1: from_v8<int8>().write(_top->value, *(int8*)p); break;
+                    case 2: from_v8<int16>().write(_top->value, *(int16*)p); break;
+                    case 4: from_v8<int32>().write(_top->value, *(int32*)p); break;
+                    case 8: from_v8<int64>().write(_top->value, *(int64*)p); break;
                     }
-                    if (!rv)
-                        e = ersSYNTAX_ERROR "expected number";
-                } break;
+                }
+                catch (v8::Exception) {
+                    e = ersSYNTAX_ERROR "expected number";
+                }
+            }
+            break;
 
-                /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_BOOL: {
-                    if (!from_v8<bool>().write(_top->value, *(bool*)p))
-                        e = ersSYNTAX_ERROR "expected boolean";
-                } break;
+            case type::T_UINT:
+            {
+                try {
+                    switch (t.get_size())
+                    {
+                    case 1: from_v8<uint8>().write(_top->value, *(uint8*)p); break;
+                    case 2: from_v8<uint16>().write(_top->value, *(uint16*)p); break;
+                    case 4: from_v8<uint32>().write(_top->value, *(uint32*)p); break;
+                    case 8: from_v8<uint64>().write(_top->value, *(uint64*)p); break;
+                    }
+                }
+                catch (v8::Exception) {
+                    e = ersSYNTAX_ERROR "expected number";
+                }
+            }
+            break;
 
-                /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_TIME: {
-                    int64 t;
-                    if (from_v8<int64>().write(_top->value, t))
-                        *(timet*)p = t;
+            case type::T_KEY:
+                return ersUNAVAILABLE;// "should be read as array";
+                break;
+
+            case type::T_CHAR:
+            {
+                if (!t.is_array_element())
+                {
+                    v8::String::Utf8Value str(v8::Isolate::GetCurrent(), _top->value);
+
+                    if (*str)
+                        *(char*)p = str.length() ? **str : 0;
                     else
-                        e = ersSYNTAX_ERROR "expected time value";
-                } break;
+                        e = ersSYNTAX_ERROR "expected string";
+                }
+                else
+                    //this is optimized in read_array(), non-continuous containers not supported
+                    e = ersNOT_IMPLEMENTED;
+            }
+            break;
+
+            case type::T_FLOAT: {
+                bool rv = false;
+                switch (t.get_size())
+                {
+                case 4: rv = from_v8<float>().write(_top->value, *(float*)p); break;
+                case 8: rv = from_v8<double>().write(_top->value, *(double*)p); break;
+                }
+                if (!rv)
+                    e = ersSYNTAX_ERROR "expected number";
+            } break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_ANGLE: {
-                    if(_top->value->IsString()) {
-                        v8::String::Utf8Value str(V8_OPTARG(v8::Isolate::GetCurrent()) _top->value);
-                        token tok(*str, str.length());
-                        *(double*)p = tok.toangle();
-                    }
-                    else {
-                        if (!from_v8<double>().write(_top->value, *(double*)p))
-                            e = ersSYNTAX_ERROR "expected angle";
-                    }
-                } break;
+            case type::T_BOOL: {
+                if (!from_v8<bool>().write(_top->value, *(bool*)p))
+                    e = ersSYNTAX_ERROR "expected boolean";
+            } break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_ERRCODE: {
-                    int64 v;
-                    if (from_v8<int64>().write(_top->value, v)) {
-                        opcd e;
-                        e.set(uint(v));
-
-                        *(opcd*)p = e;
-                    }
-                    else
-                        e = ersSYNTAX_ERROR "expected number";
-                } break;
+            case type::T_TIME: {
+                int64 t;
+                if (from_v8<int64>().write(_top->value, t))
+                    *(timet*)p = t;
+                else
+                    e = ersSYNTAX_ERROR "expected time value";
+            } break;
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_BINARY: {
-                    try {
-                        v8::String::Utf8Value str(V8_OPTARG(v8::Isolate::GetCurrent()) _top->value);
-                        token tok(*str, str.length());
+            case type::T_ANGLE: {
+                if (_top->value->IsString()) {
+                    v8::String::Utf8Value str(v8::Isolate::GetCurrent(), _top->value);
+                    token tok(*str, str.length());
+                    *(double*)p = tok.toangle();
+                }
+                else {
+                    if (!from_v8<double>().write(_top->value, *(double*)p))
+                        e = ersSYNTAX_ERROR "expected angle";
+                }
+            } break;
 
-                        uints i = charstrconv::hex2bin( tok, p, t.get_size(), ' ' );
-                        if(i>0)
-                            return ersMISMATCHED "not enough array elements";
-                        tok.skip_char(' ');
-                        if( !tok.is_empty() )
-                            return ersMISMATCHED "more characters after array elements read";
-                    } catch(v8::Exception) {
-                        return ersSYNTAX_ERROR "expected hex string";
-                    }
-                } break;
+                /////////////////////////////////////////////////////////////////////////////////////
+            case type::T_ERRCODE: {
+                int64 v;
+                if (from_v8<int64>().write(_top->value, v)) {
+                    opcd e;
+                    e.set(uint(v));
+
+                    *(opcd*)p = e;
+                }
+                else
+                    e = ersSYNTAX_ERROR "expected number";
+            } break;
+
+                /////////////////////////////////////////////////////////////////////////////////////
+            case type::T_BINARY: {
+                try {
+                    v8::String::Utf8Value str(v8::Isolate::GetCurrent(), _top->value);
+                    token tok(*str, str.length());
+
+                    uints i = charstrconv::hex2bin(tok, p, t.get_size(), ' ');
+                    if (i > 0)
+                        return ersMISMATCHED "not enough array elements";
+                    tok.skip_char(' ');
+                    if (!tok.is_empty())
+                        return ersMISMATCHED "more characters after array elements read";
+                }
+                catch (v8::Exception) {
+                    return ersSYNTAX_ERROR "expected hex string";
+                }
+            } break;
 
 
                 /////////////////////////////////////////////////////////////////////////////////////
-                case type::T_COMPOUND:
-                    break;
+            case type::T_COMPOUND:
+                break;
 
 
-                default:
-                    return ersSYNTAX_ERROR "unknown type";
-                    break;
+            default:
+                return ersSYNTAX_ERROR "unknown type";
+                break;
             }
         }
 
@@ -1061,49 +966,55 @@ public:
     }
 
 
-    virtual opcd write_array_separator( type t, uchar end ) override
+    virtual opcd write_array_separator(type t, uchar end) override
     {
-        if(_top->element > 0)
-            _top->array->Set(_top->element-1, _top->value);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+
+        if (_top->element > 0)
+            _top->array->Set(ctx, _top->element - 1, _top->value) V8_CHECK;
         ++_top->element;
 
         return 0;
     }
 
-    virtual opcd read_array_separator( type t ) override
+    virtual opcd read_array_separator(type t) override
     {
-        if(_top->element >= _top->array->Length())
+        if (_top->element >= _top->array->Length())
             return ersNO_MORE;
 
-        _top->value = _top->array->Get(_top->element++);
+        v8::Isolate* iso = v8::Isolate::GetCurrent();
+        v8::Local<v8::Context> ctx = iso->GetCurrentContext();
+
+        _top->value = _top->array->Get(ctx, _top->element++).ToLocalChecked();
         return 0;
     }
 
-    virtual opcd write_array_content( binstream_container_base& c, uints* count, metastream* m ) override
+    virtual opcd write_array_content(binstream_container_base& c, uints* count, metastream* m) override
     {
         type t = c._type;
         uints n = c.count();
         //c.set_array_needs_separators();
 
-        if( t.type != type::T_CHAR  &&  t.type != type::T_KEY && t.type != type::T_BINARY )
+        if (t.type != type::T_CHAR && t.type != type::T_KEY && t.type != type::T_BINARY)
             return write_compound_array_content(c, count, m);
 
         opcd e;
         //optimized for character and key strings
-        if( c.is_continuous()  &&  n != UMAXS )
+        if (c.is_continuous() && n != UMAXS)
         {
             token tok;
 
-            if( t.type == type::T_BINARY ) {
+            if (t.type == type::T_BINARY) {
                 _bufw.reset();
-                e = write_binary( c.extract(n), n );
+                e = write_binary(c.extract(n), n);
                 tok = _bufw;
             }
             else {
-                tok.set( (const char*)c.extract(n), n );
+                tok.set((const char*)c.extract(n), n);
             }
 
-            if(!e) {
+            if (!e) {
                 _top->value = v8::string_utf8(tok);
                 *count = n;
             }
@@ -1117,16 +1028,16 @@ public:
         return e;
     }
 
-    virtual opcd read_array_content( binstream_container_base& c, uints n, uints* count, metastream* m ) override
+    virtual opcd read_array_content(binstream_container_base& c, uints n, uints* count, metastream* m) override
     {
         type t = c._type;
-        
-        if( t.type != type::T_CHAR  &&  t.type != type::T_BINARY ) {
+
+        if (t.type != type::T_CHAR && t.type != type::T_BINARY) {
             uint na = _top->array->Length();
 
-            if(n == UMAXS)
+            if (n == UMAXS)
                 n = na;
-            else if(n != na)
+            else if (n != na)
                 return ersMISMATCHED "array size";
 
             return read_compound_array_content(c, n, count, m);
@@ -1135,19 +1046,19 @@ public:
         //if(!_top->value->IsString())
         //    return ersSYNTAX_ERROR "expected string";
 
-        v8::String::Utf8Value str(V8_OPTARG(v8::Isolate::GetCurrent()) _top->value);
+        v8::String::Utf8Value str(v8::Isolate::GetCurrent(), _top->value);
         token tok(*str, str.length());
 
-        opcd e=0;
-        if( t.type == type::T_BINARY )
-            e = read_binary(tok,c,n,count);
+        opcd e = 0;
+        if (t.type == type::T_BINARY)
+            e = read_binary(tok, c, n, count);
         else
         {
-            if( n != UMAXS  &&  n != tok.len() )
+            if (n != UMAXS && n != tok.len())
                 e = ersMISMATCHED "array size";
-            else if( c.is_continuous() )
+            else if (c.is_continuous())
             {
-                xmemcpy( c.insert(n), tok.ptr(), tok.len() );
+                xmemcpy(c.insert(n), tok.ptr(), tok.len());
 
                 *count = tok.len();
             }
@@ -1155,7 +1066,7 @@ public:
             {
                 const char* p = tok.ptr();
                 uints nc = tok.len();
-                for(; nc>0; --nc,++p )
+                for (; nc > 0; --nc, ++p)
                     *(char*)c.insert(1) = *p;
 
                 *count = nc;
@@ -1198,7 +1109,7 @@ struct v8_enum_helper {
 };
 
 template<class T>
-struct v8_enum_helper<true,T> {
+struct v8_enum_helper<true, T> {
     int operator << (const T& v) const { return int(v); }
     T operator >> (int v) const { return T(v); }
 };
@@ -1208,7 +1119,7 @@ inline v8::Handle<v8::Value> to_v8<T>::read(const T& v)
 {
     v8_enum_helper<std::is_enum<T>::value, T> en;
     if (std::is_enum<T>::value)
-        return V8_NEWTYPE2(v8::Isolate::GetCurrent(), Int32, en << v);
+        return v8::Int32::New(v8::Isolate::GetCurrent(), en << v);
 
     auto& streamer = THREAD_SINGLETON(v8_streamer_context);
     streamer.meta.xstream_out(v);
@@ -1217,11 +1128,11 @@ inline v8::Handle<v8::Value> to_v8<T>::read(const T& v)
 
 
 template<class T>
-inline bool from_v8<T>::write( v8::Handle<v8::Value> src, T& res )
+inline bool from_v8<T>::write(v8::Handle<v8::Value> src, T& res)
 {
     v8_enum_helper<std::is_enum<T>::value, T> en;
     if (std::is_enum<T>::value)
-        res = en >> src->Int32Value(V8_CUR_CTX_OPT(v8::Isolate::GetCurrent())) V8_FROMJUST;
+        res = en >> src->Int32Value(v8::Isolate::GetCurrent()->GetCurrentContext()).FromJust();
     else {
         auto& streamer = THREAD_SINGLETON(v8_streamer_context);
         streamer.fmtv8.set(src);
@@ -1236,16 +1147,14 @@ inline bool write_from_v8(v8::Handle<v8::Value> src, T& t) {
 }
 
 template<class T>
-inline bool write_from_v8( v8::Handle<v8::Value> src, threadcached<T>& tc ) {
+inline bool write_from_v8(v8::Handle<v8::Value> src, threadcached<T>& tc) {
     return from_v8<typename threadcached<T>::storage_type>::write(src, *tc);
 }
 
 template<class T>
-inline v8::Handle<v8::Value> read_to_v8( const T& v ) {
+inline v8::Handle<v8::Value> read_to_v8(const T& v) {
     return to_v8<typename threadcached<T>::storage_type>::read(v);
 }
 
 
 COID_NAMESPACE_END
-
-#endif  // ! __COID_COMM_FMTSTREAM_V8__HEADER_FILE__

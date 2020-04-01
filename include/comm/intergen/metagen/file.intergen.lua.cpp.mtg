@@ -35,7 +35,7 @@ class $name$_lua_dispatcher
 $-(if event?)$
     mutable iref<::lua::weak_registry_handle> _events[$event.@size$];
     mutable bool _bound_events;
-    
+
     void init_event_registry() {
         for (int i = 0; i < $event.@size$; i++) {
             _events[i] = new ::lua::weak_registry_handle;
@@ -48,7 +48,7 @@ $-(if hasprops?)$
 $-(/if)$
 protected:
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_LUA; }
+    backend intergen_backend() const override { return backend::lua; }
     static const coid::token& lua_class_name() { static const coid::token _lua_class_name = "$ns rest="_" after="_"$$name$"; return _lua_class_name; };
 
 public:
@@ -85,7 +85,7 @@ $(/if)-$
     ~$name$_lua_dispatcher() {
 
     }
-    
+
     bool intergen_bind_capture( coid::binstring* capture, uint instid ) override
     {
         return _real()->intergen_bind_capture(capture, instid);
@@ -102,7 +102,7 @@ $(/if)-$
 
     // --- creators ---
 
-$-[method static? !ifccr?]$
+$-[method creator? !ifccr?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
@@ -246,7 +246,7 @@ $-[/args]$
 
 // invoke
         $(if return.type!="void")$$return.type$ _rval_ = $(/if)$R_->$name$($[args rest=", "]$ $-(if ptr? outarg?)$&$-(elif ptr? defval.empty? !specptr?)$&$(/if)$ $-(if nojs?)$$defval$$(elif)$$name$$(/if)$$[/args]$);
-    
+
 //stream out
         THREAD_SINGLETON(coid::lua_streamer_context).reset(L);
 
@@ -295,7 +295,7 @@ $-(if return.type!="void")$
             lua_pushnil(L);
         $-(/if)$
     $-(/if)$
-    
+
     $-[args outarg?]$
         $-(if iref.false?)$
         static_assert(CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'");
@@ -422,12 +422,12 @@ $-(elif)$
 
     if (ev__->is_empty())
     $-(if default_event_body?)$ {
-        $default_event_body$; 
+        $default_event_body$;
         $-(if return.type?="void")$
         return;
         $-(/if)$
     }
-    $-(elif !mandatory?)$
+    $-(elif !noevbody?)$
         return;
     $-(elif)$
         throw coid::exception("handler not implemented");
@@ -466,7 +466,7 @@ $-[/args]$
 
 $-(/if)$
 $-(if return.type?="void" !noutargs?)$
-    const uint nres = 0; 
+    const uint nres = 0;
 $-(elif)$
     const uint nres = 1;
 $(/if)-$
@@ -528,7 +528,7 @@ $-(elif)$
     static_assert( CHECK::meta_operator_exists<$basetype$>::value, "missing metastream operator for '$basetype$'" );
     $-[/args]$
     $-[args outarg?]$
-    
+
     lua_getfield(L,-1,"$name$");
         $-(if ptr?)$
     if ($name$)
@@ -606,7 +606,7 @@ __declspec(noinline) int $name$_lua_dispatcher::luaquery_interface_exc( lua_Stat
         if (lua_gettop(L) < 2) {
             throw coid::exception("Interface creator name or caller object is missing.");
         }
-        
+
         lua_pushbot(L); // move object table onto top of the stack
 
         if (!lua_istable(L, -1) || !lua_hasfield(L,-1, ::lua::_lua_cthis_key))
@@ -726,7 +726,7 @@ iref<::lua::registry_handle> $name$_lua_dispatcher::create_interface_object( boo
     void * cptr_holder = lua_newuserdata(L, sizeof(size_t));
     *static_cast<size_t*>(cptr_holder) = reinterpret_cast<size_t>(this);
     lua_setfield(L, -2, ::lua::_lua_cthis_key);
-        
+
     lua_pushnumber(L, ints($hash$));
     lua_setfield(L, -2, ::lua::_lua_class_hash_key);
 
@@ -819,7 +819,7 @@ int $name$_lua_dispatcher::register_to_context_$name$(lua_State * L) {
    //     throw coid::exception() << "Given lua_State is not valid!(use lua_state_wrapper to create valid lua_State)";
   //  }
 
-    //const uint methods_count = $-[method !static ? !destroy ? !internal ? !operator? after="$@order$"]$$[/method]$ 
+    //const uint methods_count = $-[method !static ? !destroy ? !internal ? !operator? after="$@order$"]$$[/method]$
 
     lua_createtable(L, 0, 0);
 
@@ -839,13 +839,13 @@ $-[event]$
 $[/event]-$
 
     lua_setfield(L, -2, lua_class_name());
-    
+
     return 0;
 }
 
 // --- creators ---
 
-$-[method static? !ifccr?]$
+$-[method creator? !ifccr?]$
 ////////////////////////////////////////////////////////////////////////////////
 iref<$..name$_lua_dispatcher> $..name$_lua_dispatcher::$name$(lua_State * L, const ::lua::script_handle& script
         $-[args]$, $type$ $name$$size$$[/args]$, const coid::token& bindname, iref<::lua::registry_handle>* ctx )
@@ -907,7 +907,7 @@ iref<$..name$_lua_dispatcher> $..name$_lua_dispatcher::$name$(lua_State * L, con
 
         ::lua::load_script(context, script_tok, script.url());
     }
-    
+
     ifc->_context = new ::lua::weak_registry_handle(L);
     context->get_ref();
     ifc->_context->set_ref();
@@ -919,7 +919,7 @@ iref<$..name$_lua_dispatcher> $..name$_lua_dispatcher::$name$(lua_State * L, con
         lua_setfield(L, -2, bindname);
         lua_pop(L, 1);
     }
-    
+
     return ifc;
 }
 
@@ -1002,7 +1002,7 @@ $-(if noutargs?)$
     else {
         lua_pushnil(L);
     }
-    
+
     lua_setfield(L, -2, "ret");
 
     $-[args outarg?]$
@@ -1046,9 +1046,9 @@ iref <::lua::registry_handle> create_wrapper_$name$(::$ns rest = "::" after = ":
     iref<$ns rest="::" after="::"$lua::$name$_lua_dispatcher> ifc;
     iref <::lua::registry_handle> obj;
 
-    if (orig->intergen_backend() == intergen_interface::IFC_BACKEND_LUA)
+    if (orig->intergen_backend() == intergen_interface::backend::lua)
         obj = static_cast<$name$_lua_dispatcher*>(orig)->_object;
-    
+
     if (obj.is_empty()) {
         // create interface object
         ifc.create(new $ns rest="::" after="::"$lua::$name$_lua_dispatcher(context, static_cast<::$ns rest="::" after="::"$$name$*>(orig)));
@@ -1068,7 +1068,7 @@ static void register_binders_for_$name$( bool on )
         on ? (void*)&$name$_lua_dispatcher::register_to_context_$name$
         : nullptr);
 
-$-[method static? !ifccr?]$
+$-[method creator? !ifccr?]$
     //c++ creator of Lua interface object
     interface_register::register_interface_creator(
         "$..ns rest="::" after="::"$$..name$.$name$@creator.lua",

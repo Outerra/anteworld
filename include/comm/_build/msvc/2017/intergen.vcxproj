@@ -152,6 +152,8 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -195,6 +197,8 @@
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -235,6 +239,8 @@
       </ForcedIncludeFiles>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -259,6 +265,8 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -283,6 +291,8 @@
       </ForcedIncludeFiles>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -306,6 +316,8 @@
       </ForcedIncludeFiles>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/MP /permissive- %(AdditionalOptions)</AdditionalOptions>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -331,9 +343,13 @@
   <ItemGroup>
     <None Include="..\..\..\intergen\metagen\file.intergen.cpp.mtg" />
     <None Include="..\..\..\intergen\metagen\file.intergen.js.cpp.mtg" />
+    <None Include="..\..\..\intergen\metagen\file.intergen.jsc.cpp.mtg" />
+    <None Include="..\..\..\intergen\metagen\file.intergen.lua.cpp.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.doc.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.js.h.mtg" />
     <None Include="..\..\..\intergen\metagen\interface.h.mtg" />
+    <None Include="..\..\..\intergen\metagen\interface.jsc.h.mtg" />
+    <None Include="..\..\..\intergen\metagen\interface.lua.h.mtg" />
     <None Include="..\..\..\intergen\metagen\template.inl.mtg" />
   </ItemGroup>
   <ItemGroup>

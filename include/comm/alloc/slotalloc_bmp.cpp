@@ -62,7 +62,7 @@ void coid::test::slotalloc_bmp()
     uints item = data.get_item_id(d);
 
     item = data.first();
-    while (item != -1) {
+    while (item != UINTS_MAX) {
         if (!data.is_valid(item)) {
             DASSERT(false && "this should not happen!");
             data.is_valid(item);

@@ -323,6 +323,8 @@ DEF_TYPE2(  STRUCT_CLOSE,       T_STRUCTEND, 0);
 //DEF_TYPE(   SEPARATOR,          T_SEPARATOR);
 
 
+DEF_TYPE(   versionid,          T_UINT);
+
 ////////////////////////////////////////////////////////////////////////////////
 ///Wrapper class for binstream type key
 template<class T>

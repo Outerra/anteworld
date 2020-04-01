@@ -20,15 +20,20 @@ struct entry
     token script;                       //< script ("js", "lua" ...) or client name
     token hash;                         //< hash text value, or "wrapper", "maker", "creator", "client"
     token modulename;
+    uints handle = 0;
 
     void* creator_ptr = 0;
     uint hashvalue = 0;
+    uint keylen = 0;
 
     //@return interface string without the module name
     operator token() const {
-        uints ml = modulename.len();
-        if (ml) ++ml;
-        return token(ifcname.ptr(), ifcname.ptre() - ml);
+        return token(ifcname.ptr(), ifcname.ptr() + keylen);
+    }
+
+    //@return class name with namespaces
+    token ns_class() const {
+        return token(ns.ptr(), classname.ptre());
     }
 };
 
@@ -67,13 +72,14 @@ public:
         @param ifcname in one of the following forms:
             [ns1[::ns2[...]]]::classname@wrapper[.scriptname]               wrap existing interface object
             [ns1[::ns2[...]]]::classname@maker[.scriptname]                 create script interface object from host
+            [ns1[::ns2[...]]]::classname@unload                             unload registered client
             [ns1[::ns2[...]]]::classname.creatorname@hashvalue              c++ versioned creator
             [ns1[::ns2[...]]]::classname.creatorname@hashvalue.ifc          c++ versioned creator direct ifc creator
             [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname     c++ creator of JS interface object
             [ns1[::ns2[...]]]::scriptname::classname.creatorname            creator from script
             [ns1[::ns2[...]]]::classname@client-hashvalue.clientname        client creator
 
-            all can be followed by module name, [*modulename]
+            all can be followed by a module name, [*modulename:handle]
     **/
     virtual bool register_interface_creator(
         const coid::token& ifcname,
@@ -110,6 +116,8 @@ public:
             ml++;
         token key = token(tmp.ptr(), tmp.ptre() - ml);
 
+        token handle = modulename.cut_right_back(':', token::cut_trait_remove_sep_default_empty());
+
         GUARDTHIS(_mx);
 
         if (!creator_ptr) {
@@ -127,6 +135,8 @@ public:
                 en->hashvalue = hash;
                 en->script = script;
                 en->modulename = modulename;
+                en->handle = uints(handle.touint64());
+                en->keylen = key.len();
                 return true;
             }
         }
@@ -162,7 +172,7 @@ public:
         zstring str = name;
         str.get_str() << "@wrapper";
 
-        return find_wrapper(name);
+        return find_wrapper(str);
     }
 
     virtual dynarray<creator>& get_interface_creators(const token& name, const token& script, dynarray<creator>& dst)
@@ -235,23 +245,23 @@ public:
         return dst;
     }
 
-    virtual interface_register::wrapper_fn get_interface_client(const token& client, const token& iface, uint hash, const token& module) const
+    virtual interface_register::client_fn get_interface_client(const token& client, const token& iface, uint hash, const token& module) const
     {
         zstring str = iface;
-        str.get_str() << "@client" << '.' << client;
+        str.get_str() << "@client-" << hash << '.' << client;
 
         GUARDTHIS(_mx);
 
-        const entry* en = _hash.find_value(iface);
+        const entry* en = _hash.find_value(str);
 
         if (en) {
             if (en->hashvalue != hash)
                 return 0;
 
-            if (module && module != en->modulename)
+            if (module && !en->modulename.ends_with_icase(module))
                 return 0;
 
-            return (interface_register::wrapper_fn)en->creator_ptr;
+            return (interface_register::client_fn)en->creator_ptr;
         }
 
         return 0;
@@ -262,7 +272,7 @@ public:
         zstring str = name;
         str.get_str() << "@maker" << '.' << script;
 
-        return (void*)find_wrapper(name);
+        return (void*)find_wrapper(str);
     }
 
     virtual dynarray<interface_register::creator>& get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
@@ -292,15 +302,15 @@ public:
         return dst;
     }
 
-    virtual const charstr& root_path() const final {
+    virtual const charstr& root_path() const {
         return _root_path;
     }
 
-    virtual interface_register::fn_log_t fn_log() final { return _fn_log; }
-    virtual interface_register::fn_acc_t fn_acc() final { return _fn_acc; }
-    virtual interface_register::fn_getlog_t fn_getlog() final { return _fn_getlog; }
+    virtual interface_register::fn_log_t fn_log() { return _fn_log; }
+    virtual interface_register::fn_acc_t fn_acc() { return _fn_acc; }
+    virtual interface_register::fn_getlog_t fn_getlog() { return _fn_getlog; }
 
-    virtual interface_register::wrapper_fn find_wrapper(const token& ifcname) const final
+    virtual interface_register::wrapper_fn find_wrapper(const token& ifcname) const
     {
         GUARDTHIS(_mx);
 
@@ -378,7 +388,76 @@ public:
         return _fn_acc ? _fn_acc(rpath) : true;
     }
 
+    bool notify_module_unload(uints handle, binstring* bstr, dynarray<interface_register::unload_entry>& ens)
+    {
+        GUARDTHIS(_mx);
+
+        if (handle == 0) {
+            //send notification after reload
+            zstring str;
+
+            for (auto& uen : ens) {
+                //get the interface unload function
+                token nsc = token(uen.ifcname).cut_left('@');
+
+                (str.get_str() = nsc) << "@unload"_T;
+
+                const entry* en = _hash.find_value(str);
+                if (!en)
+                    continue;
+
+                intergen_interface::fn_unload_client fn = (intergen_interface::fn_unload_client)en->creator_ptr;
+
+                fn(""_T, ""_T, uen.bstrlen > 0 ? bstr : 0);
+
+            }
+            return true;
+        }
+
+        //find clients residing in given dll
+        auto b = _hash.begin();
+        auto e = _hash.end();
+
+        for (; b != e; ) {
+            auto& en = *b;
+            ++b;
+
+            if (en.handle != handle || en.hash != "client"_T)
+                continue;
+
+            uints len = bstr->len();
+
+            unload_client(en, bstr);
+
+            interface_register::unload_entry* ue = ens.add();
+            ue->ifcname.takeover(en.ifcname);
+            ue->bstrofs = down_cast<uint>(len);
+            ue->bstrlen = down_cast<uint>(bstr->len() - len);
+
+            RASSERT(_hash.erase_value_slot(&en, token(ue->ifcname.ptr(), ue->ifcname.ptr() + en.keylen)));
+        }
+
+        return true;
+    }
+
 private:
+
+    bool unload_client(entry& cen, binstring* bstr)
+    {
+        const token& client = cen.script;
+
+        //get the interface unload function
+        zstring str = cen.ns_class();
+        str.get_str() << "@unload"_T;
+
+        const entry* en = _hash.find_value(str);
+        if (!en)
+            return true;
+
+        intergen_interface::fn_unload_client fn = (intergen_interface::fn_unload_client)en->creator_ptr;
+
+        return fn(client, cen.modulename, bstr);
+    }
 
     bool current_dir(token curpath, charstr& dst)
     {
@@ -477,7 +556,7 @@ void* interface_register::get_interface_maker(const token& name, const token& sc
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-interface_register::wrapper_fn interface_register::get_interface_client(const token& client, const token& iface, uint hash, const token& module)
+interface_register::client_fn interface_register::get_interface_client(const token& client, const token& iface, uint hash, const token& module)
 {
     //interface name:
     // [ns1::[ns2:: ...]]::class
@@ -521,6 +600,14 @@ dynarray<interface_register::creator>& interface_register::find_interface_creato
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool interface_register::notify_module_unload(uints handle, binstring* bstr, dynarray<interface_register::unload_entry>& uens)
+{
+    //find clients from given dll
+    interface_register_impl& reg = interface_register_impl::get();
+    return reg.notify_module_unload(handle, bstr, uens);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool interface_register::register_interface_creator(const token& ifcname, void* creator_ptr)
 {
     interface_register_impl& reg = interface_register_impl::get();
@@ -537,7 +624,17 @@ bool interface_register::register_interface_creator(const token& ifcname, void* 
 
     charstr tmp = ifcname;
     tmp << '*';
-    directory::get_module_path(tmp, true);
+    uint offs = tmp.len();
+
+    uints hmod = directory::get_module_path(tmp, true);
+
+    //keep only the file name
+    token path = token(tmp.ptr()+offs, tmp.ptre());
+    uint plen = path.len();
+    path.cut_left_group_back("\\/"_T);
+    tmp.del(offs, plen - path.len());
+
+    tmp << ':' << hmod;
 
     return reg.register_interface_creator(tmp, creator_ptr);
 }

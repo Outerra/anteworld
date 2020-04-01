@@ -80,7 +80,7 @@ namespace lua {
         // -3 = table
         // -2 = key
         // -1 = value
-        
+
         lua_pushvalue(L, -2);
         lua_rawget(L, -4);
         if (lua_isnil(L, -1)) {
@@ -99,7 +99,7 @@ namespace lua {
             lua_pushinteger(L, mcount + 1);
             lua_rawset(L, -3);
             lua_pop(L, 1);
-            
+
             lua_rawset(L,-3);
         }
         else {
@@ -181,7 +181,7 @@ namespace lua {
         if(str){
             ex << " (" << str << ')';
         }
-        
+
         lua_pop(L, 1);
         throw ex;
     }
@@ -205,19 +205,19 @@ namespace lua {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-   
+
     inline int lua_iref_release_callback(lua_State * L) {
         if (lua_isuserdata(L, -1)) {
             policy_intrusive_base * obj = reinterpret_cast<policy_intrusive_base *>(*static_cast<size_t*>(lua_touserdata(L,-1)));
             obj->release_refcount();
         }
-        
+
         return 0;
     }
 
 ////////////////////////////////////////////////////////////////////////////////
     class registry_handle :public policy_intrusive_base {
-    public:      
+    public:
         static const iref<registry_handle>& get_empty() {
             static iref<registry_handle> empty = new registry_handle;
             return empty;
@@ -276,7 +276,7 @@ namespace lua {
     ////////////////////////////////////////////////////////////////////////////////
     class weak_registry_handle :public registry_handle {
     public:
-        
+
         virtual void release() override{
             if (_lua_handle) {
                 lua_rawgeti(_L, LUA_REGISTRYINDEX, LUA_WEAK_REGISTRY_INDEX);
@@ -311,7 +311,7 @@ namespace lua {
         virtual ~weak_registry_handle() {
             release();
         }
-        
+
         weak_registry_handle()
             : registry_handle()
         {};
@@ -323,7 +323,7 @@ namespace lua {
 
 ////////////////////////////////////////////////////////////////////////////////
     /// expect context table on the top of the stack!!!
-             
+
     inline void register_class_to_context(lua_State * L, const coid::token& class_name) {
         coid::charstr class_registrar_name;
         class_registrar_name << "lua::register_class." << class_name;
@@ -346,7 +346,7 @@ namespace lua {
 
 ////////////////////////////////////////////////////////////////////////////////
     inline int lua_log(lua_State * L) {
-  
+
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -375,7 +375,7 @@ namespace lua {
             lua_pushtoken(_L,"v");
             lua_setfield(_L,-2,"__mode");
             lua_setmetatable(_L,-2);
-            int weak_register_idx = luaL_ref(_L, LUA_REGISTRYINDEX); // ensure to table for storing weak 
+            int weak_register_idx = luaL_ref(_L, LUA_REGISTRYINDEX); // ensure to table for storing weak
             DASSERT(weak_register_idx == LUA_WEAK_REGISTRY_INDEX);   //references to be at index 1 in LUA_REGISTRYINDEX table
 
             lua_createtable(_L, 0, 1);
@@ -403,7 +403,7 @@ namespace lua {
 
 ////////////////////////////////////////////////////////////////////////////////
     class lua_context: public registry_handle{
-    public:        
+    public:
         lua_context(lua_State * L)
             :registry_handle(L)
         {
@@ -445,14 +445,14 @@ namespace lua {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// 
+//
 //  LUA script seems pretty redundant for me
-//  
+//
 /*    class lua_script : public registry_handle{
     public:
-        lua_script() 
+        lua_script()
             : registry_handle()
-        {    
+        {
         }
 
         void compile(const coid::token& script_code, const coid::token& script_path) {
@@ -461,14 +461,14 @@ namespace lua {
                 ex << "Can't compile LUA script without context!";
                 throw ex;
             }
-            
+
             int res = luaL_loadbuffer(_L,script_code._ptr,script_code.len(),script_path);
             if (res != 0) {
                 throw_lua_error(_L);
             }
 
             set_ref();
-            
+
             get_ref();
             _context->get_ref();
             lua_setfenv(_L, -2);
@@ -481,7 +481,7 @@ namespace lua {
                 ex << "Can't run LUA script without context!";
                 throw ex;
             }
-            
+
             lua_pushcfunction(_L,&catch_lua_error);
             get_ref();
             int res = lua_pcall(_L,0,0,-2);
@@ -532,7 +532,7 @@ namespace lua {
         //@param path_or_script path or script content
         //@param is_path true if path_or_script is a path to the script file, false if it's the script itself
         //@param url string to use when identifying script origin
-        //@param context 
+        //@param context
         script_handle(
             const coid::token& path_or_script,
             bool is_path,
@@ -595,7 +595,7 @@ namespace lua {
         ///Load and run script
       /*  iref<lua_script> load_script()
         {
-            
+
             /*lua_state_wrap* state = lua_state_wrap::get_lua_state();
             if (!has_context()) {
                 _context = new lua_context(state->get_raw_state());
@@ -603,7 +603,7 @@ namespace lua {
 
             coid::token script_tok, script_path = _url;
             coid::charstr script_tmp;
-            
+
             if (is_path()) {
                 if (!script_path)
                     script_path = _str;
@@ -659,7 +659,7 @@ namespace lua {
             _context = new weak_registry_handle;
         }
     };
-    
+
 ////////////////////////////////////////////////////////////////////////////////
     template<class T>
     class interface_wrapper_base
@@ -670,9 +670,9 @@ namespace lua {
         iref<T> _base;                      //< original c++ interface object
 
                                             //T* _real() { return _base ? _base.get() : this; }
-        intergen_interface* intergen_real_interface() override final 
-        { 
-            return _base ? _base.get() : this; 
+        intergen_interface* intergen_real_interface() override final
+        {
+            return _base ? _base.get() : this;
         }
 
         T* _real() { return static_cast<T*>(intergen_real_interface()); }
@@ -684,7 +684,7 @@ namespace lua {
     inline T* unwrap_object(lua_State * L)
     {
         if (!lua_istable(L,-1)) return 0;
-        
+
         if (!lua_hasfield(L,-1,_lua_cthis_key) || !lua_hasfield(L, -1, _lua_class_hash_key)) return 0;
 
         lua_getfield(L, -1, _lua_cthis_key);
@@ -712,7 +712,7 @@ inline iref<registry_handle> wrap_object(intergen_interface* orig, iref<registry
     }
 
     typedef iref<registry_handle>(*fn_wrapper)(intergen_interface*, iref<registry_handle>);
-    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::IFC_BACKEND_LUA));
+    fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::backend::lua));
 
     if (fn){
         return fn(orig, ctx);
@@ -734,7 +734,7 @@ inline iref<registry_handle> wrap_object(intergen_interface* orig, iref<registry
 #endif
 
         typedef v8::Handle<v8::Value>(*fn_wrapper)(intergen_interface*, v8::Handle<v8::Context>);
-        fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::IFC_BACKEND_JS));
+        fn_wrapper fn = static_cast<fn_wrapper>(orig->intergen_wrapper(intergen_interface::backend::js));
 
 #ifdef V8_MAJOR_VERSION
         return fn && context->Global()->Set(v8::String::NewFromOneByte(iso,

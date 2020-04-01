@@ -75,12 +75,14 @@ public:
     static void setup(const token& path, fn_log_t log, fn_acc_t access, fn_getlog_t getlogfn);
 
     typedef iref<intergen_interface>(*wrapper_fn)(void*, intergen_interface*);
+    typedef intergen_interface* (*client_fn)();
 
     struct creator {
         token name;
         union {
             void* creator_ptr;
             wrapper_fn fn;
+            client_fn fn_client;
         };
     };
 
@@ -97,7 +99,7 @@ public:
     //@param client client name
     //@param iface interface name in the format [ns1::[ns2:: ...]]::class
     //@param module required module to match
-    static wrapper_fn get_interface_client(const token& client, const token& iface, uint hash, const token& module);
+    static client_fn get_interface_client(const token& client, const token& iface, uint hash, const token& module);
 
     ///Get client interface creators matching given name
     //@param iface interface name in the format [ns1::[ns2:: ...]]::class
@@ -125,6 +127,18 @@ public:
 
     ///Find interfaces containing given string
     static dynarray<creator>& find_interface_creators(const regex& str, dynarray<creator>& dst);
+
+    struct unload_entry {
+        charstr ifcname;
+        uint bstrofs;                   //< position in binstring
+        uint bstrlen;
+    };
+
+    ///Send notification about client handlers unloading
+    //@param handle dll handle to unload, or 0 if sending notifications about reload
+    //@param bstr ptr to binstring object for persisting the state
+    //@param ens list of unloaded entries
+    static bool notify_module_unload(uints handle, binstring* bstr, dynarray<unload_entry>& ens);
 
     static ref<logmsg> canlog(log::type type, const tokenhash& hash, const void* inst = 0);
     static logger* getlog();

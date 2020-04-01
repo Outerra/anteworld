@@ -58,17 +58,18 @@ enter_single_thread::~enter_single_thread()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool __rassert( const opt_string& txt, const char* file, int line, const char* function, const char* expr )
+bool __rassert(const opt_string& txt, const char* file, int line, const char* function, const char* expr, bool flush)
 {
     zstring* z = txt.get();
+    coid::token fname = coid::token(file).cut_right_group_back("\\/");
 
-    coidlog_error("", "Assertion failed in " << file << '(' << line
+    coidlog_error("", "Assertion failed in " << fname << '(' << line
         << "), function " << function << ":\n\""
         << expr << (z ? "\": " : "\"") << (z ? z->get_token() : token())
-        << '\r' //forces log flush
+        << char(flush ? '\r' : '\0') // \r forces log flush
     );
 
-    return __assert_throws;
+    return __assert_throws != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +84,7 @@ opt_string & opt_string::operator << (const char * sz)
 {
     if (!_zstr)
         _zstr = new zstring;
-    
+
     *_zstr << sz;
     return *this;
 }

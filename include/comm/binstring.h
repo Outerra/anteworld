@@ -44,6 +44,7 @@
 #include "str.h"
 #include "dynarray.h"
 #include "binstream/binstream.h"
+#include "commexception.h"
 
 #include <limits>
 #include <type_traits>

@@ -55,36 +55,36 @@ struct Reinst {
     ///
     enum OP {
         RUNE = 0177,
-        OPERATOR = 0200,	// Bitmask of all operators
-        START = 0200,	    // Start, used for marker on stack
-        RBRA = 0201,	    // Right bracket, )
-        LBRA = 0202,	    // Left bracket, (
-        OR = 0203,	        // Alternation, |
-        CAT = 0204,	        // Concatentation, implicit operator
-        STAR = 0205,	    // Closure, *
-        PLUS = 0206,	    // a+ == aa*
-        QUEST = 0207,	    // a? == a|nothing, i.e. 0 or 1 a's
-        ANY = 0300,	        // Any character except newline, .
-        ANYNL = 0301,	    // Any character including newline, .
-        NOP = 0302,	        // No operation, internal use only
-        BOL = 0303,	        // Beginning of line, ^
-        EOL = 0304,	        // End of line, $
-        CCLASS = 0305,	    // Character class, []
-        NCCLASS = 0306,	    // Negated character class, []
-        END = 0377,	        // Terminate: match found
+        OPERATOR = 0200,    // Bitmask of all operators
+        START = 0200,       // Start, used for marker on stack
+        RBRA = 0201,        // Right bracket, )
+        LBRA = 0202,        // Left bracket, (
+        OR = 0203,          // Alternation, |
+        CAT = 0204,         // Concatentation, implicit operator
+        STAR = 0205,        // Closure, *
+        PLUS = 0206,        // a+ == aa*
+        QUEST = 0207,       // a? == a|nothing, i.e. 0 or 1 a's
+        ANY = 0300,         // Any character except newline, .
+        ANYNL = 0301,       // Any character including newline, .
+        NOP = 0302,         // No operation, internal use only
+        BOL = 0303,         // Beginning of line, ^
+        EOL = 0304,         // End of line, $
+        CCLASS = 0305,      // Character class, []
+        NCCLASS = 0306,     // Negated character class, []
+        END = 0377,         // Terminate: match found
     };
 
-    OP	type;			    // < 0200 ==> literal, otherwise action
+    OP	type;               // < 0200 ==> literal, otherwise action
 
     union {
-        Reclass* cp;	    // class pointer
-        ucs4	cd;		    // character
-        int	subid;		    // sub-expression id for RBRA and LBRA
-        Reinst* right;	    // right child of OR
+        Reclass* cp;        // class pointer
+        ucs4 cd;            // character
+        int subid;          // sub-expression id for RBRA and LBRA
+        Reinst* right;      // right child of OR
     };
     union {	//regexp relies on these two being in the same union
-        Reinst* left;		// left child of OR
-        Reinst* next;		// next instruction for CAT & LBRA
+        Reinst* left;       // left child of OR
+        Reinst* next;       // next instruction for CAT & LBRA
     };
 
     Reinst(OP type)
@@ -95,20 +95,20 @@ struct Reinst {
 };
 
 /* max character classes per program */
-//Reprog	RePrOg;
-//#define	NCLASS	(sizeof(RePrOg.class)/sizeof(Reclass))
+//Reprog    RePrOg;
+//#define   NCLASS	(sizeof(RePrOg.class)/sizeof(Reclass))
 
 /* max rune ranges per character class */
-//#define NCCRUNE	(sizeof(Reclass)/sizeof(Rune))
+//#define NCCRUNE   (sizeof(Reclass)/sizeof(Rune))
 
 
 ////////////////////////////////////////////////////////////////////////////////
 struct Relist
 {
-    const Reinst* inst;		// Reinstruction of the thread
+    const Reinst* inst = 0; // Reinstruction of the thread
 
     token match;
-    dynarray<token>	sub;	// matched subexpressions in this thread
+    dynarray<token>	sub;    // matched subexpressions in this thread
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,12 +119,6 @@ struct regex_compiler
     regex_program* compile(token s, bool literal, bool icase, Reinst::OP dot_type);
 
     regex_compiler()
-        : _prog(0)
-        , _lastwasand(false)
-        , _yyrune(0)
-        , _yyclassp(0)
-        , _cursubid(0)
-        , _nopenbraces(0)
     {}
 
 private:
@@ -132,8 +126,8 @@ private:
     /// Parser Information
     struct Node
     {
-        Reinst* first;
-        Reinst* last;
+        Reinst* first = 0;
+        Reinst* last = 0;
 
         void set(Reinst* first, Reinst* last) {
             this->first = first;
@@ -196,19 +190,19 @@ private:
 
 private:
 
-    dynarray<Node>	_andstack;
-    dynarray<Ator>	_atorstack;
+    dynarray<Node> _andstack;
+    dynarray<Ator> _atorstack;
 
-    regex_program* _prog;
+    regex_program* _prog = 0;
 
-    bool _lastwasand;	                //< Last token was operand
-    ucs4 _yyrune;		                //< last lex'd rune
-    Reclass* _yyclassp;	                //< last lex'd class
+    bool _lastwasand = false;           //< Last token was operand
+    ucs4 _yyrune = 0;                   //< last lex'd rune
+    Reclass* _yyclassp = 0;             //< last lex'd class
 
-    int	_cursubid;		                //< id of current subexpression
-    int	_nopenbraces;
+    int	_cursubid = 0;                  //< id of current subexpression
+    int	_nopenbraces = 0;
 
-    token _string;		                //< next character in source expression
+    token _string;                      //< next character in source expression
 };
 
 
@@ -218,48 +212,62 @@ struct Reljunk
 {
     dynarray<Relist> relist[2];
 
-    int	starttype;
-    ucs4	startchar;
-    ucs4    any_except;
+    int	starttype = 0;
+    ucs4 startchar = 0;
+    ucs4 any_except = 0;
 
     enum MatchStyle {
         SEARCH = 0,                     //< search the string and report the first occurrence
         MATCH = 1,                      //< match whole string
         FOLLOWS = 2,                    //< match leading part of the string
     };
-    MatchStyle style;
+    MatchStyle style = SEARCH;
 
     regex_compiler comp;
 
-    Reljunk()
-        : starttype(0)
-        , startchar(0)
-        , any_except(0)
-        , style(SEARCH)
-    {}
+
+    void reset(MatchStyle match_style, Reinst* startinst)
+    {
+        style = match_style;
+        starttype = 0;
+        startchar = 0;
+        any_except = 0;
+
+        if (style == SEARCH) {
+            if (startinst->type == Reinst::RUNE /*&& startinst.r.r < Runeself*/) {
+                starttype = Reinst::RUNE;
+                startchar = startinst->cd;
+            }
+            else if (startinst->type == Reinst::BOL)
+                starttype = Reinst::BOL;
+        }
+
+        relist[0].reset();
+        relist[1].reset();
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Regex program representation
 struct regex_program
 {
-    token match(token bol, token* sub, uint nsub, Reljunk::MatchStyle style) const;
+    token match(const token& bol, token* sub, uint nsub, Reljunk::MatchStyle style) const;
 
     regex_program(bool icase)
-        : startinst(0), icase(icase)
+        : icase(icase)
     {}
 
 
 private:
 
     void optimize();
-    token regexec(token bol, token* sub, uint nsub, Reljunk* j) const;
+    token regexec(const token& bol, token* sub, uint nsub, Reljunk* j) const;
 
 private:
 
     friend struct regex_compiler;
 
-    Reinst* startinst;	// start pc
+    Reinst* startinst = 0;          // start pc
     dynarray<Reclass*> rclass;
     dynarray<Reinst*> rinst;
     bool icase;

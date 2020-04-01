@@ -13,7 +13,6 @@
 
 
 #include <ot/blend_tree.h>
-#include <ot/geom_types.h>
 
 namespace ot {
     class animation_stack;
@@ -24,10 +23,10 @@ namespace pkg {
     class animation_stack;
 }
 
-
 namespace pkg {
     class animation_stack;
 }
+
 
 namespace ot {
 
@@ -59,12 +58,12 @@ public:
 
     // --- creators ---
 
-    static iref<animation_stack> get( const iref<pkg::animation_stack>& as ) {
+    static iref<animation_stack> get( pkg::animation_stack* as ) {
         return get<animation_stack>(0, as);
     }
 
     template<class T>
-    static iref<T> get( T* _subclass_, const iref<pkg::animation_stack>& as );
+    static iref<T> get( T* _subclass_, pkg::animation_stack* as );
 
     // --- internal helpers ---
 
@@ -74,11 +73,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2306565429;
+    static const int HASHID = 1008840588u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::animation_stack";
+        static const coid::tokenhash _name = "ot::animation_stack"_T;
         return _name;
     }
 
@@ -92,18 +91,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("");
-        static const coid::token _djs("ot::animation_stack@wrapper.js");
-        static const coid::token _djsc("ot::animation_stack@wrapper.jsc");
-        static const coid::token _dlua("ot::animation_stack@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc(""_T);
+        static const coid::token _djs("ot::animation_stack@wrapper.js"_T);
+        static const coid::token _djsc("ot::animation_stack@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::animation_stack@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -112,7 +111,7 @@ public:
     //@note host side helper
     static iref<animation_stack> intergen_active_interface(::pkg::animation_stack* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -122,18 +121,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -143,15 +142,15 @@ public:
     {
         static_assert(std::is_base_of<animation_stack, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::animation_stack";
-        tmp << "@client-2306565429" << '.' << type;
+        coid::charstr tmp = "ot::animation_stack"_T;
+        tmp << "@client-1008840588"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -164,28 +163,34 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(animation_stack*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~animation_stack()
+    static void _cleaner_callback(animation_stack* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    animation_stack() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<animation_stack>* pout);
+
+    typedef void (*cleanup_fn)(animation_stack*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<animation_stack>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
-inline iref<T> animation_stack::get( T* _subclass_, const iref<pkg::animation_stack>& as )
+inline iref<T> animation_stack::get( T* _subclass_, pkg::animation_stack* as )
 {
-    typedef iref<T> (*fn_creator)(animation_stack*, const iref<pkg::animation_stack>&);
+    typedef iref<T> (*fn_creator)(animation_stack*, pkg::animation_stack*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation_stack.get@2306565429";
+    static const coid::token ifckey = "ot::animation_stack.get@1008840588"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::animation_stack.get", "@2306565429");
+        log_mismatch("get"_T, "ot::animation_stack.get"_T, "@1008840588"_T);
         return 0;
     }
 

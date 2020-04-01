@@ -20,13 +20,13 @@ public:
 
     //@param script - script for object to bind to
     //@param bindvar - name of variable in script context for object to bind to
-    //@param ctx -  
+    //@param ctx -
     static iref<ns::main> create( lua_State * L, const ::lua::script_handle& script, const coid::token& bindvar = coid::token(), iref<::lua::registry_handle>* ctx = 0)
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create@creator.lua";
-        
+
         if(!binder)
             binder = reinterpret_cast<fn_bind>(
                 coid::interface_register::get_interface_creator(ifckey));
@@ -39,13 +39,13 @@ public:
 
     //@param script - script for object to bind to
     //@param bindvar - name of variable in script context for object to bind to
-    //@param ctx -  
+    //@param ctx -
     static iref<ns::main> create_special( lua_State * L, const ::lua::script_handle& script, int a, iref<ns::other> b, int& c, iref<ns::other>& d, int e = -1, const coid::token& bindvar = coid::token(), iref<::lua::registry_handle>* ctx = 0)
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, int, iref<ns::other>, int&, iref<ns::other>&, int, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create_special@creator.lua";
-        
+
         if(!binder)
             binder = reinterpret_cast<fn_bind>(
                 coid::interface_register::get_interface_creator(ifckey));
@@ -58,13 +58,13 @@ public:
 
     //@param script - script for object to bind to
     //@param bindvar - name of variable in script context for object to bind to
-    //@param ctx -  
+    //@param ctx -
     static iref<ns::main> create_wp( lua_State * L, const ::lua::script_handle& script, int a, int& b, int& c, int d = -1, const coid::token& bindvar = coid::token(), iref<::lua::registry_handle>* ctx = 0)
     {
         typedef iref<ns::main> (*fn_bind)(lua_State * L, const ::lua::script_handle&, int, int&, int&, int, const coid::token&, iref<::lua::registry_handle>*);
         static fn_bind binder = 0;
         static const coid::token ifckey = "ns::main.create_wp@creator.lua";
-        
+
         if(!binder)
             binder = reinterpret_cast<fn_bind>(
                 coid::interface_register::get_interface_creator(ifckey));

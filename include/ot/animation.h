@@ -11,11 +11,12 @@
 #include <comm/commexception.h>
 #include <comm/intergen/ifc.h>
 
-#include <ot/geom_types.h>
+    namespace pkg { struct animation_key_frame; struct animation_header; }
 
 namespace pkg {
     class animation;
 }
+
 
 namespace ot {
 
@@ -26,6 +27,14 @@ class animation
 public:
 
     // --- interface methods ---
+
+    uint get_root_bone_id() const;
+
+    const coid::dynarray<coid::token>& get_bones() const;
+
+    const pkg::animation_header* get_header() const;
+
+    const pkg::animation_key_frame* get_frames() const;
 
     bool is_ready() const;
 
@@ -40,8 +49,6 @@ public:
     int get_frame_offset() const;
 
     const coid::charstr& get_filename() const;
-
-    bool get_joint_at_time( uint geom_eid, uint joint_id, float t, ifc_out pkg::bone_data& data );
 
     // --- creators ---
 
@@ -60,11 +67,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2665838050;
+    static const int HASHID = 3177134733u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::animation";
+        static const coid::tokenhash _name = "ot::animation"_T;
         return _name;
     }
 
@@ -78,18 +85,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("");
-        static const coid::token _djs("ot::animation@wrapper.js");
-        static const coid::token _djsc("ot::animation@wrapper.jsc");
-        static const coid::token _dlua("ot::animation@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc(""_T);
+        static const coid::token _djs("ot::animation@wrapper.js"_T);
+        static const coid::token _djsc("ot::animation@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::animation@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -98,7 +105,7 @@ public:
     //@note host side helper
     static iref<animation> intergen_active_interface(::pkg::animation* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -108,18 +115,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -129,15 +136,15 @@ public:
     {
         static_assert(std::is_base_of<animation, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::animation";
-        tmp << "@client-2665838050" << '.' << type;
+        coid::charstr tmp = "ot::animation"_T;
+        tmp << "@client-3177134733"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -150,11 +157,17 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(animation*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~animation()
+    static void _cleaner_callback(animation* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    animation() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<animation>* pout);
+
+    typedef void (*cleanup_fn)(animation*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<animation>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,14 +177,14 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
     typedef iref<T> (*fn_creator)(animation*, const coid::token&, const coid::token&, unsigned int);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation.get@2665838050";
+    static const coid::token ifckey = "ot::animation.get@3177134733"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::animation.get", "@2665838050");
+        log_mismatch("get"_T, "ot::animation.get"_T, "@3177134733"_T);
         return 0;
     }
 
@@ -181,29 +194,38 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
 #pragma warning(push)
 #pragma warning(disable : 4191)
 
+inline uint animation::get_root_bone_id() const
+{ return VT_CALL(uint,() const,0)(); }
+
+inline const coid::dynarray<coid::token>& animation::get_bones() const
+{ return VT_CALL(const coid::dynarray<coid::token>&,() const,1)(); }
+
+inline const pkg::animation_header* animation::get_header() const
+{ return VT_CALL(const pkg::animation_header*,() const,2)(); }
+
+inline const pkg::animation_key_frame* animation::get_frames() const
+{ return VT_CALL(const pkg::animation_key_frame*,() const,3)(); }
+
 inline bool animation::is_ready() const
-{ return VT_CALL(bool,() const,0)(); }
+{ return VT_CALL(bool,() const,4)(); }
 
 inline bool animation::is_failed() const
-{ return VT_CALL(bool,() const,1)(); }
+{ return VT_CALL(bool,() const,5)(); }
 
 inline int animation::get_state() const
-{ return VT_CALL(int,() const,2)(); }
+{ return VT_CALL(int,() const,6)(); }
 
 inline uint animation::get_frame_count() const
-{ return VT_CALL(uint,() const,3)(); }
+{ return VT_CALL(uint,() const,7)(); }
 
 inline uint animation::get_fps() const
-{ return VT_CALL(uint,() const,4)(); }
+{ return VT_CALL(uint,() const,8)(); }
 
 inline int animation::get_frame_offset() const
-{ return VT_CALL(int,() const,5)(); }
+{ return VT_CALL(int,() const,9)(); }
 
 inline const coid::charstr& animation::get_filename() const
-{ return VT_CALL(const coid::charstr&,() const,6)(); }
-
-inline bool animation::get_joint_at_time( uint geom_eid, uint joint_id, float t, pkg::bone_data& data )
-{ return VT_CALL(bool,(uint,uint,float,pkg::bone_data&),7)(geom_eid,joint_id,t,data); }
+{ return VT_CALL(const coid::charstr&,() const,10)(); }
 
 #pragma warning(pop)
 

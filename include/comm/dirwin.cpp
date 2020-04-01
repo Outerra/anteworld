@@ -211,7 +211,7 @@ charstr directory::get_cwd()
         buf.reset();
     }
     buf.correct_size();
-    
+
     treat_trailing_separator(buf, true);
     return buf;
 }
@@ -235,16 +235,28 @@ charstr directory::get_program_path()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-charstr& directory::get_module_path_func(const void* fn, charstr& dst, bool append)
+uints directory::get_module_path_func(const void* fn, charstr& dst, bool append)
 {
     charstr buf;
     HMODULE hm = NULL;
 
-    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)fn, &hm))
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)fn, &hm)) {
         GetModuleFileNameA(hm, append ? dst.get_append_buf(MAX_PATH) : dst.get_buf(MAX_PATH), MAX_PATH);
+        dst.correct_size();
+    }
 
-    dst.correct_size();
-    return dst;
+    return reinterpret_cast<uints>(hm);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+uints directory::get_module_handle_func(const void* fn)
+{
+    HMODULE hm = NULL;
+
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)fn, &hm))
+        return reinterpret_cast<uints>(hm);
+
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,7 +391,7 @@ opcd directory::set_file_times(zstring fname, timet actime, timet modtime)
     BOOL r = SetFileTime(h, NULL, &ftacc, &ftmod);
 
     CloseHandle(h);
-    
+
     return r ? ersNOERR : ersFAILED;
 }
 

@@ -70,7 +70,7 @@ public:
     iref(const iref_t& r) : _p(r.add_refcount()) {}
 
     iref(iref_t&& r) : _p(0) {
-        takeover(r);
+        takeover(std::forward<iref_t>(r));
     }
 
     ///Constructor from pointer, artificially removed priority to resolve ambiguity
@@ -97,7 +97,7 @@ public:
     template<class T2>
 #endif
     iref(iref<T2>&& r) : _p(0) {
-        takeover(r);
+        takeover(std::forward<iref_t>(r));
     }
 
     ///Increment refcount
@@ -195,7 +195,7 @@ public:
     }
 
     const iref_t& operator = (iref_t&& r) {
-        takeover(r);
+        takeover(std::forward<iref_t>(r));
         return *this;
     }
 
@@ -221,13 +221,13 @@ public:
     void forget() { _p = 0; }
 
     template<class T2>
-    void takeover(iref<T2>& p) {
+    void takeover(iref<T2>&& p) {
         if (_p == static_cast<T*>(p.get())) {
             p.release();
             return;
         }
         release();
-        _p = p.get();
+        _p = static_cast<T*>(p.get());
         p.forget();
     }
 

@@ -149,12 +149,12 @@ void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-/* 
+/*
  * Log message object, returned by the logger.
  * Message is written in policy_log::release() upon calling destructor of ref
  * with policy policy_log.
  */
-class logmsg 
+class logmsg
     //: public policy_pooled<logmsg>
 {
 protected:
@@ -187,7 +187,7 @@ public:
 
     void set_logger( logger* l ) { _logger = l; }
 
-	void reset() {
+    void reset() {
         _str.reset();
         _logger = 0;
         _logger_file.release();
@@ -235,15 +235,12 @@ public:
 
     log::type deduce_type() const {
         token tok = _str;
-        log::type t = consume_type(tok);
-        //if(tok.ptr() > _str.ptr())
-        //    _str.del(0, tok.ptr() - _str.ptr());
-        return t;
+        return consume_type(tok);
     }
 
     log::type get_type() const { return _type; }
 
-	void set_type(log::type t) { _type = t; }
+    void set_type(log::type t) { _type = t; }
 
     void set_time(uint64 ns) {
         _time = ns;
@@ -292,7 +289,7 @@ struct log_filter {
     charstr _module;
     uint _log_level;
 
-    log_filter(filter_fun fn, const token& module, uint level) 
+    log_filter(const filter_fun& fn, const token& module, uint level)
     : _filter_fun(fn)
     , _module(module)
     , _log_level(level)
@@ -301,7 +298,7 @@ struct log_filter {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/* 
+/*
  * USAGE :
  *
  * class fwmlogger : public logger
@@ -310,16 +307,16 @@ struct log_filter {
  *     fwmlogger() : logger("fwm.log") {}
  * };
  * #define fwmlog(msg) (*SINGLETON(fwmlogger)()<<msg)
- * 
+ *
  * USAGE:
- * 
+ *
  * fwmlog("ugh" << x << "asd")
  */
 class logger
 {
 protected:
     slotalloc<log_filter> _filters;
-	ref<logger_file> _logfile;
+    ref<logger_file> _logfile;
 
     log::type _minlevel;
     bool _stdout;
@@ -328,7 +325,7 @@ public:
 
     //@param std_out true if messages should be printed to stdout as well
     //@param cache_msgs true if messages should be cached until the log file is specified with open()
-	logger( bool std_out, bool cache_msgs );
+    logger( bool std_out, bool cache_msgs );
     virtual ~logger() {}
 
     static void terminate();
@@ -381,13 +378,13 @@ public:
 
     virtual void enqueue( ref<logmsg>&& msg );
 
-	void flush();
+    void flush();
 
     void set_log_level( log::type minlevel = log::last );
 
     static void enable_debug_out(bool en);
 
-    uints register_filter(log_filter& filter) { _filters.push(filter); return _filters.count() - 1; }
+    uints register_filter(const log_filter& filter) { _filters.push(filter); return _filters.count() - 1; }
     void unregister_filter(uint pos) { _filters.del_item(pos); }
 };
 

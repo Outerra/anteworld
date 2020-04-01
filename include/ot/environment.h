@@ -12,7 +12,6 @@
 #include <comm/intergen/ifc.h>
 
 #include <ot/env.h>
-#include <v8/v8.h>
 
 class WorldView;
 
@@ -97,11 +96,11 @@ public:
     // --- internal helpers ---
 
     ///Interface revision hash
-    static const int HASHID = 3141059180;
+    static const int HASHID = 3141059180u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::environment";
+        static const coid::tokenhash _name = "ot::environment"_T;
         return _name;
     }
 
@@ -115,23 +114,23 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::environment.get@3141059180");
-        static const coid::token _djs("ot::environment@wrapper.js");
-        static const coid::token _djsc("ot::environment@wrapper.jsc");
-        static const coid::token _dlua("ot::environment@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc("ot::environment.get@3141059180"_T);
+        static const coid::token _djs("ot::environment@wrapper.js"_T);
+        static const coid::token _djsc("ot::environment@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::environment@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -141,18 +140,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -162,15 +161,15 @@ public:
     {
         static_assert(std::is_base_of<environment, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::environment";
-        tmp << "@client-3141059180" << '.' << type;
+        coid::charstr tmp = "ot::environment"_T;
+        tmp << "@client-3141059180"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -178,8 +177,7 @@ public:
 
 protected:
 
-    environment()
-    {}
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<environment>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,14 +187,14 @@ inline iref<T> environment::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(environment*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::environment.get@3141059180";
+    static const coid::token ifckey = "ot::environment.get@3141059180"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::environment.get", "@3141059180");
+        log_mismatch("get"_T, "ot::environment.get"_T, "@3141059180"_T);
         return 0;
     }
 

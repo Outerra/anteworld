@@ -27,7 +27,7 @@ charstr& MethodIG::Arg::match_type( iglexer& lex, charstr& type )
 ////////////////////////////////////////////////////////////////////////////////
 bool MethodIG::Arg::parse( iglexer& lex, bool argname )
 {
-    //arg: [ifc_in|ifc_out|ifc_inout|] [const] type  
+    //arg: [ifc_in|ifc_out|ifc_inout|] [const] type
     //type: [class[<templarg>]::]* type[<templarg>] [[*|&] [const]]*
 
     int io = lex.matches_either("ifc_in","ifc_out","ifc_inout","ifc_ret");
@@ -100,7 +100,7 @@ bool MethodIG::Arg::parse( iglexer& lex, bool argname )
 
     if(boutarg && ((!bptr && !bref && !ifctarget) || type.begins_with("const "))) {
         out << (lex.prepare_exception()
-            << "out argument must be a ref or ptr and cannot be const\n");
+            << "error: out argument must be a ref or ptr and cannot be const\n");
         lex.clear_err();
     }
 
@@ -142,7 +142,7 @@ bool MethodIG::Arg::parse( iglexer& lex, bool argname )
     }
     else if(ifctarget) {
         out << (lex.prepare_exception()
-            << "ifc_ret argument must be an iref<>\n");
+            << "error: ifc_ret argument must be an iref<>\n");
         lex.clear_err();
     }
 
@@ -171,8 +171,25 @@ bool MethodIG::Arg::parse( iglexer& lex, bool argname )
     if(!argname)
         return lex.no_err();
 
+    if (lex.matches('(')) {
+        //a function argument [type] (*name)(arg1[,arg2]*)
+        if (!lex.matches('*')) {
+            //possibly a member fn
+            lex.match(lex.IDENT, memfnclass, "expecting class name");
 
-    lex.match(lex.IDENT, name, "expecting argument name");
+            lex.match("::");
+            lex.match('*');
+        }
+
+        lex.match(lex.IDENT, name, "expecting argument name");
+        lex.match(')');
+
+        //parse argument list as a block
+        fnargs = lex.match_block(lex.ROUND, true);
+        bfnarg = true;
+    }
+    else
+        lex.match(lex.IDENT, name, "expecting argument name");
 
     //match array
     if(lex.matches('[') ) {

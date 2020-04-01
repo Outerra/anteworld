@@ -12,14 +12,17 @@
 #include <comm/intergen/ifc.h>
 
 #include <ot/object.h>
+#include <ot/action_cfg.h>
 #include <ot/vehicle_cfg.h>
 #include <ot/explosion_params.h>
 #include <ot/weapon_cfg.h>
 #include <ot/geomob.h>
 #include <ot/sndgrp.h>
 
-class btRigidBody;
-
+class btCollisionObject;
+namespace pkg {
+class geomob;
+}
 
 class ground_vehicle;
 
@@ -54,7 +57,7 @@ public:
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@param channels number of extra channels that the handler supports
     //@return slot id or -1 on fail
-    int register_event__( const coid::token& name, uint group = 0, uint channels = 0 );
+    int register_event_ext( const coid::token& name, uint group = 0, uint channels = 0 );
 
     ///Register axis action handler
     //@param name hierarchic action name, file/group/action
@@ -62,7 +65,7 @@ public:
     //@param defval initial value for the axis
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_axis__( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 );
+    int register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 );
 
     ///Activate or deactivate given action group
     //@params group group id
@@ -72,12 +75,13 @@ public:
     ///Clear existing action groups
     void clear_action_groups();
 
-    
-    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32 );
+    ///Set model space position for FPS camera
+    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable );
 
     ///Set model space rotation frame
     //@param rot model space rotation
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
+    //@param use bone rotation if true, bone rotation is applied
     void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation );
 
     ///Set temporary camera FOV in FPS mode
@@ -85,12 +89,26 @@ public:
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
     void set_fps_camera_fov( float hfov, float vfov = 0 );
 
+    //@return current FPS camera position
+    //@note same value for given class (chassis) of vehicles
+    float3 get_fps_camera_pos() const;
+
+    //@return current FPS camera rotation in model space
+    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
+    //@note same value for given class (chassis) of vehicles
+    quat get_fps_camera_rot( bool base = false ) const;
+
     ///Set model space orientation for FPS camera
     //@param yaw yaw angle in radians, positive values to the right
     //@param pitch pitch angle in radians, positive up
     //@param roll roll angle in radians, positive clockwise
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
     void set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation );
+
+    //@return current yaw/pitch/roll angles of the camera in model space in radians
+    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
+    //@note same value for given class (chassis) of vehicles
+    float3 get_fps_camera_ypr( bool base = false ) const;
 
     
     //@param target ECEF coordinates of the point
@@ -106,31 +124,11 @@ public:
     ///Disable tracking
     bool set_fps_camera_tracking_off();
 
-    ///Set FPS camera model-space offset and initial rotation
-    //@param pos offset position, relative to the object or bone
-    //@param rot rotation from default camera orientation (model -z forward, +y up)
-    //@param head_sim true if head movement should be simulated
-    //@param cam_enabled true if camera rotation controls are enabled
-    //@param joint_id bone id to attach to
-    void set_fps_camera( const float3& pos, const quat& rot, bool head_sim = true, bool cam_enabled = true, uint joint_id = UMAX32 );
-
-    //@return current FPS camera position
-    float3 get_fps_camera_pos() const;
-
-    //@return current FPS camera rotation in model space
-    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    quat get_fps_camera_rot( bool base = false ) const;
-
-    //@return current yaw/pitch/roll angles of the camera in model space in radians
-    //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    float3 get_fps_camera_ypr( bool base = false ) const;
-
-    //@return current camera mode or seat (negative values), or ot::CamFree if camera isn't bound to this object
-    ot::ECameraMode get_camera_mode() const;
-
     ///Post message to the fading log
     void fade( const coid::token& text ) const;
 
+    //@return current camera mode or seat (negative values), or ot::CamFree if camera isn't bound to this object
+    
     ///Post log message with recognized prefixes: error,warning,info,dbg,debug,perf
     void log( const coid::token& text ) const;
 
@@ -141,7 +139,7 @@ public:
 
     void log_inf( const coid::token& text );
 
-    ///Load sound buffer 
+    ///Load sound buffer
     uint load_sound( const coid::token& filename );
 
     ///Attach sound emitter to a model joint
@@ -249,6 +247,12 @@ public:
     //@param force model or world-space force vector
     //@param worldspace true for world-space, false for model-space force vector
     void extra_force( const float3& mpos, const float3& force, bool worldspace = false );
+
+    ///Apply extra force impulse (force * dt)
+    //@param mpos model-space postion to act on
+    //@param impulse model or world-space force impulse vector
+    //@param worldspace true for world-space, false for model-space force vector
+    void extra_impulse( const float3& mpos, const float3& impulse, bool worldspace = false );
 
     ///Set differential lock state
     //@param flags bits set correspond to a differential lock for corresponding axle
@@ -416,11 +420,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2891726986;
+    static const int HASHID = 3373322272u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::vehicle_physics";
+        static const coid::tokenhash _name = "ot::vehicle_physics"_T;
         return _name;
     }
 
@@ -434,18 +438,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("");
-        static const coid::token _djs("ot::vehicle_physics@wrapper.js");
-        static const coid::token _djsc("ot::vehicle_physics@wrapper.jsc");
-        static const coid::token _dlua("ot::vehicle_physics@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc(""_T);
+        static const coid::token _djs("ot::vehicle_physics@wrapper.js"_T);
+        static const coid::token _djsc("ot::vehicle_physics@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::vehicle_physics@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -454,7 +458,7 @@ public:
     //@note host side helper
     static iref<vehicle_physics> intergen_active_interface(::ground_vehicle* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -464,18 +468,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -485,15 +489,15 @@ public:
     {
         static_assert(std::is_base_of<vehicle_physics, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::vehicle_physics";
-        tmp << "@client-2891726986" << '.' << type;
+        coid::charstr tmp = "ot::vehicle_physics"_T;
+        tmp << "@client-3373322272"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -506,11 +510,17 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(vehicle_physics*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~vehicle_physics()
+    static void _cleaner_callback(vehicle_physics* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    vehicle_physics() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<vehicle_physics>* pout);
+
+    typedef void (*cleanup_fn)(vehicle_physics*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<vehicle_physics>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,14 +530,14 @@ inline iref<T> vehicle_physics::get( T* _subclass_, void* p )
     typedef iref<T> (*fn_creator)(vehicle_physics*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::vehicle_physics.get@2891726986";
+    static const coid::token ifckey = "ot::vehicle_physics.get@3373322272"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get", "ot::vehicle_physics.get", "@2891726986");
+        log_mismatch("get"_T, "ot::vehicle_physics.get"_T, "@3373322272"_T);
         return 0;
     }
 
@@ -546,10 +556,10 @@ inline iref<ot::geomob> vehicle_physics::get_geomob( int id )
 inline iref<ot::sndgrp> vehicle_physics::sound()
 { return VT_CALL(iref<ot::sndgrp>,(),2)(); }
 
-inline int vehicle_physics::register_event__( const coid::token& name, uint group, uint channels )
+inline int vehicle_physics::register_event_ext( const coid::token& name, uint group, uint channels )
 { return VT_CALL(int,(const coid::token&,uint,uint),3)(name,group,channels); }
 
-inline int vehicle_physics::register_axis__( const coid::token& name, const ot::ramp_params& ramp, float defval, uint group )
+inline int vehicle_physics::register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval, uint group )
 { return VT_CALL(int,(const coid::token&,const ot::ramp_params&,float,uint),4)(name,ramp,defval,group); }
 
 inline void vehicle_physics::action_group( uint group, bool activate )
@@ -558,8 +568,8 @@ inline void vehicle_physics::action_group( uint group, bool activate )
 inline void vehicle_physics::clear_action_groups()
 { return VT_CALL(void,(),6)(); }
 
-inline void vehicle_physics::set_fps_camera_pos( const float3& pos, uint joint_id )
-{ return VT_CALL(void,(const float3&,uint),7)(pos,joint_id); }
+inline void vehicle_physics::set_fps_camera_pos( const float3& pos, uint joint_id, ot::EJointRotationMode joint_rotation )
+{ return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),7)(pos,joint_id,joint_rotation); }
 
 inline void vehicle_physics::set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
 { return VT_CALL(void,(const quat&,ot::ERotationMode),8)(rot,mouse_rotation); }
@@ -567,194 +577,191 @@ inline void vehicle_physics::set_fps_camera_rot( const quat& rot, ot::ERotationM
 inline void vehicle_physics::set_fps_camera_fov( float hfov, float vfov )
 { return VT_CALL(void,(float,float),9)(hfov,vfov); }
 
-inline void vehicle_physics::set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
-{ return VT_CALL(void,(float,float,float,ot::ERotationMode),10)(yaw,pitch,roll,mouse_rotation); }
-
-inline bool vehicle_physics::set_fps_camera_tracking_point( const double3& target, bool level_horizon )
-{ return VT_CALL(bool,(const double3&,bool),11)(target,level_horizon); }
-
-inline bool vehicle_physics::set_fps_camera_tracking( bool level_horizon )
-{ return VT_CALL(bool,(bool),12)(level_horizon); }
-
-inline bool vehicle_physics::set_fps_camera_tracking_off()
-{ return VT_CALL(bool,(),13)(); }
-
-inline void vehicle_physics::set_fps_camera( const float3& pos, const quat& rot, bool head_sim, bool cam_enabled, uint joint_id )
-{ return VT_CALL(void,(const float3&,const quat&,bool,bool,uint),14)(pos,rot,head_sim,cam_enabled,joint_id); }
-
 inline float3 vehicle_physics::get_fps_camera_pos() const
-{ return VT_CALL(float3,() const,15)(); }
+{ return VT_CALL(float3,() const,10)(); }
 
 inline quat vehicle_physics::get_fps_camera_rot( bool base ) const
-{ return VT_CALL(quat,(bool) const,16)(base); }
+{ return VT_CALL(quat,(bool) const,11)(base); }
+
+inline void vehicle_physics::set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
+{ return VT_CALL(void,(float,float,float,ot::ERotationMode),12)(yaw,pitch,roll,mouse_rotation); }
 
 inline float3 vehicle_physics::get_fps_camera_ypr( bool base ) const
-{ return VT_CALL(float3,(bool) const,17)(base); }
+{ return VT_CALL(float3,(bool) const,13)(base); }
 
-inline ot::ECameraMode vehicle_physics::get_camera_mode() const
-{ return VT_CALL(ot::ECameraMode,() const,18)(); }
+inline bool vehicle_physics::set_fps_camera_tracking_point( const double3& target, bool level_horizon )
+{ return VT_CALL(bool,(const double3&,bool),14)(target,level_horizon); }
+
+inline bool vehicle_physics::set_fps_camera_tracking( bool level_horizon )
+{ return VT_CALL(bool,(bool),15)(level_horizon); }
+
+inline bool vehicle_physics::set_fps_camera_tracking_off()
+{ return VT_CALL(bool,(),16)(); }
 
 inline void vehicle_physics::fade( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,19)(text); }
+{ return VT_CALL(void,(const coid::token&) const,17)(text); }
 
 inline void vehicle_physics::log( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,20)(text); }
+{ return VT_CALL(void,(const coid::token&) const,18)(text); }
 
 inline void vehicle_physics::log_err( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),21)(text); }
+{ return VT_CALL(void,(const coid::token&),19)(text); }
 
 inline void vehicle_physics::log_dbg( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),22)(text); }
+{ return VT_CALL(void,(const coid::token&),20)(text); }
 
 inline void vehicle_physics::log_inf( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),23)(text); }
+{ return VT_CALL(void,(const coid::token&),21)(text); }
 
 inline uint vehicle_physics::load_sound( const coid::token& filename )
-{ return VT_CALL(uint,(const coid::token&),24)(filename); }
+{ return VT_CALL(uint,(const coid::token&),22)(filename); }
 
 inline uint vehicle_physics::add_sound_emitter( const coid::token& joint, int type )
-{ return VT_CALL(uint,(const coid::token&,int),25)(joint,type); }
+{ return VT_CALL(uint,(const coid::token&,int),23)(joint,type); }
 
 inline void vehicle_physics::set_interior_sound_attenuation( float att )
-{ return VT_CALL(void,(float),26)(att); }
+{ return VT_CALL(void,(float),24)(att); }
 
 inline uint vehicle_physics::add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint )
-{ return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),27)(offset,dir,lp,joint); }
+{ return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),25)(offset,dir,lp,joint); }
 
 inline uint vehicle_physics::add_point_light( const float3& offset, const ot::light_params& lp, const coid::token& joint )
-{ return VT_CALL(uint,(const float3&,const ot::light_params&,const coid::token&),28)(offset,lp,joint); }
+{ return VT_CALL(uint,(const float3&,const ot::light_params&,const coid::token&),26)(offset,lp,joint); }
 
 inline void vehicle_physics::light( uint id, bool on )
-{ return VT_CALL(void,(uint,bool),29)(id,on); }
+{ return VT_CALL(void,(uint,bool),27)(id,on); }
 
 inline void vehicle_physics::light_mask( uint mask, bool on, uint offset )
-{ return VT_CALL(void,(uint,bool,uint),30)(mask,on,offset); }
+{ return VT_CALL(void,(uint,bool,uint),28)(mask,on,offset); }
 
 inline void vehicle_physics::light_toggle( uint id )
-{ return VT_CALL(void,(uint),31)(id); }
+{ return VT_CALL(void,(uint),29)(id); }
 
 inline void vehicle_physics::light_toggle_mask( uint mask, uint offset )
-{ return VT_CALL(void,(uint,uint),32)(mask,offset); }
+{ return VT_CALL(void,(uint,uint),30)(mask,offset); }
 
 inline void vehicle_physics::light_color( uint id, const float4& color, float range )
-{ return VT_CALL(void,(uint,const float4&,float),33)(id,color,range); }
+{ return VT_CALL(void,(uint,const float4&,float),31)(id,color,range); }
 
 inline void vehicle_physics::lights_off( bool instant )
-{ return VT_CALL(void,(bool),34)(instant); }
+{ return VT_CALL(void,(bool),32)(instant); }
 
 inline void vehicle_physics::solar_time( double& time, float& sun_coef ) const
-{ return VT_CALL(void,(double&,float&) const,35)(time,sun_coef); }
+{ return VT_CALL(void,(double&,float&) const,33)(time,sun_coef); }
 
 inline int vehicle_physics::add_wheel( const coid::token& wheel_pivot, const ot::wheel& tp )
-{ return VT_CALL(int,(const coid::token&,const ot::wheel&),36)(wheel_pivot,tp); }
+{ return VT_CALL(int,(const coid::token&,const ot::wheel&),34)(wheel_pivot,tp); }
 
 inline int vehicle_physics::add_wheel_swing( const coid::token& axle_pivot, const coid::token& wheel_pivot, const ot::wheel& tp )
-{ return VT_CALL(int,(const coid::token&,const coid::token&,const ot::wheel&),37)(axle_pivot,wheel_pivot,tp); }
+{ return VT_CALL(int,(const coid::token&,const coid::token&,const ot::wheel&),35)(axle_pivot,wheel_pivot,tp); }
 
 inline int vehicle_physics::add_track( const coid::token& linkurl, uint nlinks, float x_pos, const coid::dynarray<uint>& wheels, const coid::token& joint )
-{ return VT_CALL(int,(const coid::token&,uint,float,const coid::dynarray<uint>&,const coid::token&),38)(linkurl,nlinks,x_pos,wheels,joint); }
+{ return VT_CALL(int,(const coid::token&,uint,float,const coid::dynarray<uint>&,const coid::token&),36)(linkurl,nlinks,x_pos,wheels,joint); }
 
 inline int vehicle_physics::add_weapon( const coid::token& joint, const ot::weapon_params& params )
-{ return VT_CALL(int,(const coid::token&,const ot::weapon_params&),39)(joint,params); }
+{ return VT_CALL(int,(const coid::token&,const ot::weapon_params&),37)(joint,params); }
 
 inline void vehicle_physics::steer( int wheel, float angle )
-{ return VT_CALL(void,(int,float),40)(wheel,angle); }
+{ return VT_CALL(void,(int,float),38)(wheel,angle); }
 
 inline void vehicle_physics::wheel_force( int wheel, float engine )
-{ return VT_CALL(void,(int,float),41)(wheel,engine); }
+{ return VT_CALL(void,(int,float),39)(wheel,engine); }
 
 inline void vehicle_physics::wheel_brake( int wheel, float brake )
-{ return VT_CALL(void,(int,float),42)(wheel,brake); }
+{ return VT_CALL(void,(int,float),40)(wheel,brake); }
 
 inline void vehicle_physics::wheel( int wheel, ot::wheel_data& wd )
-{ return VT_CALL(void,(int,ot::wheel_data&),43)(wheel,wd); }
+{ return VT_CALL(void,(int,ot::wheel_data&),41)(wheel,wd); }
 
 inline bool vehicle_physics::on_ground() const
-{ return VT_CALL(bool,() const,44)(); }
+{ return VT_CALL(bool,() const,42)(); }
 
 inline float vehicle_physics::speed()
-{ return VT_CALL(float,(),45)(); }
+{ return VT_CALL(float,(),43)(); }
 
 inline void vehicle_physics::velocity( bool model_space, float3& linear, float3& angular ) const
-{ return VT_CALL(void,(bool,float3&,float3&) const,46)(model_space,linear,angular); }
+{ return VT_CALL(void,(bool,float3&,float3&) const,44)(model_space,linear,angular); }
 
 inline float vehicle_physics::max_tire_speed()
-{ return VT_CALL(float,(),47)(); }
+{ return VT_CALL(float,(),45)(); }
 
 inline float vehicle_physics::max_rpm()
-{ return VT_CALL(float,(),48)(); }
+{ return VT_CALL(float,(),46)(); }
 
 inline void vehicle_physics::animate_wheels()
-{ return VT_CALL(void,(),49)(); }
+{ return VT_CALL(void,(),47)(); }
 
 inline void vehicle_physics::show_tracks( bool show, int track_id )
-{ return VT_CALL(void,(bool,int),50)(show,track_id); }
+{ return VT_CALL(void,(bool,int),48)(show,track_id); }
 
 inline void vehicle_physics::extra_force( const float3& mpos, const float3& force, bool worldspace )
-{ return VT_CALL(void,(const float3&,const float3&,bool),51)(mpos,force,worldspace); }
+{ return VT_CALL(void,(const float3&,const float3&,bool),49)(mpos,force,worldspace); }
+
+inline void vehicle_physics::extra_impulse( const float3& mpos, const float3& impulse, bool worldspace )
+{ return VT_CALL(void,(const float3&,const float3&,bool),50)(mpos,impulse,worldspace); }
 
 inline uint vehicle_physics::differential_lock( uint flags, bool toggle )
-{ return VT_CALL(uint,(uint,bool),52)(flags,toggle); }
+{ return VT_CALL(uint,(uint,bool),51)(flags,toggle); }
 
 inline void vehicle_physics::mass( float m, const float3* inertia )
-{ return VT_CALL(void,(float,const float3*),53)(m,inertia); }
+{ return VT_CALL(void,(float,const float3*),52)(m,inertia); }
 
 inline float vehicle_physics::get_inv_mass( float3x3* inv_inertia ) const
-{ return VT_CALL(float,(float3x3*) const,54)(inv_inertia); }
+{ return VT_CALL(float,(float3x3*) const,53)(inv_inertia); }
 
 inline float3 vehicle_physics::com_offset() const
-{ return VT_CALL(float3,() const,55)(); }
+{ return VT_CALL(float3,() const,54)(); }
 
 inline bool vehicle_physics::in_water() const
-{ return VT_CALL(bool,() const,56)(); }
+{ return VT_CALL(bool,() const,55)(); }
 
 inline float vehicle_physics::water_density() const
-{ return VT_CALL(float,() const,57)(); }
+{ return VT_CALL(float,() const,56)(); }
 
 inline float vehicle_physics::water_line() const
-{ return VT_CALL(float,() const,58)(); }
+{ return VT_CALL(float,() const,57)(); }
 
 inline void vehicle_physics::set_hover( float hover )
-{ return VT_CALL(void,(float),59)(hover); }
+{ return VT_CALL(void,(float),58)(hover); }
 
 inline float vehicle_physics::get_wheel_param( int wheel, const coid::token& name ) const
-{ return VT_CALL(float,(int,const coid::token&) const,60)(wheel,name); }
+{ return VT_CALL(float,(int,const coid::token&) const,59)(wheel,name); }
 
 inline void vehicle_physics::set_wheel_param( int wheel, const coid::token& name, float value )
-{ return VT_CALL(void,(int,const coid::token&,float),61)(wheel,name,value); }
+{ return VT_CALL(void,(int,const coid::token&,float),60)(wheel,name,value); }
 
 inline float vehicle_physics::get_wheel_radius( int wheel, bool chassis )
-{ return VT_CALL(float,(int,bool),62)(wheel,chassis); }
+{ return VT_CALL(float,(int,bool),61)(wheel,chassis); }
 
 inline void vehicle_physics::set_wheel_radius( int wheel, float rad )
-{ return VT_CALL(void,(int,float),63)(wheel,rad); }
+{ return VT_CALL(void,(int,float),62)(wheel,rad); }
 
 inline void vehicle_physics::set_axle_params( int wheel, const float2& zcs, float minz, float len )
-{ return VT_CALL(void,(int,const float2&,float,float),64)(wheel,zcs,minz,len); }
+{ return VT_CALL(void,(int,const float2&,float,float),63)(wheel,zcs,minz,len); }
 
 inline void vehicle_physics::get_axle_params( int wheel, float2& zcs, float& minz, float& len ) const
-{ return VT_CALL(void,(int,float2&,float&,float&) const,65)(wheel,zcs,minz,len); }
+{ return VT_CALL(void,(int,float2&,float&,float&) const,64)(wheel,zcs,minz,len); }
 
 inline float3 vehicle_physics::heading_pitch_roll() const
-{ return VT_CALL(float3,() const,66)(); }
+{ return VT_CALL(float3,() const,65)(); }
 
 inline void vehicle_physics::set_pitch_roll( float pitch, float roll )
-{ return VT_CALL(void,(float,float),67)(pitch,roll); }
+{ return VT_CALL(void,(float,float),66)(pitch,roll); }
 
 inline void vehicle_physics::fire( const float3& pos, const float3& dir, float speed, float caliber, const float3& color, uint joint )
-{ return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),68)(pos,dir,speed,caliber,color,joint); }
+{ return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),67)(pos,dir,speed,caliber,color,joint); }
 
 inline void vehicle_physics::explode_ground( const ot::ground_explosion& ge )
-{ return VT_CALL(void,(const ot::ground_explosion&),69)(ge); }
+{ return VT_CALL(void,(const ot::ground_explosion&),68)(ge); }
 
 inline float vehicle_physics::elevation_above_terrain( const float3& pos, float maxheight, uint joint ) const
-{ return VT_CALL(float,(const float3&,float,uint) const,70)(pos,maxheight,joint); }
+{ return VT_CALL(float,(const float3&,float,uint) const,69)(pos,maxheight,joint); }
 
 inline float vehicle_physics::ray_test( const float3& pos, const float3& dir, float maxdist, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,71)(pos,dir,maxdist,norm,hitpoint,joint); }
+{ return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,70)(pos,dir,maxdist,norm,hitpoint,joint); }
 
 inline iref<ot::object> vehicle_physics::object_test( const float3& pos, const float3& dir, float maxdist, bool exclude_self, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,72)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
+{ return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,71)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
 
 #pragma warning(pop)
 

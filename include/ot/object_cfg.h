@@ -1,38 +1,37 @@
 #pragma once
-#ifndef __OT_OBJECT_CFG_H__
-#define __OT_OBJECT_CFG_H__
 
 //See LICENSE file for copyright and license information
 
 #include <comm/metastream/metastream.h>
-
 #include "glm/glm_meta.h"
 
 namespace ot {
 
-///Vehicle types
-enum EObjectType : int8 {
-    EOT_None = 0,
-    EOT_Static,
-    EOT_Aircraft,
-    EOT_GroundVehicle,
-    EOT_Watercraft,
-    EOT_Character,
-    EOT_Ghost,
-    EOT_Dynamic,
+///Object categories
+enum class objcat : uint8 {
+    none,
+    fixed,
+    aircraft,
+    vehicle,
+    watercraft,
+    ghost,
+    character,
+    dynamic,
+    scriptable,
 
-    EOT_enum_count
+    _count
 };
 
-static const coid::token SObjectTypes[EOT_enum_count] = {
-    "unknown",
-    "static",
-    "aircraft",
-    "vehicle",
-    "watercraft",
-    "character",
-    "ghost",
-    "dynamic"
+static const coid::token string_object_types[int(objcat::_count)] = {
+    "unknown"_T,
+    "static"_T,
+    "aircraft"_T,
+    "vehicle"_T,
+    "watercraft"_T,
+    "ghost"_T,
+    "character"_T,
+    "dynamic"_T,
+    "scriptable"_T,
 };
 
 
@@ -44,14 +43,16 @@ namespace collision {
         cg_ext_dynamic = 4,             //< dynamic objects driven by external sim
         cg_raycast = 8,
         cg_terrain = 64,                //< terrain & terrain point colliders
+        cg_terrain_occluder = 512,		//< object which occlude terrain(create holes)
 
         cgm_static = ~(cg_static | cg_terrain),
         cgm_dynamic = ~cg_ext_dynamic,
         cgm_ext_dynamic = ~(cg_dynamic | cg_ext_dynamic | cg_terrain),
         cgm_raycast = -1,
         cgm_terrain = 0,
+        cgm_terrain_occluder = ~(cg_static | cg_raycast | cg_terrain | cg_terrain_occluder)
     };
-    
+
 } //namespace collision
 
 ///Camera modes for vehicles
@@ -73,7 +74,7 @@ enum ECameraMode {
     CamFPSCustom,                       //< enter last or default custom camera
     CamFPSCustomPrev,                   //< cycle to previous custom camera
     CamFPSCustomNext,                   //< cycle to next custom camera
-    
+
     CamPrevious = 0x7fffffff,
 };
 
@@ -83,6 +84,12 @@ enum ERotationMode {
     RotModeDisableReset     = 1,
     RotModeEnable           = 2,
     RotModeEnableReset      = 3,
+};
+
+///FPS joint rotation modes
+enum EJointRotationMode {
+    JointRotModeEnable       = 0,
+    JointRotModeDisable      = 1,
 };
 
 ///Vehicle input binding modes on enter()
@@ -105,6 +112,20 @@ enum EFreeCameraMode
 
 ////////////////////////////////////////////////////////////////////////////////
 
+///FPS camera setup
+struct fps_setup
+{
+    float3 cam_pos;
+    quat cam_rot;
+
+    ERotationMode rotation_mode = RotModeEnableReset;
+    uint joint_id = UMAX32;
+    EJointRotationMode joint_rotation_mode = ot::JointRotModeEnable;
+
+    float2 fov;
+};
+
+
 ///Static positional data
 struct static_pos
 {
@@ -112,7 +133,7 @@ struct static_pos
     quat rot;                           //< world-space rotation
 
     friend coid::metastream& operator || (coid::metastream& m, static_pos& p) {
-        return m.compound("ot::static_pos", [&]() {
+        return m.compound_type(p, [&]() {
             m.member("pos", p.pos);
             m.member("rot", p.rot);
         });
@@ -136,7 +157,7 @@ struct dynamic_pos : static_pos
     }
 
     friend coid::metastream& operator || (coid::metastream& m, dynamic_pos& p) {
-        return m.compound("ot::dynamic_pos", [&]() {
+        return m.compound_type(p, [&]() {
             m.member("pos", p.pos);
             m.member("rot", p.rot);
             m.member("vel", p.vel);
@@ -145,30 +166,20 @@ struct dynamic_pos : static_pos
     }
 };
 
-///Config for dynamic object models
-struct dynamic_object_config
+////////////////////////////////////////////////////////////////////////////////
+
+///Info for object initialization
+struct objdef_params
 {
-    float mass;                         //< object mass
-    float3 com_offset;                  //< offset from pivot to the center of mass
-    float contact_friction;
-    float rolling_friction;
-    float bounce;
+    coid::token url;                    //< object url ("outerra/T817/T817") without .objdef
+    coid::token params;                 //< custom objdef params
+    coid::token pkgsdir;                //< path to the packages folder
 
-    dynamic_object_config()
-        : mass(0)
-        , com_offset(0)
-        , contact_friction(0.5f)
-        , rolling_friction(0.05f)
-        , bounce(0)
-    {}
-
-    friend coid::metastream& operator || (coid::metastream& m, dynamic_object_config& v) {
-        return m.compound("dynamic_object_config", [&]() {
-            m.member("mass", v.mass);
-            m.member("com", v.com_offset, float3(0));
-            m.member("contact_friction", v.contact_friction, 0.5f);
-            m.member("rolling_friction", v.rolling_friction, 0.05f);
-            m.member("bounce", v.bounce, 0);
+    friend coid::metastream& operator || (coid::metastream& m, objdef_params& v) {
+        return m.compound_type(v, [&]() {
+            m.member("url", v.url);
+            m.member("params", v.params);
+            m.member("pkgsdir", v.pkgsdir);
         });
     }
 };
@@ -181,35 +192,29 @@ namespace pkginfo {
 ///
 struct tag {
     coid::token name;
-    uint count;
+    uint count = 0;
 };
 
 ///
 struct category
 {
     coid::token name;
-    uint count;
-
-    category() : count(0)
-    {}
+    uint count = 0;
 };
 
 ///
 struct result
 {
-    coid::dynarray<category> categories;
-    coid::dynarray<tag> tags;
+    coid::dynarray32<category> categories;
+    coid::dynarray32<tag> tags;
 
-    uint count;
-
-    result() : count(0)
-    {}
+    uint count = 0;
 };
 
 ///Objdef info
 struct objdef
 {
-    EObjectType category;
+    objcat category;
     coid::token url;
     coid::token name;
     coid::token desc;
@@ -217,7 +222,7 @@ struct objdef
     coid::token params;
 
     friend coid::metastream& operator || (coid::metastream& m, objdef& v) {
-        return m.compound("ot::pkg::objdef", [&]() {
+        return m.compound_type(v, [&]() {
             m.member("category", v.category);
             m.member("url", v.url);
             m.member("name", v.name);
@@ -237,7 +242,7 @@ struct object_entry
     bool package;
 
     friend coid::metastream& operator || (coid::metastream& m, object_entry& v) {
-        return m.compound("ot::pkginfo::object_entry", [&]() {
+        return m.compound_type(v, [&]() {
             m.member("category", v.category);
             m.member("item_count", v.count);
             m.member("is_package", v.package);
@@ -250,6 +255,7 @@ struct object_entry
     }
 };
 
+
 } //namespace pkginfo
 
 } //namespace ot
@@ -258,5 +264,3 @@ COID_METABIN_OP3(ot::pkginfo::result, categories, tags, count)
 COID_METABIN_OP2(ot::pkginfo::category, name, count)
 COID_METABIN_OP2(ot::pkginfo::tag, name, count)
 
-
-#endif //__OT_OBJECT_CFG_H__

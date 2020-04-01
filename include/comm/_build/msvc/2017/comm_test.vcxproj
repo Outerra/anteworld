@@ -384,6 +384,8 @@
   </ItemGroup>
   <ItemGroup>
     <hpp Include="..\..\..\comm_test\intergen\interface.hpp" />
+    <hpp Include="..\..\..\comm_test\luatest_ifc.hpp" />
+    <hpp Include="..\..\..\intergen\test\test.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\comm_test\intergen\ifc\client.h" />

@@ -1615,6 +1615,10 @@ public:
         return *this;
     }
 
+    metastream operator||(versionid& vid) {
+        return meta_base_type("uint64", vid);
+    }
+
     ///Used for types that stream using a translation to a different type
     //@param set void function(S&&) receiving object from stream
     //@param get [const S& | S] function() returning object to stream
@@ -1927,7 +1931,7 @@ public:
         }
         else {
             DASSERT(n == d->array_size);
-            DASSERT(d->type_size == type_size);
+            DASSERT(d->type_size == (uints)type_size);
             DASSERT(d->is_array_type);
 
             _last_var = meta_fill_parent_variable(d);

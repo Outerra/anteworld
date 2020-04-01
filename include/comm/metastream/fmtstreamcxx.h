@@ -467,7 +467,7 @@ public:
                 {
                     //optional class name found
                     if (p) {
-                        token& s = *(token*)p;
+                        //token& s = *(token*)p;
                         //if(!s.is_empty() && s != tok)
                         //    return ersSYNTAX_ERROR "class name mismatch";
                     }
@@ -507,7 +507,7 @@ public:
             case type::T_INT:
             {
                 token::tonum<int64> conv;
-                int64 v = conv.xtoint(tok);
+                int64 v = conv.xtoint_and_shift(tok);
 
                 if (conv.failed())
                     return ersSYNTAX_ERROR " expected number";
@@ -531,7 +531,7 @@ public:
             case type::T_UINT:
             {
                 token::tonum<uint64> conv;
-                uint64 v = conv.xtouint(tok);
+                uint64 v = conv.xtouint_and_shift(tok);
 
                 if (conv.failed())
                     return ersSYNTAX_ERROR " expected number";

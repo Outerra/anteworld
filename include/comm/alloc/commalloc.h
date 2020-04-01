@@ -100,13 +100,13 @@ struct comm_array_allocator
 
     ///Typed array alloc
     template<class T>
-    static T* alloc( uints n, mspace m = 0 ) {
+    static T* alloc(uints n, mspace m = 0) {
         return (T*)alloc(n, sizeof(T), &typeid(T[]), m);
     }
 
     ///Typed array realloc
     template<class T>
-    static T* realloc( const T* p, uints n, mspace mn = 0 )
+    static T* realloc(const T* p, uints n, mspace mn = 0)
     {
         if (!p)
             return alloc<T>(n, mn);
@@ -120,13 +120,13 @@ struct comm_array_allocator
 
         mspace m = mspace_from_ptr((uints*)p - 1);
 
-        if(has_trivial_rebase<T>::value) {
+        if (has_trivial_rebase<T>::value) {
             return (T*)realloc(p, n, sizeof(T), &typeid(T[]), m);
         }
         else {
             //non-trivial rebase, needs to copy old array into new
             T* pn = (T*)realloc_in_place(p, n, sizeof(T), &typeid(T[]));
-            if(!pn) {
+            if (!pn) {
                 pn = (T*)alloc(n, sizeof(T), &typeid(T[]), m);
                 uints co = count(p);
 
@@ -136,6 +136,13 @@ struct comm_array_allocator
             }
             return pn;
         }
+    }
+
+    ///Typed array realloc_in_place
+    template<class T>
+    static T* realloc_in_place(const T* p, uints n, mspace mn = 0)
+    {
+        return (T*)realloc_in_place(p, n, sizeof(T), &typeid(T[]));
     }
 
     ///Typed array add
@@ -223,8 +230,8 @@ struct comm_array_allocator
         const std::type_info* tracking = 0
     )
     {
-        if(!p)
-            return alloc(n, elemsize, tracking);
+        if (!p)
+            return 0;
 
         uints* po = (uints*)p - 1;
         uints so = ::mspace_usable_size(po);
@@ -305,7 +312,7 @@ struct comm_array_allocator
 
         if(p)
             *((uints*)p - 1) = n;
-        
+
         return n;
     }
 };

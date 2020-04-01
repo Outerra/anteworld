@@ -108,11 +108,11 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2946773048;
+    static const int HASHID = 2946773048u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
-        static const coid::tokenhash _name = "ot::video_recorder";
+        static const coid::tokenhash _name = "ot::video_recorder"_T;
         return _name;
     }
 
@@ -126,18 +126,18 @@ public:
         return IFCNAME();
     }
 
-    static const coid::token& intergen_default_creator_static( EBackend bck ) {
-        static const coid::token _dc("ot::video_recorder.create@2946773048");
-        static const coid::token _djs("ot::video_recorder@wrapper.js");
-        static const coid::token _djsc("ot::video_recorder@wrapper.jsc");
-        static const coid::token _dlua("ot::video_recorder@wrapper.lua");
+    static const coid::token& intergen_default_creator_static( backend bck ) {
+        static const coid::token _dc("ot::video_recorder.create@2946773048"_T);
+        static const coid::token _djs("ot::video_recorder@wrapper.js"_T);
+        static const coid::token _djsc("ot::video_recorder@wrapper.jsc"_T);
+        static const coid::token _dlua("ot::video_recorder@wrapper.lua"_T);
         static const coid::token _dnone;
 
         switch(bck) {
-        case IFC_BACKEND_CXX: return _dc;
-        case IFC_BACKEND_JS:  return _djs;
-        case IFC_BACKEND_JSC:  return _djsc;
-        case IFC_BACKEND_LUA: return _dlua;
+        case backend::cxx: return _dc;
+        case backend::js:  return _djs;
+        case backend::jsc: return _djsc;
+        case backend::lua: return _dlua;
         default: return _dnone;
         }
     }
@@ -146,7 +146,7 @@ public:
     //@note host side helper
     static iref<video_recorder> intergen_active_interface(::framebuffer* host);
 
-    template<enum EBackend B>
+    template<enum class backend B>
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -156,18 +156,18 @@ public:
         return _cached_wrapper;
     }
 
-    void* intergen_wrapper( EBackend bck ) const override final {
+    void* intergen_wrapper( backend bck ) const override final {
         switch(bck) {
-        case IFC_BACKEND_JS: return intergen_wrapper_cache<IFC_BACKEND_JS>();
-        case IFC_BACKEND_JSC: return intergen_wrapper_cache<IFC_BACKEND_JSC>();
-        case IFC_BACKEND_LUA: return intergen_wrapper_cache<IFC_BACKEND_LUA>();
+        case backend::js:  return intergen_wrapper_cache<backend::js>();
+        case backend::jsc: return intergen_wrapper_cache<backend::jsc>();
+        case backend::lua: return intergen_wrapper_cache<backend::lua>();
         default: return 0;
         }
     }
 
-    EBackend intergen_backend() const override { return IFC_BACKEND_CXX; }
+    backend intergen_backend() const override { return backend::cxx; }
 
-    const coid::token& intergen_default_creator( EBackend bck ) const override final {
+    const coid::token& intergen_default_creator( backend bck ) const override final {
         return intergen_default_creator_static(bck);
     }
 
@@ -177,15 +177,15 @@ public:
     {
         static_assert(std::is_base_of<video_recorder, C>::value, "not a base class");
 
-        typedef iref<intergen_interface> (*fn_client)(void*, intergen_interface*);
-        fn_client cc = [](void*, intergen_interface*) -> iref<intergen_interface> { return new C; };
+        typedef intergen_interface* (*fn_client)();
+        fn_client cc = []() -> intergen_interface* { return new C; };
 
         coid::token type = typeid(C).name();
         type.consume("class ");
         type.consume("struct ");
 
-        coid::charstr tmp = "ot::video_recorder";
-        tmp << "@client-2946773048" << '.' << type;
+        coid::charstr tmp = "ot::video_recorder"_T;
+        tmp << "@client-2946773048"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -198,11 +198,17 @@ protected:
         return _mx;
     }
 
-    typedef void (*cleanup_fn)(video_recorder*, intergen_interface*);
-    cleanup_fn _cleaner;
+    ///Cleanup routine called from ~video_recorder()
+    static void _cleaner_callback(video_recorder* m, intergen_interface* ifc) {
+        m->assign_safe(ifc, 0);
+    }
 
-    video_recorder() : _cleaner(0)
-    {}
+    bool assign_safe(intergen_interface* client__, iref<video_recorder>* pout);
+
+    typedef void (*cleanup_fn)(video_recorder*, intergen_interface*);
+    cleanup_fn _cleaner = 0;
+
+    bool set_host(policy_intrusive_base*, intergen_interface*, iref<video_recorder>* pout);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,14 +218,14 @@ inline iref<T> video_recorder::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(video_recorder*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::video_recorder.create@2946773048";
+    static const coid::token ifckey = "ot::video_recorder.create@2946773048"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("create", "ot::video_recorder.create", "@2946773048");
+        log_mismatch("create"_T, "ot::video_recorder.create"_T, "@2946773048"_T);
         return 0;
     }
 

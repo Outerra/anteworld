@@ -18,6 +18,11 @@
     <DisplayString>code={_ptr->_code} {_ptr->_desc,s}</DisplayString>
 </Type>
 
+<Type Name="coid::exception">
+    <DisplayString Condition="_dtext._tstr._ptr == 0">{_stext._ptr,[_stext._pte-_stext._ptr]s8}</DisplayString>
+    <DisplayString>{_dtext._tstr._ptr,s8}</DisplayString>
+</Type>
+
 <Type Name="coid::dynarray&lt;*,*,*&gt;">
     <DisplayString Condition="_ptr == 0">size = 0</DisplayString>
     <DisplayString>size = {((size_t*)_ptr)[-1]}</DisplayString>
@@ -46,6 +51,12 @@
 </Type>
 
 <Type Name="iref&lt;*&gt;">
+    <SmartPointer Usage="Minimal">_p</SmartPointer>
+    <DisplayString Condition="_p == 0">{{empty}}</DisplayString>
+    <DisplayString>{_p,x}</DisplayString>
+</Type>
+
+<Type Name="coid::local&lt;*&gt;">
     <SmartPointer Usage="Minimal">_p</SmartPointer>
     <DisplayString Condition="_p == 0">{{empty}}</DisplayString>
     <DisplayString>{_p,x}</DisplayString>

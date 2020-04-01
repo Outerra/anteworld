@@ -4,7 +4,7 @@
 #include "../trait.h"
 #include "../hash/slothash.h"
 #include "../function.h"
-//#include "ig_test.h"
+#include "intergen/ifc/client.h"
 
 namespace coid {
 void std_test();
@@ -38,6 +38,8 @@ using namespace coid;
 
 struct value {
     charstr key;
+
+    value() {}
 
     value(charstr&& val) {
         key.takeover(val);
@@ -121,20 +123,129 @@ void lambda_slotalloc_test()
     });
 }
 
+
+struct something
+{
+    static int funs(void*, int, void*) {
+        return 0;
+    }
+
+    int funm(int, void*) {
+        return value;
+    }
+
+    int value = 1;
+};
+
+struct anything : something
+{
+    int funm2(int, void*) const {
+        return value;
+    }
+};
+
+struct multithing : value, something
+{
+    int funm3(int, void*) const {
+        return something::value;
+    }
+
+    int funn3(int, void*) {
+        return something::value;
+    }
+};
+
+struct virthing : something
+{
+    virtual int funv(int, void*) const {
+        return value;
+    }
+};
+
+typedef function<void(float)> fn_axis_handler;
+typedef coid::function<void(void*, const something&)> fn_action_handler;
+
+fn_action_handler hh;
+
+void fnlambda_test(const fn_axis_handler& fn) {
+    hh = [fn](void* obj, const something& act) {
+        fn(float(act.value));
+        };
+}
+
 void fntest(void(*pfn)(charstr&))
 {
     function<void(charstr&)> fn = pfn;
+
+    fnlambda_test(
+        [](float val) {
+            //whatevs
+        });
+
+    hh(nullptr, something());
+
+    int z = 2;
+    callback<int(int, void*)> fns = &something::funs;
+    callback<int(int, void*)> fnm = &something::funm;
+    callback<int(int, void*)> fnl = [](void*, int, void*) { return -1; };
+    callback<int(int, void*)> fnz = [z](void*, int, void*) { return z; };
+    callback<int(int, void*)> fn2 = &anything::funm2;
+    callback<int(int, void*)> fm3 = &multithing::funm3;
+    callback<int(int, void*)> fn3 = &multithing::funn3;
+    callback<int(int, void*)> fnv = &virthing::funv;
+
+    something s;
+    multithing m;
+    virthing v;
+
+    DASSERT(fns(&s, 1, 0) == 0);
+    DASSERT(fnm(&s, 1, 0) == 1);
+    DASSERT(fnl(&s, 1, 0) == -1);
+    DASSERT(fnz(&s, 1, 0) == 2);
+    DASSERT(fn2(&s, 1, 0) == 1);
+    DASSERT(fm3(&m, 1, 0) == 1);
+    DASSERT(fn3(&m, 1, 0) == 1);
+    DASSERT(fnv(&v, 1, 0) == 1);
 }
+
+
+void reftest(callback<int(int, void*)>&& fn) {
+    function<void(int)> x1 = [](int) {};
+    auto s = [fn = std::move(fn)](int) { fn(0, 1, nullptr); };
+    function<void(int)> x2 = std::move(s);
+}
+
 
 void constexpr_test()
 {
     constexpr token name = "salama"_T;
+
+#ifdef COID_CONSTEXPR_FOR
+    constexpr tokenhash hash = "klobasa"_T;
+#endif
+}
+
+uints test_slotalloc_virtual() {
+    struct a {
+        uint member_a;
+    };
+
+    struct b {
+        uint member_b;
+        b(uint val_b) :member_b(val_b) {};
+
+    };
+
+    slotalloc_linear<a, b> dummy(123456, coid::reserve_mode::virtual_space);
+
+    return dummy.add_range_uninit(50);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char* argv[] )
 {
     test_malloc();
+    test_slotalloc_virtual();
 
     fntest(0);
 

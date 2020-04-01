@@ -95,7 +95,7 @@ struct AllocSlot {
     uints index(const T* p) const { return _slots.get_item_id(p); }
     T* pointer(uints id) const { return (T*)_slots.get_item(id); }
 
-    void reserve(uints count) { return _slots.reserve(count); }
+    void reserve(uints count) { _slots.reserve(count); }
 
 private:
     slotalloc_base<T> _slots;
@@ -178,7 +178,7 @@ public:
     EQFUNC& equal_func() { return _EQFUNC; }
 
 
-    class Ptr : public std::iterator<std::forward_iterator_tag, VAL>
+    class Ptr
     {
         Node* _p;
         const _Self* _ht;
@@ -196,6 +196,8 @@ public:
         typedef const VAL*              const_pointer;
         typedef VAL&                    reference;
         typedef const VAL&              const_reference;
+
+        typedef std::forward_iterator_tag iterator_category;
 
         const Node* _get_node() const { return _p; }
         const _Self* _get_ht() const { return _ht; }
@@ -226,7 +228,7 @@ public:
         }
     };
 
-    class CPtr : public std::iterator<std::forward_iterator_tag, VAL>
+    class CPtr
     {
         const Node* _p;
         const _Self*  _ht;
@@ -244,6 +246,8 @@ public:
         typedef const VAL*              const_pointer;
         typedef VAL&                    reference;
         typedef const VAL&              const_reference;
+
+        typedef std::forward_iterator_tag iterator_category;
 
         CPtr(const Node* p, const _Self& ht) : _p(p), _ht(&ht) {}
         CPtr() : _p(0), _ht(0) {}
@@ -429,10 +433,10 @@ protected:
         return find_socket_ext(_table, _shift, k);
     }
 
-    ///Find first node that matches the key
-    Node** find_socket_val(const LOOKUP& k, const VAL* val) const
+    ///Find socket with given value
+    Node** find_socket_val(const VAL* val, uints socket = UMAXS) const
     {
-        uints h = bucket(k, _shift);
+        uints h = socket != UMAXS ? socket : bucket(_GETKEYFUNC(*val), _shift);
         Node** pn = (Node**)&_table[h];
         Node* n = *pn;
         while (n && &n->_val != val)
@@ -659,12 +663,21 @@ public:
         return std::pair<const_iterator, const_iterator>(const_iterator(f, *this), const_iterator(l, *this));
     }
 
+    bool erase_value(const VAL& v) {
+        return this->__erase_value(_GETKEYFUNC(v), 0);
+    }
+
     bool erase_value(const LOOKUP& k, VAL* dst) {
         return this->__erase_value(k, dst);
     }
 
-    bool erase_value_slot(const LOOKUP& k, const VAL* dst) {
-        return this->__erase_value_slot(k, dst);
+    bool erase_value_slot(const VAL* dst) {
+        return this->__erase_value_slot(dst);
+    }
+
+    ///Erase value provided external key (if key in value was already destroyed)
+    bool erase_value_slot(const VAL* dst, const LOOKUP& key) {
+        return this->__erase_value_slot(dst, bucket(key, _shift));
     }
 
     size_t erase(const LOOKUP& k) {
@@ -983,10 +996,10 @@ protected:
         return true;
     }
 
-    bool __erase_value_slot(const LOOKUP& k, const VAL* val)
+    bool __erase_value_slot(const VAL* val, uints socket = UMAXS)
     {
-        Node** pn = find_socket_val(k, val);
-        if (!*pn)
+        Node** pn = find_socket_val(val, socket);
+        if (!pn)
             return false;
 
         Node* n = *pn;
