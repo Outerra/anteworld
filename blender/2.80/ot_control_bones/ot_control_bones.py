@@ -40,7 +40,7 @@ class DefaultAction:
 
 TYPE_PROPERTY_NAME = "ot_controlbone_type"
 ACTION_PROPERTY_NAME = "ot_controlbone_action"
-TRANSFORM_PROPERTY_NAME = "ot_controlbone_transform"
+ANIMATION_PROPERTY_NAME = "ot_controlbone_animation"
 
 
 def clear_properties(bone):
@@ -50,8 +50,8 @@ def clear_properties(bone):
     if ACTION_PROPERTY_NAME in bone:
         del bone[ACTION_PROPERTY_NAME]
 
-    if TRANSFORM_PROPERTY_NAME in bone:
-        del bone[TRANSFORM_PROPERTY_NAME]
+    if ANIMATION_PROPERTY_NAME in bone:
+        del bone[ANIMATION_PROPERTY_NAME]
 
 def deserialize_type(props, bone):
     if TYPE_PROPERTY_NAME not in bone:
@@ -193,13 +193,13 @@ def serialize_action(props, bone):
             del bone[ACTION_PROPERTY_NAME]
 
 
-def deserialize_transform(props, bone):
-    if TRANSFORM_PROPERTY_NAME not in bone:
+def deserialize_animation(props, bone):
+    if ANIMATION_PROPERTY_NAME not in bone:
         props.use_trans_min = False
         props.use_trans_max = False
         return
 
-    item = bone[TRANSFORM_PROPERTY_NAME]
+    item = bone[ANIMATION_PROPERTY_NAME]
     if (type(item) != str):
         props.use_trans_min = False
         props.use_trans_max = False
@@ -228,7 +228,7 @@ def deserialize_transform(props, bone):
     except:
         props.use_trans_max = False
 
-def serialize_transform(props, bone):
+def serialize_animation(props, bone):
     if not props.use_control:
         return
 
@@ -246,10 +246,10 @@ def serialize_transform(props, bone):
         used = True
 
     if used:
-        bone[TRANSFORM_PROPERTY_NAME] = ";".join(val_str)
+        bone[ANIMATION_PROPERTY_NAME] = ";".join(val_str)
     else:
-        if TRANSFORM_PROPERTY_NAME in bone:
-            del bone[TRANSFORM_PROPERTY_NAME]
+        if ANIMATION_PROPERTY_NAME in bone:
+            del bone[ANIMATION_PROPERTY_NAME]
 
 
 def update_type(self, context):
@@ -270,14 +270,14 @@ def update_action(self, context):
 
     serialize_action(props, bone)
 
-def update_transform(self, context):
+def update_animation(self, context):
     props = context.scene.ot_control_element_prop
     bone = get_active_bone()
 
     if bone is None:
         return
 
-    serialize_transform(props, bone)
+    serialize_animation(props, bone)
 
 def update_use_control(self, context):
     props = context.scene.ot_control_element_prop
@@ -289,7 +289,7 @@ def update_use_control(self, context):
     if props.use_control:
         serialize_type(props, bone)
         serialize_action(props, bone)
-        serialize_transform(props, bone)
+        serialize_animation(props, bone)
     else:
         clear_properties(bone)
 
@@ -335,13 +335,13 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     channel: bpy.props.IntProperty(name="Channel", description="channel", default=DefaultAction.channel, min=0, max=10, update=update_action)
 
 
-    trans_type: bpy.props.EnumProperty(name="Type", description="type of transformation of bone to animate", items=transform_types, update=update_transform)
+    trans_type: bpy.props.EnumProperty(name="Type", description="type of transformation of bone to animate", items=transform_types, update=update_animation)
 
-    use_trans_min: bpy.props.BoolProperty(name="Use transform min", description="serialize this field", default=False, update=update_transform)
-    trans_min: bpy.props.FloatProperty(name="Minimum", description="minimum value transformation could be", default=-1.0, min=-1000, max=1000, update=update_transform)
+    use_trans_min: bpy.props.BoolProperty(name="Use transform min", description="serialize this field", default=False, update=update_animation)
+    trans_min: bpy.props.FloatProperty(name="Minimum", description="minimum value transformation could be", default=-1.0, min=-1000, max=1000, update=update_animation)
 
-    use_trans_max: bpy.props.BoolProperty(name="Use transform max", description="serialize this field", default=False, update=update_transform)
-    trans_max: bpy.props.FloatProperty(name="Maximum", description="maximum value transformation could be", default=1.0, min=-1000, max=1000, update=update_transform)
+    use_trans_max: bpy.props.BoolProperty(name="Use transform max", description="serialize this field", default=False, update=update_animation)
+    trans_max: bpy.props.FloatProperty(name="Maximum", description="maximum value transformation could be", default=1.0, min=-1000, max=1000, update=update_animation)
 
 
 class OtControlElementPanel(bpy.types.Panel):
@@ -426,8 +426,8 @@ def check_active_bone():
     if ot_current_bone != bone:
         deserialize_type(props, bone)
         deserialize_action(props, bone)
-        deserialize_transform(props, bone)
-        props.use_control = TYPE_PROPERTY_NAME in bone or ACTION_PROPERTY_NAME in bone or TRANSFORM_PROPERTY_NAME in bone
+        deserialize_animation(props, bone)
+        props.use_control = TYPE_PROPERTY_NAME in bone or ACTION_PROPERTY_NAME in bone or ANIMATION_PROPERTY_NAME in bone
         ot_current_bone = bone
     return 0.3
 
