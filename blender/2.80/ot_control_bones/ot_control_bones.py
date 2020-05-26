@@ -343,7 +343,6 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     use_trans_max: bpy.props.BoolProperty(name="Use transform max", description="serialize this field", default=False, update=update_animation)
     trans_max: bpy.props.FloatProperty(name="Maximum", description="maximum value transformation could be", default=1.0, min=-1000, max=1000, update=update_animation)
 
-
 class OtControlElementPanel(bpy.types.Panel):
     bl_idname = "PANEL_PT_OtControlElement"
     bl_label = "Outerra Control Element"
@@ -351,9 +350,6 @@ class OtControlElementPanel(bpy.types.Panel):
     bl_region_type = "WINDOW"
     bl_context = "bone"
     bl_options = {'DEFAULT_CLOSED'}
-
-    def __init__(self):
-        self.ot_current_bone = None
 
     @classmethod
     def poll(cls, context):
@@ -411,6 +407,28 @@ class OtControlElementPanel(bpy.types.Panel):
         draw_property(col, props, "trans_max", "use_trans_max", props.use_trans_max)
 
 
+class OtControlElementListPanel(bpy.types.Panel):
+    bl_idname = "PANEL_PT_OtControlElementListPanel"
+    bl_label = "Control elements"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        view_layer = bpy.context.view_layer
+        active = view_layer.objects.active
+        
+        if active is not None and active.type == 'ARMATURE':
+            bones = active.data.edit_bones
+            for bone in bones:
+                if TYPE_PROPERTY_NAME in bone:
+                    type = bone[TYPE_PROPERTY_NAME]
+                    values = [x.strip() for x in type.split(';')]
+                    layout.label(text=bone.name + " (" + values[0] + ")")
+
+
 ot_current_bone = None
 @persistent
 def check_active_bone():
@@ -432,7 +450,7 @@ def check_active_bone():
     return 0.3
 
 
-classes = (OtControlElementSettings, OtControlElementPanel)
+classes = (OtControlElementSettings, OtControlElementPanel, OtControlElementListUI, OtControlElementListPanel)
 
 def register():
     for cls in classes:
