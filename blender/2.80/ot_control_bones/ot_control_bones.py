@@ -35,8 +35,8 @@ class DefaultAction:
     cen = 0.0
     min = -1.0
     max = 1.0
-    step = 1
-    channel = 0
+    steps = 1
+    channels = 0
 
 TYPE_PROPERTY_NAME = "ot_controlbone_type"
 ACTION_PROPERTY_NAME = "ot_controlbone_action"
@@ -91,8 +91,8 @@ def deserialize_action(props, bone):
         props.use_cen = False
         props.use_min = False
         props.use_max = False
-        props.use_step = False
-        props.use_channel = False
+        props.use_steps = False
+        props.use_channels = False
         return
 
     item = bone[ACTION_PROPERTY_NAME]
@@ -138,16 +138,16 @@ def deserialize_action(props, bone):
         props.use_max = False
 
     try:
-        props.step = int(values[6])
-        props.use_step = True
+        props.steps = int(values[6])
+        props.use_steps = True
     except:
-        props.use_step = False
+        props.use_steps = False
 
     try:
-        props.channel = int(values[7])
-        props.use_channel = True
+        props.channels = int(values[7])
+        props.use_channels = True
     except:
-        props.use_channel = False
+        props.use_channels = False
 
 def serialize_action(props, bone):
     if not props.use_control:
@@ -178,12 +178,12 @@ def serialize_action(props, bone):
         val_str[5] = "{:1.5f}".format(props.max).rstrip('0').rstrip('.');
         used = True
 
-    if props.use_step:
-        val_str[6] = str(props.step);
+    if props.use_steps:
+        val_str[6] = str(props.steps);
         used = True
 
-    if props.use_channel:
-        val_str[7] = str(props.channel);
+    if props.use_channels:
+        val_str[7] = str(props.channels);
         used = True
 
     if used:
@@ -328,11 +328,11 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     use_max: bpy.props.BoolProperty(name="Use maximum", description="serialize this field", default=False, update=update_action)
     max: bpy.props.FloatProperty(name="Maximum", description="maximum value", default=DefaultAction.max, min=-1000.0, max=1000, update=update_action)
 
-    use_step: bpy.props.BoolProperty(name="Use step", description="serialize this field", default=False, update=update_action)
-    step: bpy.props.IntProperty(name="Step count", description="count of steps between min and max", default=DefaultAction.step, min=1, max=1000, update=update_action)
+    use_steps: bpy.props.BoolProperty(name="Use steps", description="serialize this field", default=False, update=update_action)
+    steps: bpy.props.IntProperty(name="Step count", description="count of steps between min and max", default=DefaultAction.steps, min=1, max=1000, update=update_action)
 
-    use_channel: bpy.props.BoolProperty(name="Use channel", description="serialize this field", default=False, update=update_action)
-    channel: bpy.props.IntProperty(name="Channel", description="channel", default=DefaultAction.channel, min=0, max=10, update=update_action)
+    use_channels: bpy.props.BoolProperty(name="Use channels", description="serialize this field", default=False, update=update_action)
+    channels: bpy.props.IntProperty(name="Channel count", description="number of extra channels supported by the handler", default=DefaultAction.channels, min=0, max=31, update=update_action)
 
 
     trans_type: bpy.props.EnumProperty(name="Type", description="type of transformation of bone to animate", items=transform_types, update=update_animation)
@@ -393,15 +393,15 @@ class OtControlElementPanel(bpy.types.Panel):
 
         col = row.box()
         col.label(text="Action data")
-        used = props.use_vel or props.use_acc or props.use_cen or props.use_min or props.use_max or props.use_step or props.use_channel
+        used = props.use_vel or props.use_acc or props.use_cen or props.use_min or props.use_max or props.use_steps or props.use_channels
         draw_type(col, props, "action", used)
         draw_property(col, props, "vel", "use_vel", props.use_vel)
         draw_property(col, props, "acc", "use_acc", props.use_acc)
         draw_property(col, props, "cen", "use_cen", props.use_cen)
         draw_property(col, props, "min", "use_min", props.use_min)
         draw_property(col, props, "max", "use_max", props.use_max)
-        draw_property(col, props, "step", "use_step", props.use_step)
-        draw_property(col, props, "channel", "use_channel", props.use_channel)
+        draw_property(col, props, "steps", "use_steps", props.use_steps)
+        draw_property(col, props, "channels", "use_channels", props.use_channels)
 
         col = row.box()
         col.label(text="Animation data")
