@@ -323,16 +323,16 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     cen: bpy.props.FloatProperty(name="Centering", description="centering", default=DefaultAction.cen, min=0.0, max=1000, update=update_action)
 
     use_min: bpy.props.BoolProperty(name="Use minimum", description="serialize this field", default=False, update=update_action)
-    min: bpy.props.FloatProperty(name="Minimum", description="minimum value", default=DefaultAction.min, min=-1000.0, max=1000, update=update_action)
+    min: bpy.props.FloatProperty(name="Minimum", description="minimum value", default=DefaultAction.min, min=-6.0, max=0.0, update=update_action)
 
     use_max: bpy.props.BoolProperty(name="Use maximum", description="serialize this field", default=False, update=update_action)
-    max: bpy.props.FloatProperty(name="Maximum", description="maximum value", default=DefaultAction.max, min=-1000.0, max=1000, update=update_action)
+    max: bpy.props.FloatProperty(name="Maximum", description="maximum value", default=DefaultAction.max, min=0.0, max=6.0, update=update_action)
 
     use_steps: bpy.props.BoolProperty(name="Use steps", description="serialize this field", default=False, update=update_action)
-    steps: bpy.props.IntProperty(name="Step count", description="count of steps between min and max", default=DefaultAction.steps, min=1, max=1000, update=update_action)
+    steps: bpy.props.IntProperty(name="Step count", description="count of steps between 0 and 1", default=DefaultAction.steps, min=1, max=255, update=update_action)
 
     use_channels: bpy.props.BoolProperty(name="Use channels", description="serialize this field", default=False, update=update_action)
-    channels: bpy.props.IntProperty(name="Channel count", description="number of extra channels supported by the handler", default=DefaultAction.channels, min=0, max=31, update=update_action)
+    channels: bpy.props.IntProperty(name="Channel count", description="number of extra channels supported by the handler", default=DefaultAction.channels, min=0, max=7, update=update_action)
 
 
     trans_type: bpy.props.EnumProperty(name="Type", description="type of transformation of bone to animate", items=transform_types, update=update_animation)
@@ -450,7 +450,7 @@ def check_active_bone():
     return 0.3
 
 
-classes = (OtControlElementSettings, OtControlElementPanel, OtControlElementListUI, OtControlElementListPanel)
+classes = (OtControlElementSettings, OtControlElementPanel, OtControlElementListPanel)
 
 def register():
     for cls in classes:
@@ -458,7 +458,7 @@ def register():
 
     bpy.types.Scene.ot_control_element_prop = bpy.props.PointerProperty(type=OtControlElementSettings)
 
-    bpy.app.timers.register(check_active_bone)
+    bpy.app.timers.register(check_active_bone, first_interval=0, persistent=True)
 
 def unregister():
     for cls in reversed(classes):
