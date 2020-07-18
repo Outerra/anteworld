@@ -241,7 +241,7 @@ private:
     }
 
     static void* create() {
-        return new T;
+        return new T();
     }
 };
 

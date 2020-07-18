@@ -273,8 +273,8 @@ public:
     ///Delete item from hash map
     void del(T* p)
     {
-        uint id = (uint)get_item_id(p);
-        DASSERT_RETVOID(id != UMAX32);
+        uints id = base::get_item_id(p);
+        DASSERT_RET(id != UMAXS);
 
         destroy_value_(id);
         base::del(p);
@@ -283,7 +283,7 @@ public:
     ///Delete object by id
     void del(uint id)
     {
-        DASSERT_RETVOID(id != UMAX32);
+        DASSERT_RET(id != UMAX32);
 
         T* p = destroy_value_(id);
         base::del(p);
@@ -468,7 +468,6 @@ protected:
 
     T* insert_value_(T* p, uint id)
     {
-        //uint id = (uint)base::get_item_id(p);
         const KEY& key = _EXTRACTOR(*p);
 
         return init_value_slot_(id, key);

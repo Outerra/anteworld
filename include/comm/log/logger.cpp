@@ -46,6 +46,7 @@
 
 #include "../interface.h"
 #include "../timer.h"
+#include "../net_ul.h"
 
 using namespace coid;
 
@@ -123,7 +124,7 @@ protected:
 protected:
 
     ///
-    explicit policy_msg(logmsg* const obj, pool_type* const p=0) 
+    explicit policy_msg(logmsg* const obj, pool_type* const p=0)
         : _pool(p)
         , _obj(obj)
     {}
@@ -133,9 +134,9 @@ public:
     logmsg* get() const { return _obj; }
 
     virtual void _destroy() override
-    { 
+    {
         DASSERT(_pool != 0);
-        
+
         if(_obj->_logger) {
             //first destroy just queues the message
             logger* x = _obj->_logger;
@@ -150,7 +151,7 @@ public:
     }
 
     ///
-    static policy_msg* create() 
+    static policy_msg* create()
     {
         pool_type& pool = pool_singleton();
         policy_msg* p=0;
@@ -263,10 +264,9 @@ bool logmsg::finalize( policy_msg* p )
 
 ////////////////////////////////////////////////////////////////////////////////
 logger::logger( bool std_out, bool cache_msgs )
-	: _stdout(std_out)
-    , _minlevel(coid::log::last)
+    : _stdout(std_out)
 {
-	SINGLETON(log_writer);
+    SINGLETON(log_writer);
 
     if (cache_msgs)
         _logfile = ref<logger_file>(new logger_file(std_out));
@@ -285,16 +285,17 @@ void logger::enable_debug_out(bool en)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void logger::set_log_level(log::type minlevel)
+void logger::set_log_level(log::type minlevel, bool allow_perf)
 {
     _minlevel = minlevel;
+    _allow_perf = allow_perf || _minlevel >= log::perf;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash, const void* inst, const int64* mstime )
 {
     //TODO check hash, inst
-    if (type > _minlevel)
+    if (type > _minlevel && (!_allow_perf || type != log::perf))
         return ref<logmsg>();
 
     ref<logmsg> rmsg = operator()(type, hash, mstime);
@@ -327,7 +328,7 @@ ref<logmsg> logger::operator()( log::type t, const tokenhash& hash, const int64*
 ////////////////////////////////////////////////////////////////////////////////
 ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash )
 {
-    if (type > _minlevel)
+    if (type > _minlevel && (!_allow_perf || type != log::perf))
         return ref<logmsg>();
 
     ref<logmsg> msg = ref<logmsg>(policy_msg::create());
@@ -343,7 +344,7 @@ ref<logmsg> logger::create_msg( log::type type, const tokenhash& hash )
 
 ////////////////////////////////////////////////////////////////////////////////
 void logger::enqueue( ref<logmsg>&& msg )
-{   
+{
     _filters.for_each([&](const log_filter& f) {
         if (msg->get_type() <= (log::type)f._log_level
             && f._module.cmpeq(msg->get_hash()))
@@ -364,10 +365,10 @@ void logger::post( const token& txt, const token& prefix )
     ref<logmsg> rmsg = ref<logmsg>(policy_msg::create());
     rmsg->set_logger(this);
     rmsg->set_type(type);
-    
+
     charstr& str = rmsg->str();
     str = logmsg::type2tok(type);
-    
+
     if(prefix)
         str << '[' << prefix << "] ";
     str << msg;
@@ -393,15 +394,15 @@ void logger::flush()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-log_writer::log_writer() 
-	: _thread()
-	, _queue()
+log_writer::log_writer()
+    : _thread()
+    , _queue()
 {
     //make sure the dependent singleton gets created
     policy_msg::pool_singleton();
-	//policy_pooled<logmsg>::default_pool();
+    //policy_pooled<logmsg>::default_pool();
 
-	_thread.create( thread_run_fn, this, 0, "log_writer" );
+    _thread.create( thread_run_fn, this, 0, "log_writer" );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,27 +421,27 @@ void log_writer::terminate()
 ////////////////////////////////////////////////////////////////////////////////
 void* log_writer::thread_run()
 {
-	while (!coid::thread::self_should_cancel()) {
+    while (!coid::thread::self_should_cancel()) {
         flush();
 
-		coid::sysMilliSecondSleep(1);
-	}
+        coid::sysMilliSecondSleep(1);
+    }
 
     flush();
 
-	return 0;
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void log_writer::flush()
 {
-	ref<logmsg> m;
+    ref<logmsg> m;
 
-	//int maxloop = 3000 / 20;
+    //int maxloop = 3000 / 20;
 
-	while( _queue.pop(m) ) {
+    while( _queue.pop(m) ) {
         DASSERT( m->str() );
-		m->write();
-		m.release();
-	}
+        m->write();
+        m.release();
+    }
 }

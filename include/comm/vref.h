@@ -73,7 +73,7 @@ public:
 
     ///Automatic cast to unconvertible bool for checking via if
     operator unspecified_bool_type () const {
-        return _vptr ? &ref<T>::_vptr : 0;
+        return _vptr ? &vref<T>::_vptr : 0;
     }
 
 private:

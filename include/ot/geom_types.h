@@ -24,6 +24,17 @@ extern uint MaxPackages;
 extern uint MeshTemplateLimit;
 extern uint MaxObjdefs;
     
+enum class mesh_type_enum {
+    baked_mesh = 0,
+    baked_mesh_w_skin= 2,
+    instanced_mesh_w_single_bone = 1,
+    instanced_mesh = 7,
+    tree_mesh = 6,
+    raw_instances = 3,
+    proc_road = 4,
+    proc_road_2 = 5,
+};
+
 enum ELodGroupsFlags {
 	LG_HAS_TERRAIN_OCCLUDER_GROUP = 0x4000,
 	LG_HAS_COLLISION_GROUP = 0x8000,
@@ -407,10 +418,10 @@ struct lod_meshes_v10
 
 
 struct geom_instance_data;
-class obj_def;
+struct obj_template;
 
 /// callback called when geom_instance_data is ready
-typedef coid::FastDelegate2<geom_instance_data* const, const obj_def* const, void> geom_ready_state_changed_cb;
+typedef coid::FastDelegate2<geom_instance_data* const,const obj_template* const, void> geom_ready_state_changed_cb;
 
 struct geom_instance_data
 {

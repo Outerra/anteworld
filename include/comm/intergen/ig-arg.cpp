@@ -146,17 +146,7 @@ bool MethodIG::Arg::parse( iglexer& lex, bool argname )
         lex.clear_err();
     }
 
-    //bare type
-    barenstype = basetype;
-
-    if(biref)
-        barenstype.set(barenstype.ptr()+5, barenstype.ptre()-1);
-
-    barens = barenstype;
-    baretype = barens.cut_right_back("::", false);
-
-
-    if(ifctarget) {
+    if (ifctarget) {
         type.swap(ifctarget);
         type.ins(0, "iref<");
         type.append('>');
@@ -192,15 +182,26 @@ bool MethodIG::Arg::parse( iglexer& lex, bool argname )
         lex.match(lex.IDENT, name, "expecting argument name");
 
     //match array
-    if(lex.matches('[') ) {
-        if(bconst) {
+    if (lex.matches('[')) {
+        if (bconst) {
             type.ins(0, "const ");
+            basetype = token(type.ptr() + 6, type.ptre());
             bconst = 0;
         }
         arsize = '[';
         arsize << lex.next_as_block(lex.SQUARE);
         arsize << ']';
     }
+
+    //bare type
+    barenstype = basetype;
+
+    if (biref)
+        barenstype.set(barenstype.ptr()+5, barenstype.ptre()-1);
+
+    barens = barenstype;
+    baretype = barens.cut_right_back("::", false);
+
 
     bnojs = false;
 

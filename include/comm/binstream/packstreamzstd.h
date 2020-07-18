@@ -16,7 +16,7 @@
 * The Original Code is COID/comm module.
 *
 * The Initial Developer of the Original Code is
-* PosAm.
+* Outerra.
 * Portions created by the Initial Developer are Copyright (C) 2017
 * the Initial Developer. All Rights Reserved.
 *

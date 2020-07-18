@@ -347,11 +347,95 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
 void test();
 
 ////////////////////////////////////////////////////////////////////////////////
-int main( int argc, char* argv[] )
+int generate_index(const charstr& path)
+{
+    if(!directory::is_valid_directory(path)) {
+        out << "failed to open " << path;
+        return 0;
+    }
+
+    charstr before, after, single, multi;
+    binstreambuf buf;
+    int n = 0;
+
+    const substring ssbeg = "/**interface metadata begin**/"_T;
+    const substring ssend = "/**interface metadata end**/"_T;
+
+    directory::list_file_paths(path, "html", 0,
+        [&](const charstr& name, int dir) {
+            if (name.ends_with("index.html"_T))
+                return;
+
+            bifstream bif(name);
+            if (!bif.is_open()) {
+                out << "can't open " << name << '\n';
+                return;
+            }
+            buf.reset_all();
+            buf.transfer_from(bif);
+            bif.close();
+
+            token text = buf;
+            token lead = text.cut_left(ssbeg);
+
+            if (!before)
+                before = lead;
+
+            single = text.cut_left(ssend);
+
+            if (single) {
+                if (multi)
+                    multi << ", \r\n";
+                multi << single;
+            }
+
+            if (!after)
+                after = text;
+
+            ++n;
+        });
+
+    if (before) {
+        out << "found " << n << " interface files, generating index.html ... ";
+        out.flush();
+
+        charstr dpath = path;
+        directory::append_path(dpath, "index.html");
+
+        bofstream bof(dpath);
+        if (!bof.is_open()) {
+            out << "failed\nError writing " << dpath << '\n';
+            return 0;
+        }
+
+        bof.xwrite_token_raw(before);
+        bof.xwrite_token_raw(multi);
+        bof.xwrite_token_raw(after);
+
+        bof.close();
+
+        out << "ok\n";
+    }
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int main(int argc, char* argv[])
 {
     //test();
+    if (argc >= 2 && token(argv[1]) == "-index") {
+        //generate index from existing html files
+        charstr path;
+        if (argc > 2)
+            path = argv[2];
+        else
+            path = directory::get_cwd();
 
-    if( argc<3 ) {
+        return generate_index(path);
+    }
+
+    if (argc < 3) {
         out << "usage: intergen <file>.hpp template-path\n";
         return -1;
     }
@@ -360,7 +444,7 @@ int main( int argc, char* argv[] )
     fdst << ".inl";
 
     charstr tdir = argv[2];
-    if(!directory::is_valid_directory(tdir)) {
+    if (!directory::is_valid_directory(tdir)) {
         out << "invalid template path\n";
         return -2;
     }
@@ -372,7 +456,7 @@ int main( int argc, char* argv[] )
 
     //parse
     int rv = cgf.parse(argv[1]);
-    if(rv)
+    if (rv)
         return rv;
 
 

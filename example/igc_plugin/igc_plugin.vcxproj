@@ -22,7 +22,7 @@
     <ProjectGuid>{EBC6E626-4BD2-4156-9D3E-FCC3514374EE}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>igc_plugin</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

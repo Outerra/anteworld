@@ -1,4 +1,5 @@
 #include "taskmaster.h"
+#include "profiler/profiler.h"
 
 COID_NAMESPACE_BEGIN
 
@@ -14,6 +15,9 @@ void* taskmaster::threadfunc( int order )
 
     thread::set_affinity_mask((uint64)1 << order);
     coidlog_info("taskmaster", "thread " << order << " running");
+    char tmp[64];
+    sprintf_s(tmp, "taskmaster %d", order);
+    profiler::set_thread_name(tmp);
 
     do
     {

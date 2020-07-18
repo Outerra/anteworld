@@ -28,6 +28,10 @@ inline ::btVector3 toVector3( const ::float3& v ) {
     return ::btVector3(v.x, v.y, v.z);
 }
 
+inline ::btQuaternion toQuat(const ::quat& q) {
+    return ::btQuaternion(q.x, q.y, q.z, q.w);
+}
+
 
 inline float dot( const ::btVector3& v1, const ::float3& v2 ) {
     return float(v1[0]*v2.x + v1[1]*v2.y + v1[2]*v2.z);

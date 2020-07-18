@@ -58,7 +58,7 @@ COID_NAMESPACE_BEGIN
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>
 struct _Select_Itself {
-    typedef const T&    ret_type;
+    typedef const T& ret_type;
 
     ret_type operator()(const T& t) const { return t; }
 };
@@ -66,7 +66,7 @@ struct _Select_Itself {
 template <class PAIR, class LOOKUP>
 struct _Select_pair1st
 {
-    typedef const LOOKUP&  ret_type;
+    typedef const LOOKUP& ret_type;
 
     ret_type operator() (const PAIR& __x) const { return __x.first; }
 };
@@ -120,7 +120,7 @@ public:
     struct Node
     {
         VAL     _val;
-        Node*   _next;
+        Node* _next;
 
         Node() : _next(0) {}
 
@@ -192,10 +192,10 @@ public:
 
         typedef size_t                  size_type;
         typedef ptrdiff_t               difference_type;
-        typedef VAL*                    pointer;
-        typedef const VAL*              const_pointer;
-        typedef VAL&                    reference;
-        typedef const VAL&              const_reference;
+        typedef VAL* pointer;
+        typedef const VAL* const_pointer;
+        typedef VAL& reference;
+        typedef const VAL& const_reference;
 
         typedef std::forward_iterator_tag iterator_category;
 
@@ -223,7 +223,7 @@ public:
         inline Ptr operator++(int)
         {
             Ptr tmp = *this;
-            ++*this;
+            ++* this;
             return tmp;
         }
     };
@@ -231,7 +231,7 @@ public:
     class CPtr
     {
         const Node* _p;
-        const _Self*  _ht;
+        const _Self* _ht;
 
     public:
 
@@ -242,10 +242,10 @@ public:
 
         typedef size_t                  size_type;
         typedef ptrdiff_t               difference_type;
-        typedef VAL*                    pointer;
-        typedef const VAL*              const_pointer;
-        typedef VAL&                    reference;
-        typedef const VAL&              const_reference;
+        typedef VAL* pointer;
+        typedef const VAL* const_pointer;
+        typedef VAL& reference;
+        typedef const VAL& const_reference;
 
         typedef std::forward_iterator_tag iterator_category;
 
@@ -290,7 +290,7 @@ public:
         inline CPtr operator++(int)
         {
             CPtr tmp = *this;
-            ++*this;
+            ++* this;
             return tmp;
         }
     };

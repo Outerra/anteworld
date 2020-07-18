@@ -345,8 +345,10 @@ public:
     bool operator == (const dynarray& a) const
     {
         if (size() != a.size())  return false;
-        for (uints i = 0; i < size(); ++i)
-            if (!(_ptr[i] == a._ptr[i]))  return false;
+        for (uints i = 0; i < size(); ++i) {
+            if (!(_ptr[i] == a._ptr[i]))
+                return false;
+        }
         return true;
     }
 
@@ -598,10 +600,12 @@ public:
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
 
-        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
-            for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
+        if (_ptr) {
+            if coid_constexpr_if(!has_trivial_default_constructor<T>::value)
+                for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
 
-        if (_ptr)  _set_count(nitems);
+            _set_count(nitems);
+        }
         return _ptr;
     };
 
@@ -629,12 +633,14 @@ public:
         if (nalloc * sizeof(T) > _size())
             nalloc = _realloc(nalloc, n);
 
-        ::memset(_ptr + n, toones ? 0xff : 0x00, (nitems - n) * sizeof(T));
+        if (_ptr) {
+            ::memset(_ptr + n, toones ? 0xff : 0x00, (nitems - n) * sizeof(T));
 
-        if coid_constexpr_if (!has_trivial_default_constructor<T>::value)
-            for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
+            if coid_constexpr_if(!has_trivial_default_constructor<T>::value)
+                for (uints i = n; i < nitems; ++i)  ::new(_ptr + i) T;
 
-        if (_ptr)  _set_count(nitems);
+            _set_count(nitems);
+        }
         return _ptr;
     };
 

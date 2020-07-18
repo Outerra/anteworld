@@ -36,6 +36,7 @@ void float_test()
 
 using namespace coid;
 
+////////////////////////////////////////////////////////////////////////////////
 struct value {
     charstr key;
 
@@ -225,7 +226,9 @@ void constexpr_test()
 #endif
 }
 
-uints test_slotalloc_virtual() {
+void test_slotalloc_virtual()
+{
+#ifdef COID_CONSTEXPR_IF
     struct a {
         uint member_a;
     };
@@ -238,7 +241,8 @@ uints test_slotalloc_virtual() {
 
     slotalloc_linear<a, b> dummy(123456, coid::reserve_mode::virtual_space);
 
-    return dummy.add_range_uninit(50);
+    dummy.add_range_uninit(50);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -61,7 +61,7 @@ public:
 
     substring()                                          : _shf(0), _icase(0) { set(0, false); }
     substring( const char* subs, uints len, bool icase ) : _shf(0) { set(subs, len, icase); }
-    substring( const token& tok, bool icase )            : _shf(0) { set(tok, icase); }
+    substring( const token& tok, bool icase = false )    : _shf(0) { set(tok, icase); }
     substring( char k, bool icase )                      : _shf(0) { set(k, icase); }
 
     ~substring();

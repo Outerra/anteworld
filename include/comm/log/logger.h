@@ -118,31 +118,34 @@ void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... 
 
 ////////////////////////////////////////////////////////////////////////////////
 //@{ Log message with specified severity
-#define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::none, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::perf, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_info(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::info, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::highlight, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::log::warning, src ); if(q) {q->str() << msg; }} while(0)
-#define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::error, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_none(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::none, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_debug(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_perf(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::perf, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_info(src, msg)    do{ ref<coid::logmsg> q = coid::canlog(coid::log::info, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_msg(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::highlight, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_warning(src, msg) do{ ref<coid::logmsg> q = coid::canlog(coid::log::warning, src ); if (q) {q->str() << msg; }} while(0)
+#define coidlog_error(src, msg)   do{ ref<coid::logmsg> q = coid::canlog(coid::log::error, src ); if (q) {q->str() << msg; }} while(0)
 //@}
 
 ///Create a perf object that logs the time while the scope exists
 #define coidlog_perf_scope(src, msg) \
-   ref<coid::logmsg> perf##line = coid::canlog(coid::log::perf, src); if(perf##line) perf##line->str() << msg
+   ref<coid::logmsg> perf##line = coid::canlog(coid::log::perf, src); if (perf##line) perf##line->str() << msg
 
 ///Log fatal error and throw exception with the same message
-#define coidlog_exception(src, msg)     do{ ref<coid::logmsg> q = coid::canlog(coid::log::exception, src ); if(q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
+#define coidlog_exception(src, msg)\
+        do{ ref<coid::logmsg> q = coid::canlog(coid::log::exception, src ); if (q) {q->str() << msg; throw coid::exception() << msg; }} while(0)
 
 //@{ Log error if condition fails
-#define coidlog_assert(test, src, msg)          do { if(!(test)) coidlog_error(src, msg); } while(0)
-#define coidlog_assert_ret(test, ret, src, msg) do { if(!(test)) { coidlog_error(src, msg); return ret; } } while(0)
-#define coidlog_assert_retvoid(test, src, msg)  do { if(!(test)) { coidlog_error(src, msg); return; } } while(0)
+#define coidlog_assert(test, src, msg)\
+        do { if (!(test)) coidlog_error(src, msg); } while(0)
+
+#define coidlog_assert_ret(test, src, msg, ...)\
+        do { if (!(test)) { coidlog_error(src, msg); return __VA_ARGS__; } } while(0)
 //@}
 
 ///Debug message existing only in debug builds
 #ifdef _DEBUG
-#define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if(q) {q->str() << msg; }} while(0)
+#define coidlog_devdbg(src, msg)  do{ ref<coid::logmsg> q = coid::canlog(coid::log::debug, src ); if (q) {q->str() << msg; }} while(0)
 #else
 #define coidlog_devdbg(src, msg)
 #endif
@@ -318,8 +321,10 @@ protected:
     slotalloc<log_filter> _filters;
     ref<logger_file> _logfile;
 
-    log::type _minlevel;
-    bool _stdout;
+    log::type _minlevel = log::last;
+
+    bool _stdout = false;
+    bool _allow_perf = false;
 
 public:
 
@@ -380,7 +385,7 @@ public:
 
     void flush();
 
-    void set_log_level( log::type minlevel = log::last );
+    void set_log_level( log::type minlevel = log::last, bool allow_perf = false );
 
     static void enable_debug_out(bool en);
 

@@ -171,7 +171,11 @@ struct token
 
     constexpr token(const token& src) : _ptr(src._ptr), _pte(src._pte) {}
 
-    token(const token& src, uints offs, uints len)
+    /// create token from a subset of another token
+    /// @param src source token
+    /// @param len max number of characters to use
+    /// @param offs starting offset
+    token(const token& src, uints len, uints offs = 0)
     {
         if (offs > src.lens())
             _ptr = src._pte, _pte = _ptr;
@@ -705,7 +709,7 @@ struct token
     {
         uint flags;
 
-        explicit cut_trait(int flags) : flags(flags)
+        explicit constexpr cut_trait(int flags) : flags(flags)
         {}
 
         //@return true if all continuous separators should be consumed
@@ -760,52 +764,52 @@ struct token
 
     //@{ Most used traits
     ///Keep the separator with the source string, return the whole string if no separator found
-    static cut_trait cut_trait_keep_sep_with_source() {
+    static constexpr cut_trait cut_trait_keep_sep_with_source() {
         return cut_trait(fKEEP_SEPARATOR);
     }
 
     ///Return the separator with the returned string, return the whole string if no separator found
-    static cut_trait cut_trait_keep_sep_with_returned() {
+    static constexpr cut_trait cut_trait_keep_sep_with_returned() {
         return cut_trait(fRETURN_SEPARATOR);
     }
 
     ///Keep the separator with the source string, return the whole string if no separator found
-    static cut_trait cut_trait_keep_sep() {
+    static constexpr cut_trait cut_trait_keep_sep() {
         return cut_trait(fKEEP_SEPARATOR);
     }
 
     ///Return the separator with the returned string, return the whole string if no separator found
-    static cut_trait cut_trait_return_with_sep() {
+    static constexpr cut_trait cut_trait_return_with_sep() {
         return cut_trait(fRETURN_SEPARATOR);
     }
 
     ///Remove the separator from both the source and the returned string, return the whole string if no separator found
-    static cut_trait cut_trait_remove_sep() {
+    static constexpr cut_trait cut_trait_remove_sep() {
         return cut_trait(fREMOVE_SEPARATOR);
     }
 
     ///Remove all contiguous separators from both the source and the returned string, return the whole string if no separator found
-    static cut_trait cut_trait_remove_all() {
+    static constexpr cut_trait cut_trait_remove_all() {
         return cut_trait(fREMOVE_ALL_SEPARATORS);
     }
 
     ///Keep the separator with the source string, return an empty string if no separator found
-    static cut_trait cut_trait_keep_sep_default_empty() {
+    static constexpr cut_trait cut_trait_keep_sep_default_empty() {
         return cut_trait(fKEEP_SEPARATOR | fON_FAIL_RETURN_EMPTY);
     }
 
     ///Return the separator with the returned string, return an empty string if no separator found
-    static cut_trait cut_trait_return_with_sep_default_empty() {
+    static constexpr cut_trait cut_trait_return_with_sep_default_empty() {
         return cut_trait(fRETURN_SEPARATOR | fON_FAIL_RETURN_EMPTY);
     }
 
     ///Remove the separator from both the source and the returned string, return an empty string if no separator found
-    static cut_trait cut_trait_remove_sep_default_empty() {
+    static constexpr cut_trait cut_trait_remove_sep_default_empty() {
         return cut_trait(fREMOVE_SEPARATOR | fON_FAIL_RETURN_EMPTY);
     }
 
     ///Remove all contiguous separators from both the source and the returned string, return an empty string if no separator found
-    static cut_trait cut_trait_remove_all_default_empty() {
+    static constexpr cut_trait cut_trait_remove_all_default_empty() {
         return cut_trait(fREMOVE_ALL_SEPARATORS | fON_FAIL_RETURN_EMPTY);
     }
     //@}
@@ -843,7 +847,13 @@ struct token
     //@note consumes the separator but not the end character
     token cut_left_argument(char sep = ' ', char end = 0)
     {
-        skip_whitespace();
+        //skip whitespace except the separator char
+        while (_ptr < _pte) {
+            char c = *_ptr;
+            if (c == sep || (c != ' '  &&  c != '\t' && c != '\r' && c != '\n'))
+                break;
+            ++_ptr;
+        }
 
         char c = first_char();
         if (c == '\'' || c == '"') {
@@ -2409,25 +2419,30 @@ struct token
 
 
     ///Convert token to a double value, consuming as much as possible
-    double todouble() const
+    double todouble(double defval = 0.0) const
     {
         token t = *this;
-        return t.todouble_and_shift();
+        return t.todouble_and_shift(defval);
     }
 
     ///Convert token to a float value, consuming as much as possible
-    float tofloat() const {
-        return float(todouble());
+    float tofloat(float defval = 0.0f) const {
+        return float(todouble(defval));
     }
 
     ///Convert token to a double value, shifting the consumed part
-    double todouble_and_shift()
+    //@param defval
+    double todouble_and_shift(double defval = 0.0)
     {
         bool invsign = false;
+
         if (first_char() == '-') { ++_ptr; invsign = true; }
         else if (first_char() == '+') { ++_ptr; }
 
+        const char* p = _ptr;
         double val = (double)touint64_and_shift();
+
+        bool has_num = p != _ptr;
 
         if (first_char() == '.')
         {
@@ -2438,6 +2453,10 @@ struct token
             plen -= lens();
             if (plen && dec)
                 val += double(dec) * pow(10.0, -(int)plen);
+        }
+        else if (!has_num) {
+            //unconsumed, use default
+            return defval;
         }
 
         if (first_char() == 'e' || first_char() == 'E')
@@ -2452,8 +2471,8 @@ struct token
     }
 
     ///Convert token to a float value, shifting the consumed part
-    float tofloat_and_shift() {
-        return float(todouble_and_shift());
+    float tofloat_and_shift(float defval = 0.0f) {
+        return float(todouble_and_shift(defval));
     }
 
     ///Convert string (in local time) to datetime value

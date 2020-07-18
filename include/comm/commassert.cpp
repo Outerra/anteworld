@@ -41,7 +41,8 @@
 
 COID_NAMESPACE_BEGIN
 
-static int __assert_throws = 1;
+static bool __assert_throws = true;
+static bool __retassert_throws = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 enter_single_thread::enter_single_thread(volatile uint& tid) : _tid(tid)
@@ -58,6 +59,18 @@ enter_single_thread::~enter_single_thread()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void enable_dassert_ret_exceptions(bool en)
+{
+    __retassert_throws = en;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void enable_dassert_debugbreak(bool en)
+{
+    __assert_throws = en;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool __rassert(const opt_string& txt, const char* file, int line, const char* function, const char* expr, bool flush)
 {
     zstring* z = txt.get();
@@ -69,7 +82,14 @@ bool __rassert(const opt_string& txt, const char* file, int line, const char* fu
         << char(flush ? '\r' : '\0') // \r forces log flush
     );
 
-    return __assert_throws != 0;
+    return __assert_throws;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void __retassert()
+{
+    if (__retassert_throws)
+        throw exception("assertion failed");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

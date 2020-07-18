@@ -55,16 +55,16 @@ COID_NAMESPACE_BEGIN
 **/
 template <
     class VAL,
-    class HASHFUNC=hasher<VAL>,
-    class EQFUNC=equal_to<VAL,typename HASHFUNC::key_type>,
-    template<class> class ALLOC=AllocStd
-    >
+    class HASHFUNC = hasher<VAL>,
+    class EQFUNC = equal_to<VAL, typename HASHFUNC::key_type>,
+    template<class> class ALLOC = AllocStd
+>
 class hash_set
-    : public hashtable<VAL,HASHFUNC,EQFUNC,_Select_Itself<VAL>,ALLOC>
+    : public hashtable<VAL, HASHFUNC, EQFUNC, _Select_Itself<VAL>, ALLOC>
 {
     typedef _Select_Itself<VAL>                         _SEL;
-    typedef hashtable<VAL,HASHFUNC,EQFUNC,_SEL,ALLOC>   _HT;
-    typedef hash_set<VAL,HASHFUNC,EQFUNC,ALLOC>         _ThisType;
+    typedef hashtable<VAL, HASHFUNC, EQFUNC, _SEL, ALLOC>   _HT;
+    typedef hash_set<VAL, HASHFUNC, EQFUNC, ALLOC>         _ThisType;
 
 public:
 
@@ -75,97 +75,103 @@ public:
 
     typedef size_t                                  size_type;
     typedef ptrdiff_t                               difference_type;
-    typedef value_type*                             pointer;
-    typedef const value_type*                       const_pointer;
-    typedef value_type&                             reference;
-    typedef const value_type&                       const_reference;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
+    typedef const value_type& const_reference;
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
 
-    std::pair<iterator, bool> insert( const value_type& val )
-    {   return insert_unique(val);    }
+    std::pair<iterator, bool> insert(const value_type& val)
+    {
+        return this->insert_unique(val);
+    }
 
-    void insert( const value_type* f, const value_type* l )
-    {   insert_unique( f, l );   }
+    void insert(const value_type* f, const value_type* l)
+    {
+        this->insert_unique(f, l);
+    }
 
-    void insert( const_iterator f, const_iterator l )
-    {   insert_unique( f, l );   }
+    void insert(const_iterator f, const_iterator l)
+    {
+        this->insert_unique(f, l);
+    }
 
-    const VAL* insert_value( const value_type& val )
+    const VAL* insert_value(const value_type& val)
     {
         typename _HT::Node** v = this->__insert_unique(val);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
-    const VAL* insert_value( value_type&& val )
+    const VAL* insert_value(value_type&& val)
     {
         typename _HT::Node** v = this->__insert_unique(std::forward<value_type>(val));
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
 
-    const VAL* find_value( const key_type& k ) const
+    const VAL* find_value(const key_type& k) const
     {
         const typename _HT::Node* v = this->find_node(k);
         return v ? &v->_val : 0;
     }
 
-    const VAL* find_value( uint hash, const key_type& k ) const
+    const VAL* find_value(uint hash, const key_type& k) const
     {
-        const typename _HT::Node* v = this->find_node(hash,k);
+        const typename _HT::Node* v = this->find_node(hash, k);
         return v ? &v->_val : 0;
     }
 
     hash_set()
-        : _HT( 128, hasherfn(), key_equal(), _SEL() ) {}
+        : _HT(128, hasherfn(), key_equal(), _SEL()) {}
 
-    explicit hash_set( size_type n )
-        : _HT( n, hasherfn(), key_equal(), _SEL() ) {}
-    hash_set( size_type n, const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() ) {}
-    hash_set( size_type n, const hasherfn& hf, const key_equal& eql)
-        : _HT( n, hf, eql, _SEL() ) {}
+    explicit hash_set(size_type n)
+        : _HT(n, hasherfn(), key_equal(), _SEL()) {}
+    hash_set(size_type n, const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL()) {}
+    hash_set(size_type n, const hasherfn& hf, const key_equal& eql)
+        : _HT(n, hf, eql, _SEL()) {}
 
 
 
-    hash_set( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+    hash_set(const value_type* f, const value_type* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_set( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() )
+    hash_set(const value_type* f, const value_type* l, size_type n,
+        const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_set( const value_type* f, const value_type* l, size_type n,
+    hash_set(const value_type* f, const value_type* l, size_type n,
         const hasherfn& hf,
-        const key_equal& eqf )
-        : _HT( n, hf, eqf, _SEL() )
+        const key_equal& eqf)
+        : _HT(n, hf, eqf, _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
 
 
-    hash_set( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+    hash_set(const_iterator* f, const_iterator* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_set( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() )
+    hash_set(const_iterator* f, const_iterator* l, size_type n,
+        const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_set( const_iterator* f, const_iterator* l, size_type n,
+    hash_set(const_iterator* f, const_iterator* l, size_type n,
         const hasherfn& hf,
-        const key_equal& eqf )
-        : _HT( n, hf, eqf, _SEL() )
+        const key_equal& eqf)
+        : _HT(n, hf, eqf, _SEL())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
 };
 
@@ -179,16 +185,16 @@ public:
 **/
 template <
     class VAL,
-    class HASHFUNC=hasher<VAL>,
-    class EQFUNC=equal_to<VAL,typename HASHFUNC::key_type>,
-    template<class> class ALLOC=AllocStd
-    >
+    class HASHFUNC = hasher<VAL>,
+    class EQFUNC = equal_to<VAL, typename HASHFUNC::key_type>,
+    template<class> class ALLOC = AllocStd
+>
 class hash_multiset
-    : public hashtable<VAL,HASHFUNC,EQFUNC,_Select_Itself<VAL>,ALLOC>
+    : public hashtable<VAL, HASHFUNC, EQFUNC, _Select_Itself<VAL>, ALLOC>
 {
     typedef _Select_Itself<VAL>                         _SEL;
-    typedef hashtable<VAL,HASHFUNC,EQFUNC,_SEL,ALLOC>   _HT;
-    typedef hash_multiset<VAL,HASHFUNC,EQFUNC,ALLOC>    _ThisType;
+    typedef hashtable<VAL, HASHFUNC, EQFUNC, _SEL, ALLOC>   _HT;
+    typedef hash_multiset<VAL, HASHFUNC, EQFUNC, ALLOC>    _ThisType;
 
 public:
 
@@ -199,37 +205,43 @@ public:
 
     typedef size_t                                  size_type;
     typedef ptrdiff_t                               difference_type;
-    typedef value_type*                             pointer;
-    typedef const value_type*                       const_pointer;
-    typedef value_type&                             reference;
-    typedef const value_type&                       const_reference;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
+    typedef const value_type& const_reference;
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
 
-    iterator insert( const value_type& val )
-    {   return insert_equal(val);    }
+    iterator insert(const value_type& val)
+    {
+        return this->insert_equal(val);
+    }
 
-    void insert( const value_type* f, const value_type* l )
-    {   insert_equal( f, l );   }
+    void insert(const value_type* f, const value_type* l)
+    {
+        this->insert_equal(f, l);
+    }
 
-    void insert( const_iterator f, const_iterator l )
-    {   insert_equal( f, l );   }
+    void insert(const_iterator f, const_iterator l)
+    {
+        this->insert_equal(f, l);
+    }
 
-    const VAL* insert_value( const value_type& val )
+    const VAL* insert_value(const value_type& val)
     {
         typename _HT::Node** v = this->__insert_equal(val);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
-    const VAL* insert_value( value_type&& val )
+    const VAL* insert_value(value_type&& val)
     {
         typename _HT::Node** v = this->__insert_equal(std::forward<value_type>(val));
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
 
-    const VAL* find_value( const key_type& k ) const
+    const VAL* find_value(const key_type& k) const
     {
         const typename _HT::Node* v = find_node(k);
         return v ? &v->_val : 0;
@@ -237,54 +249,54 @@ public:
 
 
     hash_multiset()
-        : _HT( 128, hasherfn(), key_equal(), _SEL() ) {}
+        : _HT(128, hasherfn(), key_equal(), _SEL()) {}
 
-    explicit hash_multiset( size_type n )
-        : _HT( n, hasherfn(), key_equal(), _SEL() ) {}
-    hash_multiset( size_type n, const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() ) {}
-    hash_multiset( size_type n, const hasherfn& hf, const key_equal& eql)
-        : _HT( n, hf, eql, _SEL() ) {}
+    explicit hash_multiset(size_type n)
+        : _HT(n, hasherfn(), key_equal(), _SEL()) {}
+    hash_multiset(size_type n, const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL()) {}
+    hash_multiset(size_type n, const hasherfn& hf, const key_equal& eql)
+        : _HT(n, hf, eql, _SEL()) {}
 
 
 
-    hash_multiset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+    hash_multiset(const value_type* f, const value_type* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multiset( const value_type* f, const value_type* l, size_type n,
-        const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() )
+    hash_multiset(const value_type* f, const value_type* l, size_type n,
+        const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multiset( const value_type* f, const value_type* l, size_type n,
+    hash_multiset(const value_type* f, const value_type* l, size_type n,
         const hasherfn& hf,
-        const key_equal& eqf )
-        : _HT( n, hf, eqf, _SEL() )
+        const key_equal& eqf)
+        : _HT(n, hf, eqf, _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
 
 
-    hash_multiset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), _SEL() )
+    hash_multiset(const_iterator* f, const_iterator* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multiset( const_iterator* f, const_iterator* l, size_type n,
-        const hasherfn& hf )
-        : _HT( n, hf, key_equal(), _SEL() )
+    hash_multiset(const_iterator* f, const_iterator* l, size_type n,
+        const hasherfn& hf)
+        : _HT(n, hf, key_equal(), _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multiset( const_iterator* f, const_iterator* l, size_type n,
+    hash_multiset(const_iterator* f, const_iterator* l, size_type n,
         const hasherfn& hf,
-        const key_equal& eqf )
-        : _HT( n, hf, eqf, _SEL() )
+        const key_equal& eqf)
+        : _HT(n, hf, eqf, _SEL())
     {
-        insert_equal( f, l );
+        this->insert_equal(f, l);
     }
 };
 

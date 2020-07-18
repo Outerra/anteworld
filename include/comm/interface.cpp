@@ -73,6 +73,7 @@ public:
             [ns1[::ns2[...]]]::classname@wrapper[.scriptname]               wrap existing interface object
             [ns1[::ns2[...]]]::classname@maker[.scriptname]                 create script interface object from host
             [ns1[::ns2[...]]]::classname@unload                             unload registered client
+            [ns1[::ns2[...]]]::classname@meta                               register meta types
             [ns1[::ns2[...]]]::classname.creatorname@hashvalue              c++ versioned creator
             [ns1[::ns2[...]]]::classname.creatorname@hashvalue.ifc          c++ versioned creator direct ifc creator
             [ns1[::ns2[...]]]::classname.creatorname@creator.scriptname     c++ creator of JS interface object
@@ -653,15 +654,10 @@ bool interface_register::register_interface_creator(const token& ifcname, void* 
 
 typedef int(__stdcall *proc_t)();
 
-extern "C"
-__declspec(dllimport) proc_t __stdcall GetProcAddress(
-    void* hmodule,
-    const char* procname
-);
-
-extern "C"
-_declspec(dllimport) void* __stdcall GetModuleHandleA(const char * lpModuleName
-);
+extern "C" {
+    __declspec(dllimport) proc_t __stdcall GetProcAddress(void* hmodule, const char* procname);
+    __declspec(dllimport) void* __stdcall GetModuleHandleA(const char* lpModuleName);
+}
 
 typedef interface_register_impl* (*ireg_t)();
 

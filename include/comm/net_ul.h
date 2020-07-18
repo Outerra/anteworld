@@ -69,10 +69,6 @@ void sysMilliSecondSleep( int milliseconds );
 uint sysGetPid();
 
 ////////////////////////////////////////////////////////////////////////////////
-static const int _sysEndianTest = 1;
-#define sysIsLittleEndian (*((char *) &_sysEndianTest ) != 0)
-#define sysIsBigEndian    (*((char *) &_sysEndianTest ) == 0)
-
 static inline void _sysEndianSwap( uint32 *x )
 {
     *x = (( *x >> 24 ) & 0x000000FF ) |

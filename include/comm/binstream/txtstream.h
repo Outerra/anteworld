@@ -168,7 +168,7 @@ public:
 
     virtual opcd read( void* p, type t ) override
     {
-        LASSERT_RETX(_binr, ersUNAVAILABLE, "underlying binstream not set" );
+        LASSERT_RETX(_binr, "underlying binstream not set", ersUNAVAILABLE);
 
         //does no special formatting of arrays
         if( t.is_array_control_type() )

@@ -56,6 +56,15 @@
     <DisplayString>{_p,x}</DisplayString>
 </Type>
 
+<Type Name="vref&lt;*&gt;">
+    <DisplayString Condition="_vptr == 0">{{empty}}</DisplayString>
+    <DisplayString>version = {_vptr &gt;&gt; vref&lt;$T1&gt;::vshift}, pointer = {(_vptr &amp; vref&lt;$T1&gt;::ptr_mask),x}</DisplayString>
+    <Expand>
+        <Item Name="[version]" ExcludeView="simple" >_vptr &gt;&gt; 48</Item>
+        <Item Name="[pointer]" ExcludeView="simple">reinterpret_cast&lt;$T1*&gt;(_vptr &amp; vref&lt;$T1&gt;::ptr_mask)</Item>
+    </Expand>
+</Type>
+
 <Type Name="coid::local&lt;*&gt;">
     <SmartPointer Usage="Minimal">_p</SmartPointer>
     <DisplayString Condition="_p == 0">{{empty}}</DisplayString>
