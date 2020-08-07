@@ -497,11 +497,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::geomob@wrapper.js"_T);
-        static const coid::token _djsc("ot::geomob@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::geomob@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::geomob@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::geomob@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::geomob@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -569,7 +569,7 @@ inline iref<T> geomob::create( T* _subclass_, const coid::token& url, entity_han
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, entity_handle, coid::uint);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create@2119650956"_T;
+    static constexpr coid::token ifckey = "ot::geomob.create@2119650956"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -590,7 +590,7 @@ inline iref<T> geomob::create2( T* _subclass_, const coid::token& url, entity_ha
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, entity_handle, coid::uint, const double3&, const quat&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create2@2119650956"_T;
+    static constexpr coid::token ifckey = "ot::geomob.create2@2119650956"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -611,7 +611,7 @@ inline iref<T> geomob::create3( T* _subclass_, const coid::token& url, entity_ha
     typedef iref<T> (*fn_creator)(geomob*, const coid::token&, entity_handle, const coid::token&, const double3&, const quat&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.create3@2119650956"_T;
+    static constexpr coid::token ifckey = "ot::geomob.create3@2119650956"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -632,7 +632,7 @@ inline iref<T> geomob::from_entity_id( T* _subclass_, entity_handle entity_id )
     typedef iref<T> (*fn_creator)(geomob*, entity_handle);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob.from_entity_id@2119650956"_T;
+    static constexpr coid::token ifckey = "ot::geomob.from_entity_id@2119650956"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -653,7 +653,7 @@ inline iref<T> geomob::_get_instance_interface( T* _subclass_, void* so )
     typedef iref<T> (*fn_creator)(geomob*, void*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::geomob._get_instance_interface@2119650956"_T;
+    static constexpr coid::token ifckey = "ot::geomob._get_instance_interface@2119650956"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

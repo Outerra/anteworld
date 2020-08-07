@@ -127,11 +127,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc("ot::video_recorder.create@2946773048"_T);
-        static const coid::token _djs("ot::video_recorder@wrapper.js"_T);
-        static const coid::token _djsc("ot::video_recorder@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::video_recorder@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc("ot::video_recorder.create@2946773048"_T);
+        static constexpr coid::token _djs("ot::video_recorder@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::video_recorder@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::video_recorder@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -218,7 +218,7 @@ inline iref<T> video_recorder::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(video_recorder*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::video_recorder.create@2946773048"_T;
+    static constexpr coid::token ifckey = "ot::video_recorder.create@2946773048"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

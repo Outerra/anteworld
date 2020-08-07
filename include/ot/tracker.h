@@ -96,11 +96,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::tracker@wrapper.js"_T);
-        static const coid::token _djsc("ot::tracker@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::tracker@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::tracker@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::tracker@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::tracker@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -187,7 +187,7 @@ inline iref<T> tracker::create( T* _subclass_, const char* name )
     typedef iref<T> (*fn_creator)(tracker*, const char*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::tracker.create@4104556368"_T;
+    static constexpr coid::token ifckey = "ot::tracker.create@4104556368"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

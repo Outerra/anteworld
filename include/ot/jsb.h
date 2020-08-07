@@ -73,11 +73,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::jsb@wrapper.js"_T);
-        static const coid::token _djsc("ot::jsb@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::jsb@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::jsb@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::jsb@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::jsb@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -145,7 +145,7 @@ inline iref<T> jsb::_get_jsb( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(jsb*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::jsb._get_jsb@265107965"_T;
+    static constexpr coid::token ifckey = "ot::jsb._get_jsb@265107965"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

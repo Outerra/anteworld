@@ -75,11 +75,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::blend_tree@wrapper.js"_T);
-        static const coid::token _djsc("ot::blend_tree@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::blend_tree@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::blend_tree@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::blend_tree@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::blend_tree@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -166,7 +166,7 @@ inline iref<T> blend_tree::get( T* _subclass_, const iref<pkg::blend_tree>& bt )
     typedef iref<T> (*fn_creator)(blend_tree*, const iref<pkg::blend_tree>&);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::blend_tree.get@529071738"_T;
+    static constexpr coid::token ifckey = "ot::blend_tree.get@529071738"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

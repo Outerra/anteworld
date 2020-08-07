@@ -130,14 +130,14 @@ $-(/if)$
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
 $-(if default_creator.name.empty?)$
-        static const coid::token _dc(""_T);
+        static constexpr coid::token _dc(""_T);
 $-(elif)$
-        static const coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$"_T);
+        static constexpr coid::token _dc("$ns rest="::" after="::"$$name$.$default_creator.name$@$hash$"_T);
 $-(/if)$
-        static const coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js"_T);
-        static const coid::token _djsc("$ns rest="::" after="::"$$name$@wrapper.jsc"_T);
-        static const coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _djs("$ns rest="::" after="::"$$name$@wrapper.js"_T);
+        static constexpr coid::token _djsc("$ns rest="::" after="::"$$name$@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("$ns rest="::" after="::"$$name$@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -244,7 +244,7 @@ inline iref<T> $..name$::$name$( T* _subclass_
     typedef iref<T> (*fn_creator)($..name$*$[args]$, $type$$[/args]$);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$"_T;
+    static constexpr coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -266,7 +266,7 @@ inline iref<$..name$> $..name$::$name$($-[args rest=", "]$$type$ $name$$size$$[/
     typedef iref<$..name$> (*fn_creator)($[args rest=", "]$$type$$[/args]$);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc"_T;
+    static constexpr coid::token ifckey = "$..ns rest="::" after="::"$$..name$.$name$@$..hash$.ifc"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

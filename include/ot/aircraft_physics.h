@@ -325,11 +325,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::aircraft_physics@wrapper.js"_T);
-        static const coid::token _djsc("ot::aircraft_physics@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::aircraft_physics@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::aircraft_physics@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::aircraft_physics@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::aircraft_physics@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -416,7 +416,7 @@ inline iref<T> aircraft_physics::get( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(aircraft_physics*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::aircraft_physics.get@3167667403"_T;
+    static constexpr coid::token ifckey = "ot::aircraft_physics.get@3167667403"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

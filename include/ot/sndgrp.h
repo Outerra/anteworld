@@ -122,11 +122,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc("ot::sndgrp.create@1696759525"_T);
-        static const coid::token _djs("ot::sndgrp@wrapper.js"_T);
-        static const coid::token _djsc("ot::sndgrp@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::sndgrp@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc("ot::sndgrp.create@1696759525"_T);
+        static constexpr coid::token _djs("ot::sndgrp@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::sndgrp@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::sndgrp@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -194,7 +194,7 @@ inline iref<T> sndgrp::_get_sndgrp( T* _subclass_, snd::group* p )
     typedef iref<T> (*fn_creator)(sndgrp*, snd::group*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp._get_sndgrp@1696759525"_T;
+    static constexpr coid::token ifckey = "ot::sndgrp._get_sndgrp@1696759525"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
@@ -215,7 +215,7 @@ inline iref<T> sndgrp::create( T* _subclass_ )
     typedef iref<T> (*fn_creator)(sndgrp*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::sndgrp.create@1696759525"_T;
+    static constexpr coid::token ifckey = "ot::sndgrp.create@1696759525"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

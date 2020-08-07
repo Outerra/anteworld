@@ -135,11 +135,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc("ot::explosions.get@817026320"_T);
-        static const coid::token _djs("ot::explosions@wrapper.js"_T);
-        static const coid::token _djsc("ot::explosions@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::explosions@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc("ot::explosions.get@817026320"_T);
+        static constexpr coid::token _djs("ot::explosions@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::explosions@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::explosions@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -207,7 +207,7 @@ inline iref<T> explosions::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(explosions*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::explosions.get@817026320"_T;
+    static constexpr coid::token ifckey = "ot::explosions.get@817026320"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

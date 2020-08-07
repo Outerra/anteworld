@@ -1,5 +1,6 @@
-#include "taskmaster.h"
+#include "net_ul.h"
 #include "profiler/profiler.h"
+#include "taskmaster.h"
 
 COID_NAMESPACE_BEGIN
 
@@ -11,6 +12,8 @@ taskmaster::~taskmaster() {
 
 void* taskmaster::threadfunc( int order )
 {
+    uint notify_counter = 0;
+
     get_order() = order;
 
     thread::set_affinity_mask((uint64)1 << order);
@@ -28,6 +31,7 @@ void* taskmaster::threadfunc( int order )
         for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
             const bool can_run = prio != (int)EPriority::LOW || order < _nlowprio_threads || order == -1;
             if (can_run && _ready_jobs[prio].pop(task)) {
+                notify_counter = 0;
                 run_task(task, order);
                 break;
             }
@@ -38,6 +42,13 @@ void* taskmaster::threadfunc( int order )
             // and thread can not process it, so let's wake other thread, hopefully one which 
             // can process low prio tasks
             notify();
+            ++notify_counter;
+            if (notify_counter > _threads.size() * 4) {
+                // all low prio threads are most likely busy so we give up our timeslice since there might be 
+                // other sleeping threads ready to work (e.g. jobmaster)
+                thread::wait(0);
+                notify_counter = 0;
+            }
         }
 
     }

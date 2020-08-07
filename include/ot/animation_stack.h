@@ -92,11 +92,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc(""_T);
-        static const coid::token _djs("ot::animation_stack@wrapper.js"_T);
-        static const coid::token _djsc("ot::animation_stack@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::animation_stack@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc(""_T);
+        static constexpr coid::token _djs("ot::animation_stack@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::animation_stack@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::animation_stack@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -183,7 +183,7 @@ inline iref<T> animation_stack::get( T* _subclass_, pkg::animation_stack* as )
     typedef iref<T> (*fn_creator)(animation_stack*, pkg::animation_stack*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::animation_stack.get@1008840588"_T;
+    static constexpr coid::token ifckey = "ot::animation_stack.get@1008840588"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

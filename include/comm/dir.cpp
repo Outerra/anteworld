@@ -91,6 +91,29 @@ bool directory::is_valid_directory(zstring arg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+charstr directory::create_tmp_dir(const token& prefix)
+{
+    charstr tmpdir = get_tmp_dir();
+
+    directory::treat_trailing_separator(tmpdir, true);
+    uint len = tmpdir.len();
+
+    timet now = timet::now();
+    int offs = now & 0xffffffff;
+
+    uint n = 10;
+    for (uint i = 0; i < n; ++i) {
+        tmpdir << prefix << (offs + i);
+        if (!directory::is_valid(tmpdir) && directory::mkdir(tmpdir) == NOERR)
+            return tmpdir;
+
+        tmpdir.resize(i);
+    }
+
+    return charstr();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 uint64 directory::file_size(zstring file)
 {
     if(!file)
@@ -347,9 +370,9 @@ opcd directory::delete_directory(zstring src, bool recursive)
     opcd was_err;
 
     if (recursive) {
-        list_file_paths(src, "*", true, [&was_err](const charstr& path, int isdir) {
+        list_file_paths(src, "*", 1, [&was_err](const charstr& path, int isdir) {
             opcd err = isdir
-                ? delete_directory(path, true)
+                ? delete_directory(path, false)
                 : delete_file(path);
 
             if (!was_err && !err)

@@ -115,11 +115,11 @@ public:
     }
 
     static const coid::token& intergen_default_creator_static( backend bck ) {
-        static const coid::token _dc("ot::environment.get@3141059180"_T);
-        static const coid::token _djs("ot::environment@wrapper.js"_T);
-        static const coid::token _djsc("ot::environment@wrapper.jsc"_T);
-        static const coid::token _dlua("ot::environment@wrapper.lua"_T);
-        static const coid::token _dnone;
+        static constexpr coid::token _dc("ot::environment.get@3141059180"_T);
+        static constexpr coid::token _djs("ot::environment@wrapper.js"_T);
+        static constexpr coid::token _djsc("ot::environment@wrapper.jsc"_T);
+        static constexpr coid::token _dlua("ot::environment@wrapper.lua"_T);
+        static constexpr coid::token _dnone;
 
         switch(bck) {
         case backend::cxx: return _dc;
@@ -187,7 +187,7 @@ inline iref<T> environment::get( T* _subclass_ )
     typedef iref<T> (*fn_creator)(environment*);
 
     static fn_creator create = 0;
-    static const coid::token ifckey = "ot::environment.get@3141059180"_T;
+    static constexpr coid::token ifckey = "ot::environment.get@3141059180"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(

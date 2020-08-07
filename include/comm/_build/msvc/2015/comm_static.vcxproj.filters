@@ -40,6 +40,9 @@
     <Filter Include="coder\lz4">
       <UniqueIdentifier>{5492f2b2-11d9-4591-bdf6-568bd8e53ea3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="profiler">
+      <UniqueIdentifier>{3ee644df-df16-4e78-92d7-912c8fe68c24}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\atomic\atomic.h">
@@ -361,6 +364,9 @@
       <Filter>alloc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\crypt\utils.h" />
+    <ClInclude Include="..\..\..\profiler\profiler.h">
+      <Filter>profiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -467,6 +473,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\taskmaster.cpp">
       <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\profiler\profiler.cpp">
+      <Filter>profiler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

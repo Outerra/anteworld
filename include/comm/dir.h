@@ -270,6 +270,10 @@ public:
     ///Get temp directory
     static charstr get_tmp_dir();
 
+    ///Create temp directory in system temp folder
+    //@param prefix prefix name to use
+    static charstr create_tmp_dir(const token& prefix);
+
     ///Get user home directory
     static charstr get_home_dir();
 
