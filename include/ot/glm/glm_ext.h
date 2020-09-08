@@ -1991,22 +1991,20 @@ inline qua<T> to_camera_rot(const qua<T>& modrot)
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
-inline qua<T> quat_from_ypr(
-    const vec<3, T>& ypr,
-    const bool camera = false)
+inline qua<T> quat_from_ypr(const vec<3, T>& ypr, const bool camera = false)
 {
-    qua<T> qy = make_quat_y(-ypr.x);// (-ypr.x, vec<3,T>(0, 1, 0));
+    quat qy = glm::make_quat_z(-ypr.x);// (-ypr.x, vec<3,T>(0, 0, 1));
 
-    const vec<3, T> xright = mul_quat_x(qy);// * vec<3,T>(1, 0, 0);
+    const float3 xright = glm::mul_quat_x(qy);// * vec<3,T>(1, 0, 0);
 
-    qua<T> qp = make_quat(ypr.y, xright) * qy;
+    quat qp = glm::make_quat(ypr.y, xright) * qy;
 
-    const vec<3, T> xfwd = -mul_quat_z(qp);// * vec<3,T>(0, 0, -1);
+    const float3 xfwd = mul_quat_y(qp);// * vec<3,T>(0, 1, 0);
 
-    qua<T> qr = make_quat(ypr.z, xfwd) * qp;
+    quat qr = glm::make_quat(ypr.z, xfwd) * qp;
 
-    if (!camera)
-        qr = to_model_rot(qr);
+    if (camera)
+        qr = to_camera_rot(qr);
 
     return qr;
 }
@@ -2014,38 +2012,29 @@ inline qua<T> quat_from_ypr(
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
-inline vec<3, T> ypr_from_quat(
-    const qua<T>& q,
-    const bool camera = false)
+inline vec<3, T> ypr_from_quat(const qua<T>& q, const bool camera = false)
 {
-    qua<T> qm;
-    const qua<T>& qs = camera
-        ? q
-        : (qm = to_camera_rot(q));
+    const qua<T>& qs = !camera ? q : (to_model_rot(q));
 
-    //const vec<3,T> right = vec<3,T>(1, 0, 0);
-    //const vec<3,T> fwd = vec<3,T>(0, 0, -1);
-    const vec<3, T> up = vec<3, T>(0, 1, 0);
+    const vec<3, T> dir = mul_quat_y(qs);
+    const vec<3, T> cup = mul_quat_z(qs);
 
-    const vec<3, T> dir = -mul_quat_z(qs);
-    const vec<3, T> cup = mul_quat_y(qs);
+    const float pitch = asin(clamp(dir.z, -1.0f, 1.0f));
 
-    const float pitch = asin(clamp(dir.y, -1.0f, 1.0f));
-
-    bool ok = fabs(dir.y) < T(1.0) - T(0.00005);
+    bool ok = fabs(dir.z) < T(1.0) - T(0.00005);
     float yaw = ok
-        ? atan2(dir.x, -dir.z)
-        : atan2(-cup.x, cup.z);
+        ? atan2(dir.x, dir.y)
+        : atan2(-cup.x, cup.y);
 
     T roll = 0;
     if (ok) {
         float3 horz = ok
-            ? normalize(cross_y_with(dir))
+            ? normalize(-cross_z_with(dir))
             : mul_quat_x(qs);
 
         const vec<3, T> rup = cross(horz, dir);
 
-        roll = -atan2(dot(horz, cup), -dot(rup, cup));
+        roll = atan2(dot(horz, cup), dot(rup, cup));
     }
 
     return vec<3, T>(yaw, pitch, roll);

@@ -1098,7 +1098,7 @@ protected:
                 set_modified(index);
         }
 
-        return rv && TRACKING;
+        return rv; // && TRACKING;
     }
 
 #else
@@ -1162,7 +1162,7 @@ protected:
         if (rval)
             this->set_modified(index);
 
-        return rval && TRACKING;
+        return rval;// && TRACKING;
     }
 
     ///A non-tracking void fnc(const T&, index) const
