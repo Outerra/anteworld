@@ -40,11 +40,10 @@ def gen_rnd_colors(count = 512):
         rnd_colors[i] = list(rnd_colors[i])
 
 
-class OtVtxGroupUI(bpy.types.UIList):
-    bl_idname = "UILIST_UL_OtVtxGroupUI"
-
+class OT_UL_OtVtxGroupUI(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        layout.prop(data=item, property='ot_name', emboss=False, icon='GROUP_VERTEX', text='')
+        layout.prop(item, "name", text="", emboss=False, icon='GROUP_VERTEX')
+            
 
 def set_vtx_group_name_callback(self,value):
     if self.name == value:
@@ -52,22 +51,25 @@ def set_vtx_group_name_callback(self,value):
     
     if value == '':
         value = self.default
-
+    
     unique_name = value;    
     ncount = 0
     keys = bpy.context.object.ot_vertex_groups.keys()
     keys.remove(self.name)
-
+    
     while keys.count(unique_name):
         ncount += 1;
         unique_name = "%s.%03d"%(value,ncount)
-
+    
     self.name = unique_name
     set_ot_vertex_group_custom_prop(bpy.context.object)
 
 def get_vtx_group_name_callback(self):
     return self.name
 
+class OtVtxGroupItem(bpy.types.PropertyGroup):
+    ot_name: bpy.props.StringProperty(name="Outerra name", default="ot_vtx_group", get = get_vtx_group_name_callback, set = set_vtx_group_name_callback)
+    ot_value: bpy.props.StringProperty(name="Outerra color", default="000000")
 
 class OtVertexGroupsPanel(bpy.types.Panel):
     bl_idname = "PANEL_PT_OtVertexGroupsPanel"
@@ -103,7 +105,7 @@ class OtVertexGroupsPanel(bpy.types.Panel):
         obj = context.selected_objects[0]
         if hasattr(obj, "ot_vertex_groups"):
             row = col.row()
-            row.template_list("OtVtxGroupUI", "", obj, "ot_vertex_groups", obj, "ot_vertex_group_idx")
+            row.template_list("OT_UL_OtVtxGroupUI", "", obj, "ot_vertex_groups", obj, "ot_vertex_group_idx",type='DEFAULT')
 
 
 class OtAddNewVertexGroup(bpy.types.Operator):
@@ -460,11 +462,10 @@ def init_ot_vertex_groups(obj):
     ot_lay = None
     if ot_lay_idx == len(bm.loops.layers.color.keys()):
         ot_lay = bm.loops.layers.color.new('ot_vertex_groups');
-
-    bm.faces.ensure_lookup_table()
-    for f in bm.faces:
-        for l in f.loops:
-            l[ot_lay] = [0,0,0]        
+        bm.faces.ensure_lookup_table()
+        for f in bm.faces:
+            for l in f.loops:
+                l[ot_lay] = [0,0,0,0]        
 
     free_bmesh(obj,bm)
     mesh.vertex_colors.active_index = ot_lay_idx
@@ -504,11 +505,11 @@ def remove_vertex_group(context):
 
     for f in bm.faces:
         for l in f.loops:
-            r = int(l[ot_lay].r * 255)
-            g = int(l[ot_lay].g * 255)
-            b = int(l[ot_lay].b * 255)
+            r = int(l[ot_lay].x * 255)
+            g = int(l[ot_lay].y * 255)
+            b = int(l[ot_lay].z * 255)
             if r == color[0] and g == color[1] and b == color[2]:
-                l[ot_lay] = [0, 0, 0]
+                l[ot_lay] = [0, 0, 0, 0]
 
     free_bmesh(obj,bm)
     obj.ot_vertex_groups.remove(group_idx)
@@ -532,6 +533,7 @@ def add_faces_to_vertex_group(context):
     color[0] /= 255; 
     color[1] /= 255;
     color[2] /= 255;
+    color[3] /= 255;
 
     cur_mode = obj.mode;
 
@@ -574,7 +576,7 @@ def remove_faces_from_vertex_group(context):
     for f in bm.faces:
         if f.select:
             for l in f.loops:
-                l[ot_lay] = [0,0,0];
+                l[ot_lay] = [0,0,0,0];
 
     free_bmesh(obj,bm)
     set_ot_vertex_group_custom_prop(obj)
@@ -624,10 +626,11 @@ def create_new_group(obj,name):
     r = int(color[0] * 255);
     g = int(color[1] * 255);
     b = int(color[2] * 255);
+    a = 255;
 
     ngroup = obj.ot_vertex_groups.add()
     ngroup.ot_name = name;
-    ngroup.ot_value = "%02x%02x%02x"%(r,g,b)
+    ngroup.ot_value = "%02x%02x%02x%02x"%(r,g,b,a)
     obj.ot_vertex_group_counter += 1
 
 
@@ -640,9 +643,9 @@ def set_ot_vertex_group_custom_prop(obj):
         color = list(binascii.unhexlify(grp.ot_value))
         for f in bm.faces:
             if len(f.loops):
-                r = int(f.loops[0][ot_lay].r * 255)
-                g = int(f.loops[0][ot_lay].g * 255)
-                b = int(f.loops[0][ot_lay].b * 255)
+                r = int(f.loops[0][ot_lay].x * 255)
+                g = int(f.loops[0][ot_lay].y * 255)
+                b = int(f.loops[0][ot_lay].z * 255)
                 if r == color[0] and g == color[1] and b == color[2]:
                     if result == '':
                         result = "%s:%s"%(grp.ot_name, grp.ot_value)
@@ -1191,7 +1194,7 @@ def save_selected_obj_names(context):
 
 ##########################################################################################
 
-classes = (OtVtxGroupUI,
+classes = (OT_UL_OtVtxGroupUI,
     OtRemoveSelectedVertexGroup,
     OtAddNewVertexGroup,
     OtAddSelectedFaces,
@@ -1214,15 +1217,31 @@ classes = (OtVtxGroupUI,
     OtVegetationPanel,
     OtObjectControlsPanel,
     OtOtherToolsPanel,
-    OtCollisionMeshControlsPanel)
+    OtCollisionMeshControlsPanel,
+    OtVtxGroupItem)
+
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    if not hasattr(bpy.types.Object,'ot_vertex_groups') or not hasattr(bpy.types.Object,'ot_vertex_group_idx'):
+        bpy.types.Object.ot_vertex_groups = bpy.props.CollectionProperty(type=OtVtxGroupItem,name='Outerra vertex groups');
+        bpy.types.Object.ot_vertex_group_idx = bpy.props.IntProperty(name='Active Outerra vertex group index',default=0,min = 0, max = 9999999);
+        bpy.types.Object.ot_vertex_group_counter = bpy.props.IntProperty(name='Active Outerra vertex group index',default=0,min = 0, max = 9999999);
+
+
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+
+    if hasattr(bpy.types.Object,'ot_vertex_groups'):
+        del bpy.types.Object.ot_vertex_groups
+    if hasattr(bpy.types.Object,'ot_vertex_group_idx'):
+        del bpy.types.Object.ot_vertex_group_idx 
+    if hasattr(bpy.types.Object,'ot_vertex_group_counter'):    
+        del bpy.types.Object.ot_vertex_group_counter
+
 
 if __name__ == "__main__":
     register()
