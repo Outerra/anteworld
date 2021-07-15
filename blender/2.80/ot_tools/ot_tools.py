@@ -423,8 +423,13 @@ class OtOtherToolsPanel(bpy.types.Panel):
         layout = self.layout
         col = layout.column()
         col.alignment = 'EXPAND'
+        
         row = col.row()
         row.operator("view3d.ot_save_selected_obj_names")
+      
+        row = col.row()
+        row.operator("view3d.ot_reparent_all")
+
 
 class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
     '''Export selected object names to file (names.txt)'''
@@ -440,7 +445,23 @@ class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
 
     def execute(self, context):
         save_selected_obj_names(context)
-        return {'FINISHED'}        
+        return {'FINISHED'}     
+
+class OtOtherToolsReparentAll(bpy.types.Operator):
+    '''Reparent all objects with parent keeping the current trasform'''
+    bl_idname = "view3d.ot_reparent_all"
+    bl_label = "Reparent all objects"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_all(context)
+        return {'FINISHED'}    		
 
 '''    
 ///    
@@ -1190,7 +1211,42 @@ def save_selected_obj_names(context):
     with open(f_path, "w") as f:
         for on in obj_names:
             f.write("%s\n" % on)
-
+			
+##########################################################################################
+			
+def reparent_all(context):
+    parents = {}
+    parent_bones = {}
+    
+    for o in bpy.data.objects:
+        parents[o.name] = o.parent
+        parent_bones[o.name] = o.parent_bone
+        bpy.ops.object.select_all(action='DESELECT')
+        o.select_set(True)
+        bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+    
+    for o in bpy.data.objects:
+        bpy.ops.object.select_all(action='DESELECT')
+        parent = parents[o.name]
+        if parent:
+            if parent_bones[o.name] != '':
+                parent.select_set(True)
+                bpy.context.view_layer.objects.active = parent
+                bpy.ops.object.mode_set(mode='EDIT')
+                parent.data.edit_bones.active = parent.data.edit_bones[parent_bones[o.name]]
+                
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.select_all(action='DESELECT')
+            o.select_set(True)
+            parent.select_set(True)
+            bpy.context.view_layer.objects.active = parent
+            
+            if parent_bones[o.name] != '':  
+                bpy.ops.object.parent_set(type='BONE', keep_transform=True)    
+            else:
+                bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+    
+    bpy.ops.object.select_all(action='DESELECT')
 
 ##########################################################################################
 
@@ -1209,6 +1265,7 @@ classes = (OT_UL_OtVtxGroupUI,
     OtVegetationComputeWeights,
     OtAddLodCurveProperties,
     OtOtherToolsSaveSelectedObjectNames,
+    OtOtherToolsReparentAll,
     OtAddCollisionMeshProperties,
     OtMirrorOnOffPanel,
     OtArrayOnOffPanel,
