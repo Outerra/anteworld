@@ -1225,7 +1225,7 @@ def reparent_all(context):
         o.select_set(True)
         bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
     
-    for o in bpy.data.objects:
+    for o in bpy.context.view_layer.objects:
         bpy.ops.object.select_all(action='DESELECT')
         parent = parents[o.name]
         if parent:
