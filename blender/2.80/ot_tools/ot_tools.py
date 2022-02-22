@@ -190,6 +190,22 @@ class OtMirrorOnOffPanel(bpy.types.Panel):
         row = col.row()
         row.operator("view3d.ot_display_mirror_modifiers_on")
         row.operator("view3d.ot_display_mirror_modifiers_off")
+        
+class OtTriangulateOnOffPanel(bpy.types.Panel):
+    bl_idname = "PANEL_PT_OtTriangulateOnOffPanel"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+    bl_label = "Triangulate on/off"
+
+    def draw(self, context):
+        layout = self.layout
+
+        col = layout.column()
+        col.alignment = 'EXPAND'
+        row = col.row()
+        row.operator("view3d.ot_display_triangulate_modifiers_on")
+        row.operator("view3d.ot_display_triangulate_modifiers_off")
 
 class OtArrayOnOffPanel(bpy.types.Panel):
     bl_idname = "PANEL_PT_OtArrayOnOffPanel"
@@ -253,6 +269,38 @@ class OtDisplayMirrorModifiersOff(bpy.types.Operator):
 
     def execute(self, context):
         mirror_modifiers_off(context)
+        return {'FINISHED'}
+        
+class OtDisplayTriangulateModifiersOn(bpy.types.Operator):
+    '''Display all triangulate modifiers'''
+    bl_idname = "view3d.ot_display_triangulate_modifiers_on"
+    bl_label = "On"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        triangulate_modifiers_on(context)
+        return {'FINISHED'}
+
+class OtDisplayTriangulateModifiersOff(bpy.types.Operator):
+    '''Hide all triangulate modifiers'''
+    bl_idname = "view3d.ot_display_triangulate_modifiers_off"
+    bl_label = "Off"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        triangulate_modifiers_off(context)
         return {'FINISHED'}
 
 class OtDisplayArrayModifiersOn(bpy.types.Operator):
@@ -729,6 +777,46 @@ def mirror_modifiers_off(context):
         for o in sel:
             for m in o.modifiers:
                 if m.type == 'MIRROR':
+                    m.show_render = False
+                    m.show_viewport = False
+                    m.show_in_editmode = False
+                    m.show_on_cage = False
+                    
+def triangulate_modifiers_on(context):
+    sel = bpy.context.selected_objects 
+
+    if not(sel):
+        for o in bpy.data.objects:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = True
+                    m.show_viewport = True
+                    m.show_in_editmode = True
+                    m.show_on_cage = True
+    else:
+        for o in sel:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = True
+                    m.show_viewport = True
+                    m.show_in_editmode = True
+                    m.show_on_cage = True
+
+def triangulate_modifiers_off(context):
+    sel = bpy.context.selected_objects 
+
+    if not(sel):
+        for o in bpy.data.objects:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = False
+                    m.show_viewport = False
+                    m.show_in_editmode = False
+                    m.show_on_cage = False
+    else:
+        for o in sel:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
                     m.show_render = False
                     m.show_viewport = False
                     m.show_in_editmode = False
@@ -1258,6 +1346,8 @@ classes = (OT_UL_OtVtxGroupUI,
     OtSelectGroupFaces,
     OtDisplayMirrorModifiersOn,
     OtDisplayMirrorModifiersOff,
+    OtDisplayTriangulateModifiersOn,
+    OtDisplayTriangulateModifiersOff,
     OtDisplayArrayModifiersOn,
     OtDisplayArrayModifiersOff,
     OtDisplaySolidifyModifiersOn,
@@ -1268,6 +1358,7 @@ classes = (OT_UL_OtVtxGroupUI,
     OtOtherToolsReparentAll,
     OtAddCollisionMeshProperties,
     OtMirrorOnOffPanel,
+    OtTriangulateOnOffPanel,
     OtArrayOnOffPanel,
     OtSolidifyOnOffPanel,
     OtVertexGroupsPanel,
