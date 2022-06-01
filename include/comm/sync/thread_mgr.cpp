@@ -1,6 +1,7 @@
 
 #include "thread_mgr.h"
 #include "../log/logger.h"
+#include "../net_ul.h"
 
 #ifdef SYSTYPE_WIN
 #define WIN32_LEAN_AND_MEAN

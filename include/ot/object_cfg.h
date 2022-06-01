@@ -11,29 +11,35 @@ namespace ot {
 enum class objcat : uint8 {
     none,
     fixed,
-    aircraft,
     vehicle,
     watercraft,
+    train,
+    aircraft,
     ghost,
     character,
     dynamic,
     scriptable,
 
-    _count
+    _count,
+    _last_vehicle = train,
 };
 
 static const coid::token string_object_types[int(objcat::_count)] = {
     "unknown"_T,
     "static"_T,
-    "aircraft"_T,
     "vehicle"_T,
     "watercraft"_T,
+    "train"_T,
+    "aircraft"_T,
     "ghost"_T,
     "character"_T,
     "dynamic"_T,
     "scriptable"_T,
 };
 
+inline bool objcat_is_vehicle(objcat cat) {
+    return uint8(cat) >= uint8(objcat::vehicle) && uint8(cat) <= uint8(objcat::_last_vehicle);
+}
 
 namespace collision {
     ///Collision groups & masks
@@ -115,14 +121,15 @@ enum EFreeCameraMode
 ///FPS camera setup
 struct fps_setup
 {
-    float3 cam_pos;
     quat cam_rot;
+    float3 cam_pos;
+
+    float sound_attenuation = 1;
+    float2 fov;
 
     ERotationMode rotation_mode = RotModeEnableReset;
-    uint joint_id = UMAX32;
     EJointRotationMode joint_rotation_mode = ot::JointRotModeEnable;
-
-    float2 fov;
+    uint joint_id = UMAX32;
 };
 
 

@@ -55,7 +55,7 @@ struct packer_zstd
     {}
 
     ~packer_zstd() {
-        if(_dstream) {
+        if (_dstream) {
             ZSTD_freeDStream(_dstream);
             _dstream = 0;
         }
@@ -66,14 +66,14 @@ struct packer_zstd
     //@param size input size
     //@param dst target buffer (append)
     //@return compressed size
-    uints pack( const void* src, uints size, dynarray<uint8>& dst, int complevel = 3 )
+    uints pack(const void* src, uints size, dynarray<uint8>& dst, int complevel = 3)
     {
         uints osize = dst.size();
         uints dmax = ZSTD_compressBound(size);
         uint8* p = dst.add(dmax);
 
         uints ls = ZSTD_compress(p, dmax, src, size, complevel);
-        if(ZSTD_isError(ls))
+        if (ZSTD_isError(ls))
             return UMAXS;
 
         dst.resize(osize + ls);
@@ -85,7 +85,7 @@ struct packer_zstd
     //@param size available input size
     //@param dst target buffer
     //@return consumed size or UMAXS on error
-    uints unpack( const void* src, uints size, dynarray<uint8>& dst )
+    uints unpack(const void* src, uints size, dynarray<uint8>& dst)
     {
         if (!_dstream) {
             ZSTD_customMem cmem = {&_alloc, &_free, 0};
@@ -110,8 +110,8 @@ struct packer_zstd
         zot.dst = dst.add(zot.size);
 
         uints rem;
-        while((rem = ZSTD_decompressStream(_dstream, &zot, &zin)) != 0) {
-            if(ZSTD_isError(rem))
+        while ((rem = ZSTD_decompressStream(_dstream, &zot, &zin)) != 0) {
+            if (ZSTD_isError(rem))
                 return UMAXS;
 
             if (rem == 0) {  //fully read
@@ -140,7 +140,7 @@ struct packer_zstd
     //@param size byt size of data
     //@param bon output binstream to write to
     //@param ZSTD complevel compression level
-    uints pack_stream( const void* src, uints size, binstream& bon, int complevel=3 )
+    uints pack_stream(const void* src, uints size, binstream& bon, int complevel = 3)
     {
         if (!src && (!_cstream || _buf.size() == 0))
             return 0;
@@ -170,7 +170,7 @@ struct packer_zstd
                 zout.pos = 0;
             }
 
-            if(zout.pos > 0)
+            if (zout.pos > 0)
                 bon.xwrite_raw(zout.dst, zout.pos);
             _offset = 0;
 
@@ -206,7 +206,7 @@ struct packer_zstd
     //@param dst destination buffer to write to
     //@param size size of dest buffer
     //@return unpacked size, can be less than size argument if there's no more data
-    ints unpack_stream( binstream& bin, void* dst, uints size )
+    ints unpack_stream(binstream& bin, void* dst, uints size)
     {
         if (!_dstream) {
             ZSTD_customMem cmem = {&_alloc, &_free, 0};

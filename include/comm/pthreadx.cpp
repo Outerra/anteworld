@@ -2,6 +2,7 @@
 #include "pthreadx.h"
 #include "sync/thread_mgr.h"
 #include "singleton.h"
+#include "net_ul.h"
 
 #ifdef SYSTYPE_WIN
 #   define WIN32_LEAN_AND_MEAN

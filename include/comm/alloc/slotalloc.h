@@ -194,11 +194,15 @@ public:
 
     void reserve(uints nitems)
     {
+        uints na = align_to_chunks(nitems, MASK_BITS);
+
         if coid_constexpr_if (LINEAR) {
             this->_array.reserve(nitems, true);
         }
+        else {
+            this->_pages.reserve(na,true);
+        }
 
-        uints na = align_to_chunks(nitems, MASK_BITS);
         _allocated.reserve(na, true);
 
         extarray_reserve(nitems, reserve_mode::memory);
@@ -206,21 +210,27 @@ public:
 
     void reserve_virtual(uints nitems)
     {
+        uints na = align_to_chunks(nitems, MASK_BITS);
+
         if coid_constexpr_if (LINEAR) {
             discard();
 
             this->_array.reserve_virtual(nitems);
         }
+        else {
+            this->_pages.reserve_virtual(na);
+        }
 
-        uints na = align_to_chunks(nitems, MASK_BITS);
         _allocated.reserve_virtual(na);
 
         extarray_reserve(nitems, reserve_mode::virtual_space);
     }
 
+
     ///Insert object
     //@return pointer to the newly inserted object
-    T* push(const T& v) {
+    T* push(const T& v)
+    {
         bool isold = _count < created();
         T* p = isold ? alloc(0) : append<false>();
 
@@ -229,7 +239,8 @@ public:
 
     ///Insert object
     //@return pointer to the newly inserted object
-    T* push(T&& v) {
+    T* push(T&& v)
+    {
         bool isold = _count < created();
         T* p = isold ? alloc(0) : append<false>();
 
@@ -247,7 +258,8 @@ public:
     }
 
     ///Add new object initialized with default constructor, or reuse one in pool mode
-    T* add(uints* pid = 0) {
+    T* add(uints* pid = 0)
+    {
         bool isold = _count < created();
         T* p = isold ? alloc(pid) : append<false>(pid);
 
@@ -256,7 +268,8 @@ public:
 
     ///Add new object or reuse one from pool if predicate returns true
     template <typename Func>
-    T* add_if(Func fn, uints* pid = 0) {
+    T* add_if(Func fn, uints* pid = 0)
+    {
         bool isold = _count < created();
 
         if (!isold)
@@ -272,7 +285,8 @@ public:
     ///Add new object, uninitialized (no constructor invoked on the object)
     //@param newitem optional variable that receives whether the object slot was newly created (true) or reused from the pool (false)
     //@note if newitem == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
-    T* add_uninit(bool* newitem = 0, uints* pid = 0) {
+    T* add_uninit(bool* newitem = 0, uints* pid = 0)
+    {
         if (_count < created()) {
             T* p = alloc(pid);
             if coid_constexpr_if(POOL) {
@@ -289,7 +303,8 @@ public:
 
     ///Add range of objects initialized with default constructors
     //@return id to the beginning of the allocated range
-    uints add_range(uints n) {
+    uints add_range(uints n)
+    {
         if (n == 0)
             return UMAXS;
         if (n == 1) {
@@ -314,7 +329,8 @@ public:
     //@param nreused optional variable receiving the number of objects that were reused from the pool and are constructed already
     //@note if nreused == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
     //@return id to the beginning of the allocated range
-    uints add_range_uninit(uints n, uints* nreused = 0) {
+    uints add_range_uninit(uints n, uints* nreused = 0)
+    {
         if (n == 0)
             return UMAXS;
         if (n == 1) {
@@ -347,9 +363,10 @@ public:
 
     ///Add range of objects initialized with default constructors
     //@return id to the beginning of the allocated range
-    T* add_contiguous_range(uints n) {
+    T* add_contiguous_range(uints n)
+    {
         if coid_constexpr_if (!LINEAR) {
-            if (n > storage_t::page::ITEMS)
+            if (n > storage_t::PAGE_ITEMS)
                 return 0;
         }
 
@@ -374,9 +391,10 @@ public:
     //@param nreused optional variable receiving the number of objects that were reused from the pool and are constructed already
     //@note if nreused == 0 within the pool mode and thus no way to indicate the item has been reused, the reused objects have destructors called
     //@return id to the beginning of the allocated range
-    T* add_contiguous_range_uninit(uints n, uints* nreused = 0) {
+    T* add_contiguous_range_uninit(uints n, uints* nreused = 0)
+    {
         if coid_constexpr_if (!LINEAR) {
-            if (n > storage_t::page::ITEMS)
+            if (n > storage_t::PAGE_ITEMS)
                 return 0;
         }
 
@@ -413,17 +431,20 @@ public:
         del(get_item(item_id));
     }
 
-    ///Delete object in the container
+    ///Delete object by pointer
     void del(T* p)
     {
         uints id = get_item_id(p);
         if (id >= created())
             throw exception("attempting to delete an invalid object ") << id;
 
-        DASSERT_RETVOID(get_bit(id));
+        DASSERT_RET(get_bit(id));
 
         this->set_modified(id);
-        this->bump_version(id);
+
+        //bump version on deletion, but not for pooled items that may be resurrected yet
+        if coid_constexpr_if(!POOL)
+            this->bump_version(id);
 
         if (clear_bit(id))
             --_count;
@@ -432,6 +453,81 @@ public:
 
         if coid_constexpr_if(!POOL)
             p->~T();
+    }
+
+    ///Delete object by id
+    void del_item(uints id)
+    {
+        DASSERT_RET(id < created());
+
+        this->set_modified(id);
+
+        //bump version on deletion, but not for pooled items that may be resurrected yet
+        if coid_constexpr_if(!POOL)
+            this->bump_version(id);
+
+        if (clear_bit(id))
+            --_count;
+        else
+            DASSERTN(0);
+
+        if coid_constexpr_if(!POOL) {
+            T* p = ptr(id);
+            p->~T();
+        }
+    }
+
+
+    ///Delete object by versionid
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    void del_item(versionid vid)
+    {
+        DASSERT_RET(this->check_versionid(vid));
+
+        return del_item(vid.id);
+    }
+
+    //@return previously deleted but still valid item
+    //@note only works in POOL mode
+    T* undel_item(uints id)
+    {
+        static_assert(POOL, "only available in pool mode");
+
+        if (POOL && id < this->_created) {
+            if (set_bit(id))
+                ++_count;
+            else {
+                DASSERTN(0);
+                return 0;
+            }
+
+            return ptr(id);
+        }
+
+        return 0;
+    }
+
+    //@return previously deleted but still valid item with correct version
+    //@note only works in POOL mode
+    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
+    T* undel_item(versionid vid)
+    {
+        static_assert(POOL, "only available in pool mode");
+
+        if (POOL && vid.id < this->_created) {
+            if (this->check_versionid(vid)) {
+                if (set_bit(vid.id))
+                    ++_count;
+                else {
+                    DASSERTN(0);
+                    return 0;
+                }
+            }
+
+            return ptr(vid.id);
+        }
+
+        return 0;
     }
 
     ///Mark object deleted without running the destructor
@@ -444,7 +540,7 @@ public:
         if (id >= created())
             throw exception("attempting to delete an invalid object ") << id;
 
-        DASSERT_RETVOID(get_bit(id));
+        DASSERT_RET(get_bit(id));
 
         this->set_modified(id);
         this->bump_version(id);
@@ -474,15 +570,13 @@ public:
             }
         }
         else {
-            using page = typename storage_t::page;
-
-            uint pg = uint(item_id / page::ITEMS);
-            uint s = uint(item_id % page::ITEMS);
+            uint pg = uint(item_id / storage_t::PAGE_ITEMS);
+            uint s = uint(item_id % storage_t::PAGE_ITEMS);
             uints nr = n;
 
             while (nr > 0) {
                 T* b = this->_pages[pg].ptr() + s;
-                uints na = stdmin(page::ITEMS - s, nr);
+                uints na = stdmin(storage_t::PAGE_ITEMS - s, nr);
                 T* e = b + na;
 
                 for (; b < e; ++b) {
@@ -504,35 +598,6 @@ public:
         del_range(get_item_id(p), n);
     }
 
-    ///Delete object by id
-    void del_item(uints id)
-    {
-        DASSERT_RETVOID(id < created());
-
-        this->set_modified(id);
-        this->bump_version(id);
-
-        if (clear_bit(id))
-            --_count;
-        else
-            DASSERTN(0);
-
-        if coid_constexpr_if(!POOL) {
-            T* p = ptr(id);
-            p->~T();
-        }
-    }
-
-
-    ///Delete object by versionid
-    template <bool T1 = VERSIONING, typename = std::enable_if_t<T1>>
-    void del_item(versionid vid)
-    {
-        DASSERT_RETVOID(this->check_versionid(vid));
-
-        return del_item(vid.id);
-    }
-
     //@return number of used slots in the container
     uints count() const { return _count; }
 
@@ -546,7 +611,7 @@ public:
         if coid_constexpr_if (LINEAR)
             return this->_array.reserved_total() / sizeof(T);
         else
-            return this->_pages.size() * storage_t::page::ITEMS;
+            return this->_pages.size() * storage_t::PAGE_ITEMS;
     }
 
     //@{ accessors with versionid argument, enabled only if versioning is on
@@ -637,6 +702,7 @@ public:
     ///Get a particular item from given slot or default-construct a new one there
     //@param id item id, reverts to add() if UMAXS
     //@param is_new optional if not null, receives true if the item was newly created
+    //@note a deleted item in POOL mode is also considered newly created here
     T* get_or_create(uints id, bool* is_new = 0)
     {
         if (id == UMAXS) {
@@ -739,14 +805,13 @@ public:
                 : UMAXS;
         }
         else {
-            using page = typename storage_t::page;
             uints id = 0;
 
-            for (const page& pg : this->_pages) {
+            for (const storage_t::page& pg : this->_pages) {
                 if (p >= pg.ptr() && p < pg.ptre())
                     return id + (p - pg.ptr());
 
-                id += page::ITEMS;
+                id += storage_t::PAGE_ITEMS;
             }
 
             return UMAXS;
@@ -857,12 +922,12 @@ protected:
     //@{ versioning functions
 
     versionid get_versionid(uints id) const {
-        DASSERT_RET(id < 0x00ffffffU, versionid());
+        DASSERT_RET(id <= versionid::max_id, versionid());
         if coid_constexpr_if (VERSIONING) {
-            return versionid(uint(id), tracker_t::version_array()[id]);
+            return versionid(id, tracker_t::version_array()[id]);
         }
         else {
-            return versionid(uint(id), 0);
+            return versionid(id, 0);
         }
     }
 
@@ -1033,7 +1098,7 @@ protected:
                 set_modified(index);
         }
 
-        return rv && TRACKING;
+        return rv; // && TRACKING;
     }
 
 #else
@@ -1097,7 +1162,7 @@ protected:
         if (rval)
             this->set_modified(index);
 
-        return rval && TRACKING;
+        return rval;// && TRACKING;
     }
 
     ///A non-tracking void fnc(const T&, index) const
@@ -1173,20 +1238,18 @@ public:
             }
         }
         else {
-            using page = typename storage_t::page;
-
             uint_type const* bm = const_cast<uint_type const*>(_allocated.ptr());
             uint_type const* em = const_cast<uint_type const*>(_allocated.ptre());
             uint_type const* pm = bm;
             uints gbase = 0;
 
-            for (uints ip = 0; ip < this->_pages.size(); ++ip, gbase += page::ITEMS)
+            for (uints ip = 0; ip < this->_pages.size(); ++ip, gbase += storage_t::PAGE_ITEMS)
             {
-                const page& pp = this->_pages[ip];
+                const storage_t::page& pp = this->_pages[ip];
                 T* data = const_cast<T*>(pp.ptr());
 
-                uint_type const* epm = em - pm > page::NMASK
-                    ? pm + page::NMASK
+                uint_type const* epm = em - pm > storage_t::NMASK
+                    ? pm + storage_t::NMASK
                     : em;
 
                 uints pbase = 0;
@@ -1290,19 +1353,18 @@ public:
             }
         }
         else {
-            using page = typename storage_t::page;
-            const page* bp = this->_pages.ptr();
-            const page* ep = this->_pages.ptre();
+            const storage_t::page* bp = this->_pages.ptr();
+            const storage_t::page* ep = this->_pages.ptre();
 
             uint_type const* pm = bm;
             changeset_t const* pc = bc;
             uints gbase = 0;
 
-            for (const page* pp = bp; pp < ep; ++pp, gbase += page::ITEMS)
+            for (const storage_t::page* pp = bp; pp < ep; ++pp, gbase += storage_t::PAGE_ITEMS)
             {
                 T* data = const_cast<T*>(pp->data);
-                changeset_t const* epc = ec - pc > page::NMASK
-                    ? pc + page::ITEMS
+                changeset_t const* epc = ec - pc > storage_t::NMASK
+                    ? pc + storage_t::PAGE_ITEMS
                     : ec;
 
                 uints pbase = 0;
@@ -1326,7 +1388,7 @@ public:
     template<typename Func>
     void for_range_unchecked(uints id, uints count, Func f)
     {
-        DASSERT_RETVOID(id + count <= created());
+        DASSERT_RET(id + count <= created());
 
         if coid_constexpr_if (LINEAR) {
             T* p = this->_array.ptr() + id;
@@ -1338,13 +1400,12 @@ public:
                 funccallp(f, p + i, i);
         }
         else {
-            using page = typename storage_t::page;
-            uint pg = uint(id / page::ITEMS);
-            uint s = uint(id % page::ITEMS);
+            uint pg = uint(id / storage_t::PAGE_ITEMS);
+            uint s = uint(id % storage_t::PAGE_ITEMS);
 
             while (count > 0) {
                 T* b = this->_pages[pg++].ptr() + s;
-                uints na = stdmin(page::ITEMS - s, count);
+                uints na = stdmin(storage_t::PAGE_ITEMS - s, count);
                 T* e = b + na;
 
                 for (; b < e; ++b)
@@ -1394,18 +1455,16 @@ public:
             }
         }
         else {
-            using page = typename storage_t::page;
-
             uint_type const* pm = bm;
             uints gbase = 0;
 
-            for (uints ip = 0; ip < this->_pages.size(); ++ip, gbase += page::ITEMS)
+            for (uints ip = 0; ip < this->_pages.size(); ++ip, gbase += storage_t::PAGE_ITEMS)
             {
-                const page& pp = this->_pages[ip];
+                const storage_t::page& pp = this->_pages[ip];
                 T* data = const_cast<T*>(pp.ptr());
 
-                uint_type const* epm = em - pm > page::NMASK
-                    ? pm + page::NMASK
+                uint_type const* epm = em - pm > storage_t::NMASK
+                    ? pm + storage_t::NMASK
                     : em;
 
                 uints pbase = 0;
@@ -1477,19 +1536,17 @@ public:
             }
         }
         else {
-            using page = typename storage_t::page;
-
-            const page* pb = this->_pages.ptr();
-            const page* pe = this->_pages.ptre();
+            const storage_t::page* pb = this->_pages.ptr();
+            const storage_t::page* pe = this->_pages.ptre();
 
             uint_type const* pm = bm;
             uints gbase = 0;
 
-            for (const page* pp = pb; pp < pe; ++pp, gbase += page::ITEMS)
+            for (const storage_t::page* pp = pb; pp < pe; ++pp, gbase += storage_t::PAGE_ITEMS)
             {
                 T* d = const_cast<T*>(pp->ptr());
-                uint_type const* epm = em - pm > page::NMASK
-                    ? pm + page::NMASK
+                uint_type const* epm = em - pm > storage_t::NMASK
+                    ? pm + storage_t::NMASK
                     : em;
 
                 uints pbase = 0;
@@ -1705,10 +1762,8 @@ private:
         if coid_constexpr_if (LINEAR)
             return this->_array.ptr() + id;
         else {
-            using page = typename storage_t::page;
-
-            DASSERT(id / page::ITEMS < this->_pages.size());
-            return (const T*)this->_pages[id / page::ITEMS].data + id % page::ITEMS;
+            DASSERT(id / storage_t::PAGE_ITEMS < this->_pages.size());
+            return (const T*)this->_pages[id / storage_t::PAGE_ITEMS].data + id % storage_t::PAGE_ITEMS;
         }
     }
 
@@ -1716,10 +1771,8 @@ private:
         if coid_constexpr_if (LINEAR)
             return this->_array.ptr() + id;
         else {
-            using page = typename storage_t::page;
-
-            DASSERT(id / page::ITEMS < this->_pages.size());
-            return (T*)this->_pages[id / page::ITEMS].data + id % page::ITEMS;
+            DASSERT(id / storage_t::PAGE_ITEMS < this->_pages.size());
+            return (T*)this->_pages[id / storage_t::PAGE_ITEMS].data + id % storage_t::PAGE_ITEMS;
         }
     }
 
@@ -1800,7 +1853,7 @@ private:
     uints alloc_range_contiguous(uints n, uints* old)
     {
         if coid_constexpr_if (!LINEAR) {
-            if (n > storage_t::page::ITEMS)
+            if (n > storage_t::PAGE_ITEMS)
                 return UMAXS;
         }
 
@@ -1811,30 +1864,35 @@ private:
             id = find_zero_bitrange(n, bm, em);
         }
         else {
-            using page = typename storage_t::page;
-
+            typedef typename storage_t::page page;
             page* ep = this->_pages.ptre();
             page* bp = this->_pages.ptr();
             page* pp = bp;
 
             uint_type const* pm = bm;
 
-            for (; pp != ep; ++pp, pm += page::NMASK)
+            for (; pp != ep; ++pp, pm += storage_t::NMASK)
             {
-                uint_type const* epm = em - pm > page::NMASK
-                    ? pm + page::NMASK
+                uint_type const* epm = em - pm > storage_t::NMASK
+                    ? pm + storage_t::NMASK
                     : em;
 
                 uints lid = find_zero_bitrange(n, pm, epm);
-                if (lid + n <= page::ITEMS) {
-                    id = lid + (pp - bp) * page::ITEMS;
+                if (lid + n <= storage_t::PAGE_ITEMS) {
+                    id = lid + (pp - bp) * storage_t::PAGE_ITEMS;
                     break;
                 }
             }
 
             if (pp == ep) {
-                id = this->_pages.size() * page::ITEMS;
+                id = this->_pages.size() * storage_t::PAGE_ITEMS;
+
+                void* oldbase = this->_pages.ptr();
                 pp = this->_pages.add();
+
+                if coid_constexpr_if(ATOMIC) {
+                    DASSERT(oldbase == nullptr || oldbase == this->_pages.ptr()); // check if page dynarray rebased
+                }
             }
         }
 
@@ -1894,11 +1952,14 @@ private:
                 throw exception("a linear array rebased");
         }
         else {
-            using page = typename storage_t::page;
-
-            uints np = align_to_chunks(this->_created + n, page::ITEMS);
-            if (np > this->_pages.size())
+            uints np = align_to_chunks(this->_created + n, storage_t::PAGE_ITEMS);
+            if (np > this->_pages.size()) {
+                void* oldbase = this->_pages.ptr();
                 this->_pages.realloc(np);
+                if coid_constexpr_if(ATOMIC) {
+                    DASSERT(oldbase == nullptr || oldbase == this->_pages.ptr()); // check if page dynarray rebased
+                }
+            }
 
             this->_created += n;
         }

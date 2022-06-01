@@ -64,6 +64,9 @@ public:
         return 0;
     }
 
+    ifc_fn void set_array(const float ar[3]) {
+    }
+
     ifc_fnx(!) void callback(void (*cbk)(int, const coid::token&)) {
         cbk(1, "blah"_T);
     }

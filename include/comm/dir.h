@@ -270,6 +270,10 @@ public:
     ///Get temp directory
     static charstr get_tmp_dir();
 
+    ///Create temp directory in system temp folder
+    //@param prefix prefix name to use
+    static charstr create_tmp_dir(const token& prefix);
+
     ///Get user home directory
     static charstr get_home_dir();
 
@@ -318,8 +322,8 @@ public:
     ///if recursive is true, lists also subdirectories.
     //@param recursive nest into subdirectories: 1 dir callback called after callback on content, 2 before, 3 both
     //@param fn callback function(const charstr& name, int dir), dir is 0 for files, 1 for getting out of dir, 2 in
-    template<typename Func>
-    static bool list_file_paths(const token& path, const token& extension, int recursive, Func fn)
+    static bool list_file_paths(const token& path, const token& extension, int recursive,
+        const coid::function<void(const charstr&, int)>& fn)
     {
         directory dir;
 

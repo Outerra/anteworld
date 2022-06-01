@@ -24,12 +24,12 @@ public:
 
         union {
             node *_next_basic_pool;
-            node *_next;
+            node *_next = 0;
         };
-        node *_prev;
+        node *_prev = 0;
         uchar _item[sizeof(T)];
 
-        node() : _next(0), _prev(0) {}
+        node() {}
 
         node(bool) { _next = _prev = this; memset(&_item, 0xff, sizeof(_item)); }
 
@@ -344,10 +344,14 @@ public:
         return find(item);
     }
 
-    void erase(const T &item)
+    //@return true if the item was found
+    bool erase(const T& item)
     {
         iterator i = find(item);
-        if(i != end()) erase(i);
+        bool exists = i != end();
+        if (exists)
+            erase(i);
+        return exists;
     }
 };
 

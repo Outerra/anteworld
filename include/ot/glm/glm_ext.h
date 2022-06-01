@@ -24,8 +24,8 @@ namespace coid {
 template <class Tv, class S>
 inline Tv down_cast(const glm::vec<2, S>& v) {
     typedef typename Tv::value_type T;
-    const T vmin = std::numeric_limits<T>::min();
-    const T vmax = std::numeric_limits<T>::max();
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
 
     DASSERT(v.x >= vmin && v.x <= vmax
         && v.y >= vmin && v.y <= vmax);
@@ -35,8 +35,8 @@ inline Tv down_cast(const glm::vec<2, S>& v) {
 template <class Tv, class S>
 inline Tv down_cast(const glm::vec<3, S>& v) {
     typedef typename Tv::value_type T;
-    const T vmin = std::numeric_limits<T>::min();
-    const T vmax = std::numeric_limits<T>::max();
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
 
     DASSERT(v.x >= vmin && v.x <= vmax
         && v.y >= vmin && v.y <= vmax
@@ -47,14 +47,52 @@ inline Tv down_cast(const glm::vec<3, S>& v) {
 template <class Tv, class S>
 inline Tv down_cast(const glm::vec<4, S>& v) {
     typedef typename Tv::value_type T;
-    const T vmin = std::numeric_limits<T>::min();
-    const T vmax = std::numeric_limits<T>::max();
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
 
     DASSERT(v.x >= vmin && v.x <= vmax
         && v.y >= vmin && v.y <= vmax
         && v.z >= vmin && v.z <= vmax
         && v.w >= vmin && v.w <= vmax);
     return Tv(v);
+}
+
+
+
+template <class Tv, class S>
+inline Tv down_cast_saturate(const glm::vec<2, S>& v) {
+    typedef typename Tv::value_type T;
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
+
+    DASSERT(v.x >= vmin && v.x <= vmax
+        && v.y >= vmin && v.y <= vmax);
+    return Tv(glm::clamp(v, S(vmin), S(vmax)));
+}
+
+template <class Tv, class S>
+inline Tv down_cast_saturate(const glm::vec<3, S>& v) {
+    typedef typename Tv::value_type T;
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
+
+    DASSERT(v.x >= vmin && v.x <= vmax
+        && v.y >= vmin && v.y <= vmax
+        && v.z >= vmin && v.z <= vmax);
+    return Tv(glm::clamp(v, S(vmin), S(vmax)));
+}
+
+template <class Tv, class S>
+inline Tv down_cast_saturate(const glm::vec<4, S>& v) {
+    typedef typename Tv::value_type T;
+    constexpr T vmin = std::numeric_limits<T>::min();
+    constexpr T vmax = std::numeric_limits<T>::max();
+
+    DASSERT(v.x >= vmin && v.x <= vmax
+        && v.y >= vmin && v.y <= vmax
+        && v.z >= vmin && v.z <= vmax
+        && v.w >= vmin && v.w <= vmax);
+    return Tv(glm::clamp(v, S(vmin), S(vmax)));
 }
 
 } //
@@ -301,6 +339,49 @@ inline vec<4, T> normalize0(const vec<4, T>& v)
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
+//optimized cross products
+// x.y* y.z - y.y * x.z,
+// x.z* y.x - y.z * x.x,
+// x.x* y.y - y.x * x.y
+
+///Cross product with x-vector, v x {1,0,0}
+template<typename T>
+inline vec<3, T> cross_with_x(const vec<3, T>& v) {
+    return vec<3, T>(0, v.z, -v.y);
+}
+
+///Cross product with x-vector, {1,0,0} x v
+template<typename T>
+inline vec<3, T> cross_x_with(const vec<3, T>& v) {
+    return vec<3, T>(0, -v.z, v.y);
+}
+
+///Cross product with y-vector, v x {0,1,0}
+template<typename T>
+inline vec<3, T> cross_with_y(const vec<3, T>& v) {
+    return vec<3, T>(-v.z, 0, v.x);
+}
+
+///Cross product with y-vector, {0,1,0} x v
+template<typename T>
+inline vec<3, T> cross_y_with(const vec<3, T>& v) {
+    return vec<3, T>(v.z, 0, -v.x);
+}
+
+///Cross product with z-vector, v x {0,0,1}
+template<typename T>
+inline vec<3, T> cross_with_z(const vec<3, T>& v) {
+    return vec<3, T>(v.y, -v.x, 0);
+}
+
+///Cross product with z-vector, {0,0,1} x v
+template<typename T>
+inline vec<3, T> cross_z_with(const vec<3, T>& v) {
+    return vec<3, T>(-v.y, v.x, 0);
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 // 1 - 2*qy2 - 2*qz2	2*qx*qy - 2*qz*qw	2*qx*qz + 2*qy*qw
 // 2*qx*qy + 2*qz*qw	1 - 2*qx2 - 2*qz2	2*qy*qz - 2*qx*qw
 // 2*qx*qz - 2*qy*qw	2*qy*qz + 2*qx*qw	1 - 2*qx2 - 2*qy2
@@ -399,8 +480,9 @@ inline qua<T> make_quat(
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-/// both vectors have to be normalized!
+///Make quaterion that rotates vector "from" to vector "to"
 //@param plane optional rotation plane normal (if known) for the degenerate cases
+//@note both vectors have to be normalized
 template<typename T>
 inline qua<T> make_quat(
     const vec<3, T>& from,
@@ -417,14 +499,80 @@ inline qua<T> make_quat(
             h = normalize(cross(from, vec<3, T>(to.x + T(0.3), to.y - T(0.15), to.z - T(0.15))));
     }
     else
-        h = normalize(from+to);
+        h = normalize(from + to);
 
     //optimized: http://physicsforgames.blogspot.sk/2010/03/quaternion-tricks.html
     return qua<T>(
         dot(from, h),
-        from.y*h.z - from.z*h.y,
-        from.z*h.x - from.x*h.z,
-        from.x*h.y - from.y*h.x);
+        from.y * h.z - from.z * h.y,
+        from.z * h.x - from.x * h.z,
+        from.x * h.y - from.y * h.x);
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+
+///Make quaterion that rotates from x-vector {1,0,0} to the given vector
+//@param plane optional rotation plane normal (if known) for the degenerate cases
+template<typename T>
+inline qua<T> make_quat_x(
+    const vec<3, T>& dir)
+{
+    T cangle = dir.x;
+    vec<3, T> h;
+
+    if (cangle + 1 <= T(0.00005)) {
+        //use {0,1,0} helper rotation plane
+        //h = normalize(cross(from, *plane) + cross(*plane, to));
+        //h = normalize(cross_with_y(from) - cross_with_y(to));
+        h = normalize(vec<3, T>(dir.z, 0, 1 - dir.x));
+    }
+    else
+        h = normalize(vec<3, T>(dir.x + 1, dir.y, dir.z));
+
+    return qua<T>(h.x, T(0), -h.z, h.y);
+}
+
+///Make quaterion that rotates from y-vector {0,1,0} to the given vector
+//@param plane optional rotation plane normal (if known) for the degenerate cases
+template<typename T>
+inline qua<T> make_quat_y(
+    const vec<3, T>& dir)
+{
+    T cangle = dir.y;
+    vec<3, T> h;
+
+    if (cangle + 1 <= T(0.00005)) {
+        //use {0,0,1} helper rotation plane
+        //h = normalize(cross(from, *plane) + cross(*plane, to));
+        //h = normalize(cross_with_z(from) - cross_with_z(to));
+        h = normalize(vec<3, T>(1 - dir.y, dir.x, 0));
+    }
+    else
+        h = normalize(vec<3, T>(dir.x, dir.y + 1, dir.z));
+
+    return qua<T>(h.y, h.z, T(0), -h.x);
+}
+
+///Make quaterion that rotates from z-vector {0,0,1} to the given vector
+//@param plane optional rotation plane normal (if known) for the degenerate cases
+template<typename T>
+inline qua<T> make_quat_z(
+    const vec<3, T>& dir)
+{
+    T cangle = dir.z;
+    vec<3, T> h;
+
+    if (cangle + 1 <= T(0.00005)) {
+        //use {1,0,0} helper rotation plane
+        //h = normalize(cross(from, *plane) + cross(*plane, to));
+        //h = normalize(cross_with_x(from) - cross_with_x(to));
+        h = normalize(vec<3, T>(0, 1 - dir.z, dir.y));
+    }
+    else
+        h = normalize(vec<3, T>(dir.x, dir.y, dir.z + 1));
+
+    return qua<T>(h.z, -h.y, h.x, T(0));
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -437,11 +585,11 @@ inline qua<T> make_quat_zy_align_fwd(const vec<3, T>& fwd, const vec<3, T>& up)
     vec<3, T> side = cross(up, fwd);
     vec<3, T> dir = normalize(cross(side, up));
 
-    qua<T> qup = make_quat(vec<3, T>(0, 1, 0), up, &vec<3, T>(0, 0, -1));
+    qua<T> qup = make_quat_y(up); //make_quat(vec<3, T>(0, 1, 0), up, &vec<3, T>(0, 0, -1));
     vec<3, T> xfwd = -mul_quat_z(qup);
 
     T cangle = dot(xfwd, dir);
-    if (is_equal(cangle, T(-1.0), T(0.00005)))
+    if (cangle + 1 <= T(0.00005))
         //rotate around the other axis to avoid uncertainty
         return make_quat(cangle, -dot(side, xfwd), up) * qup;
     else
@@ -458,11 +606,11 @@ inline qua<T> make_quat_zy_align_up(const vec<3, T>& fwd, const vec<3, T>& up)
     vec<3, T> side = cross(up, fwd);
     vec<3, T> nup = normalize(cross(fwd, side));
 
-    qua<T> qup = make_quat(vec<3, T>(0, 1, 0), nup, &vec<3, T>(0, 0, -1));
+    qua<T> qup = make_quat_y(nup);// make_quat(vec<3, T>(0, 1, 0), nup, &vec<3, T>(0, 0, -1));
     vec<3, T> xfwd = -mul_quat_z(qup);
 
     T cangle = dot(xfwd, fwd);
-    if (is_equal(cangle, T(-1.0), T(0.00005)))
+    if (cangle + 1 <= T(0.00005))
         //rotate around the other axis to avoid uncertainty
         return make_quat(cangle, -dot(side, xfwd), nup) * qup;
     else
@@ -479,11 +627,11 @@ inline qua<T> make_quat_yz_align_fwd(const vec<3, T>& fwd, const vec<3, T>& up)
     vec<3, T> side = cross(up, fwd);
     vec<3, T> dir = normalize(cross(side, up));
 
-    qua<T> qup = make_quat(vec<3, T>(0, 0, 1), up, &vec<3, T>(0, 1, 0));
+    qua<T> qup = make_quat_z(up);// make_quat(vec<3, T>(0, 0, 1), up, &vec<3, T>(0, 1, 0));
     vec<3, T> xfwd = mul_quat_y(qup);
 
     T cangle = dot(xfwd, dir);
-    if (is_equal(cangle, T(-1.0), T(0.00005)))
+    if (cangle + 1 <= T(0.00005))
         //rotate around the other axis to avoid uncertainty
         return make_quat(cangle, -dot(side, xfwd), up) * qup;
     else
@@ -500,11 +648,11 @@ inline qua<T> make_quat_yz_align_up(const vec<3, T>& fwd, const vec<3, T>& up)
     vec<3, T> side = cross(up, fwd);
     vec<3, T> nup = normalize(cross(fwd, side));
 
-    qua<T> qup = make_quat(vec<3, T>(0, 0, 1), nup, &vec<3, T>(0, 1, 0));
+    qua<T> qup = make_quat_z(nup);// make_quat(vec<3, T>(0, 0, 1), nup, &vec<3, T>(0, 1, 0));
     vec<3, T> xfwd = mul_quat_y(qup);
 
     T cangle = dot(xfwd, fwd);
-    if (is_equal(cangle, T(-1.0), T(0.00005)))
+    if (cangle + 1 <= T(0.00005))
         //rotate around the other axis to avoid uncertainty
         return make_quat(cangle, -dot(side, xfwd), nup) * qup;
     else
@@ -1158,7 +1306,8 @@ inline bool calc_tangent_mitring(
         vV = normalize(vA * c + vB * d) * fAreaMul2;
     }
     else {
-        vU = vec<3, T>(1, 0, 0); vV = vec<3, T>(0, 1, 0);
+        vU = vec<3, T>(1, 0, 0);
+        vV = vec<3, T>(0, 1, 0);
         valid = false;
     }
 
@@ -1842,22 +1991,20 @@ inline qua<T> to_camera_rot(const qua<T>& modrot)
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
-inline qua<T> quat_from_ypr(
-    const vec<3, T>& ypr,
-    const bool camera = false)
+inline qua<T> quat_from_ypr(const vec<3, T>& ypr, const bool camera = false)
 {
-    qua<T> qy = make_quat_y(-ypr.x);// (-ypr.x, vec<3,T>(0, 1, 0));
+    quat qy = glm::make_quat_z(-ypr.x);// (-ypr.x, vec<3,T>(0, 0, 1));
 
-    const vec<3, T> xright = mul_quat_x(qy);// * vec<3,T>(1, 0, 0);
+    const float3 xright = glm::mul_quat_x(qy);// * vec<3,T>(1, 0, 0);
 
-    qua<T> qp = make_quat(ypr.y, xright) * qy;
+    quat qp = glm::make_quat(ypr.y, xright) * qy;
 
-    const vec<3, T> xfwd = -mul_quat_z(qp);// * vec<3,T>(0, 0, -1);
+    const float3 xfwd = mul_quat_y(qp);// * vec<3,T>(0, 1, 0);
 
-    qua<T> qr = make_quat(ypr.z, xfwd) * qp;
+    quat qr = glm::make_quat(ypr.z, xfwd) * qp;
 
-    if (!camera)
-        qr = to_model_rot(qr);
+    if (camera)
+        qr = to_camera_rot(qr);
 
     return qr;
 }
@@ -1865,38 +2012,29 @@ inline qua<T> quat_from_ypr(
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 template<typename T>
-inline vec<3, T> ypr_from_quat(
-    const qua<T>& q,
-    const bool camera = false)
+inline vec<3, T> ypr_from_quat(const qua<T>& q, const bool camera = false)
 {
-    qua<T> qm;
-    const qua<T>& qs = camera
-        ? q
-        : (qm = to_camera_rot(q));
+    const qua<T>& qs = !camera ? q : (to_model_rot(q));
 
-    //const vec<3,T> right = vec<3,T>(1, 0, 0);
-    //const vec<3,T> fwd = vec<3,T>(0, 0, -1);
-    const vec<3, T> up = vec<3, T>(0, 1, 0);
+    const vec<3, T> dir = mul_quat_y(qs);
+    const vec<3, T> cup = mul_quat_z(qs);
 
-    const vec<3, T> dir = -mul_quat_z(qs);
-    const vec<3, T> cup = mul_quat_y(qs);
+    const float pitch = asin(clamp(dir.z, -1.0f, 1.0f));
 
-    const float pitch = asin(clamp(dir.y, -1.0f, 1.0f));
-
-    bool ok = fabs(dir.y) < T(1.0) - T(0.00005);
+    bool ok = fabs(dir.z) < T(1.0) - T(0.00005);
     float yaw = ok
-        ? atan2(dir.x, -dir.z)
-        : atan2(-cup.x, cup.z);
+        ? atan2(dir.x, dir.y)
+        : atan2(-cup.x, cup.y);
 
     T roll = 0;
     if (ok) {
         float3 horz = ok
-            ? normalize(cross(up, dir))
+            ? normalize(-cross_z_with(dir))
             : mul_quat_x(qs);
 
         const vec<3, T> rup = cross(horz, dir);
 
-        roll = -atan2(dot(horz, cup), -dot(rup, cup));
+        roll = atan2(dot(horz, cup), dot(rup, cup));
     }
 
     return vec<3, T>(yaw, pitch, roll);
@@ -1957,7 +2095,7 @@ inline vec<3, T> hpr_from_quat(
 
     float3 right = ok
         ? normalize(cross(dir, up))
-        : qs * vec<3, T>(1, 0, 0);
+        : mul_quat_x(qs);//  qs * vec<3, T>(1, 0, 0);
 
     T roll = 0;
     if (ok) {
@@ -1983,7 +2121,7 @@ inline float3 get_heading_pitch_roll(const double3& pos, const quat& qs, bool ca
 inline float2 get_yaw_pitch(const double3& pos, const quat& qs, bool camera)
 {
     float3 up = normalize(float3(pos));
-    float3 west = normalize(float3(up.y, -up.x, 0)); //cross(up, float3(0,0,1));
+    float3 west = normalize(cross_with_z(up)); //cross(up, float3(0,0,1));
     float3 north = cross(west, up);
 
     float3 dir = qs * (camera ? float3(0, 0, -1) : float3(0, 1, 0));

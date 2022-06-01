@@ -2356,8 +2356,8 @@ template<bool INSENSITIVE> struct hasher<charstr, INSENSITIVE>
     uint operator() (const charstr& str) const
     {
         return INSENSITIVE
-            ? __coid_hash_string(str.ptr(), str.len())
-            : __coid_hash_string_insensitive(str.ptr(), str.len());
+            ? __coid_hash_string_insensitive(str.ptr(), str.len())
+            : __coid_hash_string(str.ptr(), str.len());
     }
 };
 

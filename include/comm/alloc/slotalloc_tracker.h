@@ -92,23 +92,22 @@ struct storage
     using uint_type = typename atomic_base_t::uint_type;
 
     static constexpr int MASK_BITS = 8 * sizeof(uints);
+    static constexpr uint PAGE_ITEMS = 256;
+    static constexpr uint NMASK = PAGE_ITEMS / MASK_BITS;
 
     ///Allocation page
     struct page
     {
-        static const uint ITEMS = 256;
-        static const uint NMASK = ITEMS / MASK_BITS;
-
         T* data;
 
         T* ptr() { return data; }
         const T* ptr() const { return data; }
 
-        T* ptre() { return data + ITEMS; }
-        const T* ptre() const { return data + ITEMS; }
+        T* ptre() { return data + PAGE_ITEMS; }
+        const T* ptre() const { return data + PAGE_ITEMS; }
 
         page() {
-            data = (T*)dlmalloc(ITEMS * sizeof(T));
+            data = (T*)dlmalloc(PAGE_ITEMS * sizeof(T));
         }
 
         ~page() {
@@ -119,7 +118,7 @@ struct storage
 
     dynarray<page> _pages;              //< pages of memory (paged mode)
 
-    uint_type _created = 0;             //< contigous elements created total
+    uint_type _created = 0;             //< contiguous elements created total
 
 //#ifndef COID_CONSTEXPR_IF // commented out to keep data layout with VS2017 and newer
     dynarray<T> _array;                 //< main data array (when using contiguous memory)

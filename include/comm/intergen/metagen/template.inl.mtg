@@ -91,7 +91,7 @@ $[method]$
       $-(elif)$
         $type$ _$name$ $-(if size?)$[$size$]$(/if)$;
       $-(/if)$
-    $-[/args]$ 
+    $-[/args]$
 
     public:
         cmd_$name$$overload$(
@@ -127,7 +127,6 @@ $-(/if)$
         virtual coid::token_literal command_name() const override { return "cmd_$name$$overload$"; }
 
         virtual void onCommand(renderer* const r__) override {
-            uint64 t0 = time_ns();
             $(if ..class?="renderer")$r__->$(elif !static?)$_obj->$(/if)-$$..class$::$name$(
             $-[args rest=", "]-$
 $-(if retarg?)-$(const $..rettype$)data_ptr(this)
@@ -135,7 +134,6 @@ $-(elif sizearg?)-$data_size(this)
 $-(elif)-$_$name$
 $-(/if)-$
             $-[/args]$);
-            log_time(__file__, __line__, "$name$", t0);
         }
     };
 $[/method]-$

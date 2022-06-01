@@ -149,6 +149,10 @@
 # endif
 #endif
 
+static const int _sysEndianTest = 1;
+#define sysIsLittleEndian (*((char *) &_sysEndianTest ) != 0)
+#define sysIsBigEndian    (*((char *) &_sysEndianTest ) == 0)
+
 
 #ifdef SYSTYPE_MSVC
 # define xstrncasecmp     _strnicmp
@@ -243,39 +247,68 @@ using coid::ushort;
 #endif
 
 
+
+#ifdef SYSTYPE_64
+#define UMAXS           static_cast<coid::uints>(0xffffffffffffffffULL)
+#else
+#define UMAXS           static_cast<coid::uints>(0xffffffffUL)
+#endif
+
+#define UMAX32          0xffffffffUL
+#define UMAX64          0xffffffffffffffffULL
+#define WMAX            0xffff
+
+#define UINTS_MAX       UMAXS
+
+
+
 COID_NAMESPACE_BEGIN
 
 ///Versioned item id for slot allocators
-//@note static cast to uint64 is safe, but must be called explicitly 
+//@note static cast to uint64 is safe, but must be called explicitly
 struct versionid
 {
-    uint64 id : 48;
-    uint64 version : 16;
+    static constexpr uint64 max_id = 0x0000ffffffffffffull;
 
-    versionid() : id(0x0000ffffffffffffull), version(0xffffull)
+    union {
+        struct {
+            uint64 id : 48;
+            uint64 version : 16;
+        };
+        uint64 value;
+    };
+
+    versionid() : id(max_id), version(0xffffull)
     {}
 
-    versionid(uint id, uint8 version) : id(id), version(version)
-    {}
-
-    void reset() { id = 0x0000ffffffffffffull; version = 0xffffull; }
-    
-    bool valid() const { return ((uint64(id) << 16ull) | version) != 0xffffffffffffffffull; }
-
-    bool operator==(const versionid& rhs) const {
-        return id == rhs.id && version == rhs.version;
+    versionid(uint64 id, uint16 version) : id(id), version(version)
+    {
+        //DASSERT(id <= max_id);
     }
 
-    bool operator!=(const versionid& rhs) const {
-        return id != rhs.id || version != rhs.version;
+    void reset() {
+        id = max_id;
+        version = 0xffffull;
     }
 
-    bool operator<(const versionid& rhs) const {
-        return uint64(this) < uint64(rhs);
+    bool valid() const {
+        return value != UMAX64;
+    }
+
+    bool operator == (const versionid& rhs) const {
+        return value == rhs.value;
+    }
+
+    bool operator != (const versionid& rhs) const {
+        return value != rhs.value;
+    }
+
+    bool operator < (const versionid& rhs) const {
+        return value < rhs.value;
     }
 
     explicit operator uint64() const {
-        return id | version << 48;
+        return value;
     }
 };
 
@@ -328,16 +361,3 @@ COID_NAMESPACE_END
 #else
     #define COMM_ALIGNAS(k) __attribute__((__aligned__(k)))
 #endif
-
-
-#ifdef SYSTYPE_64
-    #define UMAXS       static_cast<coid::uints>(0xffffffffffffffffULL)
-#else
-    #define UMAXS       static_cast<coid::uints>(0xffffffffUL)
-#endif
-
-#define UMAX32          0xffffffffUL
-#define UMAX64          0xffffffffffffffffULL
-#define WMAX            0xffff
-
-#define UINTS_MAX       UMAXS

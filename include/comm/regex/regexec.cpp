@@ -122,13 +122,14 @@ static Relist* _appendfollowstate(
             break;
     }
 
-    if (p == lpe) {
-        //prev can be relocated
-        dynarray_relocator _rel(relist);
+    if (p == lpe)
+    {
         p = relist.add();
         p->inst = ip;
 
-        prev = _rel.relocate(prev);
+        //prev can be relocated
+        if (prev >= lps && prev < lpe)
+            prev = relist.ptr() + (prev - lps);
     }
 
     p->match = prev->match;

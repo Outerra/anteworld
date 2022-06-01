@@ -37,7 +37,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D2F47060-00C0-4A3C-9888-CF663F14D44D}</ProjectGuid>
     <RootNamespace>comm_static</RootNamespace>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -320,7 +320,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PrecompiledHeaderOutputFile>$(IntDir)comm_static.pch</PrecompiledHeaderOutputFile>
@@ -396,7 +396,6 @@
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <FunctionLevelLinking>false</FunctionLevelLinking>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PrecompiledHeaderOutputFile>$(IntDir)comm_static.pch</PrecompiledHeaderOutputFile>
@@ -405,6 +404,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -464,6 +464,7 @@
     <ClInclude Include="..\..\..\binstream\filestreamgz.h" />
     <ClInclude Include="..\..\..\binstream\packstreamlz4.h" />
     <ClInclude Include="..\..\..\binstream\packstreamzip.h" />
+    <ClInclude Include="..\..\..\binstream\packstreamzstd.h" />
     <ClInclude Include="..\..\..\binstream\stdstream.h" />
     <ClInclude Include="..\..\..\binstream\stlstream.h" />
     <ClInclude Include="..\..\..\binstream\txtcachestream.h" />
@@ -497,6 +498,7 @@
     <ClInclude Include="..\..\..\alloc\_malloc.h" />
     <ClInclude Include="..\..\..\alloc\commalloc.h" />
     <ClInclude Include="..\..\..\alloc\memtrack.h" />
+    <ClInclude Include="..\..\..\profiler\profiler.h" />
     <ClInclude Include="..\..\..\ref_helpers.h" />
     <ClInclude Include="..\..\..\sync\_mutex.h" />
     <ClInclude Include="..\..\..\sync\guard.h" />
@@ -626,6 +628,7 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='ReleaseLTCG|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\..\profiler\profiler.cpp" />
     <ClCompile Include="..\..\..\taskmaster.cpp" />
     <ClCompile Include="..\..\..\timer.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>

@@ -214,6 +214,29 @@ struct aircraft_config
     coid::charstr config;               //< config url
 };
 
+
+enum class EVehicleState : uint16 {
+    Engine = 1 << 0,
+    Reverse = 1 << 1,
+    Water = 1 << 2,
+
+    _Next,
+    _Mask = _Next - 2
+};
+inline bool operator & (EVehicleState a, EVehicleState b) {
+    return (uint(a) & uint(b)) != 0;
+}
+struct vehicle_state_event
+{
+    EVehicleState event;
+    union {
+        struct {
+            uint16 start : 1;
+        };
+        uint16 flags;
+    };
+};
+
 } //namespace ot
 
 
@@ -340,6 +363,15 @@ inline metastream& operator || (metastream& m, ot::aircraft_config& w)
     {
         m.member("config", w.config, "");
     });
+}
+
+inline metastream& operator || (metastream& m, ot::vehicle_state_event& w)
+{
+    return m.compound_type(w, [&]()
+        {
+            m.member("event", w.event);
+            m.member("flags", w.flags);
+        });
 }
 
 } //namespace coid

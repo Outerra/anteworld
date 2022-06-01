@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-    <Type Name="glm::detail::tvec2&lt;*&gt;">
+    <Type Name="glm::vec&lt;2,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">float2 {{ {x},   {y} }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">double2 {{ {x},   {y} }}</DisplayString>
         <Expand>
@@ -10,7 +10,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tvec3&lt;*&gt;">
+    <Type Name="glm::vec&lt;3,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">float3 {{ {x},   {y},   {z} }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">double3 {{ {x},   {y},   {z} }}</DisplayString>
         <Expand>
@@ -20,7 +20,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tvec4&lt;*&gt;">
+    <Type Name="glm::vec&lt;4,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">float4 {{ {x},   {y},   {z},   {w} }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">double4 {{ {x},   {y},   {z},   {w} }}</DisplayString>
         <Expand>
@@ -31,7 +31,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat4x4&lt;*&gt;">
+    <Type Name="glm::mat&lt;4,4,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float4x4 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double4x4 }}</DisplayString>
         <Expand>
@@ -42,7 +42,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat4x3&lt;*&gt;">
+    <Type Name="glm::mat&lt;4,3,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float3x4 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double3x4 }}</DisplayString>
         <Expand>
@@ -52,7 +52,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat4x2&lt;*&gt;">
+    <Type Name="glm::mat&lt;4,2,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float2x4 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double2x4 }}</DisplayString>
         <Expand>
@@ -61,7 +61,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat3x4&lt;*&gt;">
+    <Type Name="glm::mat&lt;3,4,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float4x3 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double4x3 }}</DisplayString>
         <Expand>
@@ -72,7 +72,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat3x3&lt;*&gt;">
+    <Type Name="glm::mat&lt;3,3,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float3x3 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double3x3 }}</DisplayString>
         <Expand>
@@ -82,7 +82,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat3x2&lt;*&gt;">
+    <Type Name="glm::mat&lt;3,2,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float2x3 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double2x3 }}</DisplayString>
         <Expand>
@@ -91,7 +91,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat2x4&lt;*&gt;">
+    <Type Name="glm::mat&lt;2,4,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float4x2 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double4x2 }}</DisplayString>
         <Expand>
@@ -102,7 +102,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat2x3&lt;*&gt;">
+    <Type Name="glm::mat&lt;2,3,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float3x2 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double3x2 }}</DisplayString>
         <Expand>
@@ -112,7 +112,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tmat2x2&lt;*&gt;">
+    <Type Name="glm::mat&lt;2,2,*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">{{ float2x2 }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">{{ double2x2 }}</DisplayString>
         <Expand>
@@ -121,7 +121,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tquat&lt;*&gt;">
+    <Type Name="glm::qua&lt;*,*&gt;">
         <DisplayString Condition="sizeof($T1)==4">quat {{ {x},   {y},   {z},   {w} }}</DisplayString>
         <DisplayString Condition="sizeof($T1)==8">dquat {{ {x},   {y},   {z},   {w} }}</DisplayString>
         <Expand>
@@ -132,7 +132,7 @@
         </Expand>
     </Type>
 
-    <Type Name="glm::detail::tdualquat&lt;*&gt;">
+    <Type Name="glm::dualquat&lt;*,*&gt;">
         <DisplayString>real {{ {real.x},   {real.y},   {real.z},   {real.w} }},  dual {{ {dual.x},   {dual.y},   {dual.z},   {dual.w} }}</DisplayString>
         <Expand>
             <Item Name="real">real</Item>

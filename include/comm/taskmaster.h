@@ -107,7 +107,7 @@ public:
 
     //@param nthreads total number of job threads to spawn
     //@param nlong_threads number of low-prio job threads (<= nthreads)
-    taskmaster( uint nthreads, uint nlowprio_threads )
+    taskmaster(uint nthreads, uint nlowprio_threads)
         : _nlowprio_threads(nlowprio_threads)
         , _qsize(0)
         , _quitting(false)
@@ -125,7 +125,7 @@ public:
             ti.order = uint(id);
             ti.master = this;
             ti.tid.create(threadfunc, &ti, 0, "taskmaster");
-        });
+            });
     }
 
     ~taskmaster();
@@ -153,9 +153,9 @@ public:
     template <typename Fn>
     void push_functor(EPriority priority, signal_handle* signal, const Fn& fn)
     {
-        push(priority, signal, [](const Fn& fn){
+        push(priority, signal, [](const Fn& fn) {
             fn();
-        }, fn);
+            }, fn);
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
@@ -164,7 +164,7 @@ public:
     //@param fn function to run
     //@param args arguments needed to invoke the function
     template <typename Fn, typename ...Args>
-    void push( EPriority priority, signal_handle* signal, const Fn& fn, Args&& ...args )
+    void push(EPriority priority, signal_handle* signal, const Fn& fn, Args&& ...args)
     {
         using callfn = invoker<Fn, Args...>;
 
@@ -187,10 +187,38 @@ public:
     //@param priority task priority, higher priority tasks are processed before lower priority
     //@param signal signal to trigger when the task finishes
     //@param fn member function to run
-    //@param obj object reference to run the member function on. Can be a pointer or a smart ptr type which resolves to the object with * operator
+    //@param obj object pointer to run the member function on
     //@param args arguments needed to invoke the function
     template <typename Fn, typename C, typename ...Args>
-    void push_memberfn( EPriority priority, signal_handle* signal, Fn fn, const C& obj, Args&& ...args )
+    void push_memberfn(EPriority priority, signal_handle* signal, Fn fn, C* obj, Args&& ...args)
+    {
+        static_assert(std::is_member_function_pointer<Fn>::value, "fn must be a function that can be invoked as ((*obj).*fn)(args)");
+
+        using callfn = invoker_memberfn<Fn, C*, Args...>;
+
+        {
+            //lock to access allocator and semaphore
+            std::unique_lock<std::mutex> lock(_sync);
+
+            granule* p = alloc_data(sizeof(callfn));
+            increment(signal);
+            auto task = new(p) callfn(signal ? *signal : invalid_signal, fn, obj, std::forward<Args>(args)...);
+
+            _ready_jobs[(int)priority].push_front(task);
+
+            ++_qsize;
+        }
+        _cv.notify_one();
+    }
+
+    ///Push task (function and its arguments) into queue for processing by worker threads
+    //@param priority task priority, higher priority tasks are processed before lower priority
+    //@param signal signal to trigger when the task finishes
+    //@param fn member function to run
+    //@param obj object reference to run the member function on. Can be a smart ptr type which resolves to the object with * operator
+    //@param args arguments needed to invoke the function
+    template <typename Fn, typename C, typename ...Args>
+    void push_memberfn(EPriority priority, signal_handle* signal, Fn fn, const C& obj, Args&& ...args)
     {
         static_assert(std::is_member_function_pointer<Fn>::value, "fn must be a function that can be invoked as ((*obj).*fn)(args)");
 
@@ -211,7 +239,6 @@ public:
         _cv.notify_one();
     }
 
-
     /// Enter critical section; no two threads can be in the same critical section at the same time
     /// other threads process other tasks while waiting to enter critical section
     //@param spin_count number of spins before trying to process other tasks
@@ -219,8 +246,8 @@ public:
     // deadlock thanks to taskmaster's nature
     void enter_critical_section(critical_section& critical_section, int spin_count = 1024)
     {
-        for(;;) {
-            for(int i = 0; i < spin_count; ++i) {
+        for (;;) {
+            for (int i = 0; i < spin_count; ++i) {
                 if (critical_section.value == 0 && atomic::cas(&critical_section.value, 1, 0) == 0) {
                     return;
                 }
@@ -228,8 +255,8 @@ public:
 
             invoker_base* task = 0;
             const int order = get_order();
-            for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
-                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads && order != -1);
+            for (int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads&& order != -1);
                 if (can_run && _ready_jobs[prio].pop(task)) {
                     --_qsize;
                     run_task(task, get_order());
@@ -263,8 +290,8 @@ public:
         const int order = get_order();
         while (!is_signaled(signal, true)) {
             invoker_base* task = 0;
-            for(int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
-                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads && order != -1);
+            for (int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads&& order != -1);
                 if (can_run && _ready_jobs[prio].pop(task)) {
                     --_qsize;
                     run_task(task, get_order());
@@ -292,7 +319,7 @@ public:
         //wait for cancellation
         _threads.for_each([](threadinfo& ti) {
             thread::join(ti.tid);
-        });
+            });
     }
 
 
@@ -305,7 +332,7 @@ public:
         std::unique_lock<std::mutex> lock(_signal_sync);
 
         signal_handle handle;
-        if(!_free_signals.pop(handle)) return invalid_signal;
+        if (!_free_signals.pop(handle)) return invalid_signal;
 
         signal& s = _signal_pool[handle.index()];
         s.ref = 1;
@@ -321,7 +348,7 @@ public:
 
         signal& s = _signal_pool[handle.index()];
         --s.ref;
-        if(s.ref == 0) {
+        if (s.ref == 0) {
             s.version = (s.version + 1) % 0xffFF;
             signal_handle free_handle = signal_handle::make(s.version, handle.index());
             _free_signals.push(free_handle);
@@ -515,22 +542,30 @@ private:
         return ti->master->threadfunc(ti->order);
     }
 
-    void* threadfunc( int order );
+    void* threadfunc(int order);
 
-    void run_task( invoker_base* task, int order )
+    void run_task(invoker_base* task, int order)
     {
         uints id = _taskdata.get_item_id((granule*)task);
         //coidlog_devdbg("taskmaster", "thread " << order << " processing task id " << id);
 
-        DASSERT_RETVOID(_taskdata.is_valid_id(id));
+#ifdef _DEBUG
+        thread::set_name("<unknown task>"_T);
+#endif
+
+        DASSERT_RET(_taskdata.is_valid_id(id));
         task->invoke();
+
+#ifdef _DEBUG
+        thread::set_name("<no task>"_T);
+#endif
 
         const signal_handle handle = task->signal();
         if (handle.is_valid()) {
             std::unique_lock<std::mutex> lock(_signal_sync);
             signal& s = _signal_pool[handle.index()];
             --s.ref;
-            if(s.ref == 0) {
+            if (s.ref == 0) {
                 s.version = (s.version + 1) % 0xffFF;
                 signal_handle free_handle = signal_handle::make(s.version, handle.index());
                 _free_signals.push(free_handle);
@@ -557,7 +592,7 @@ private:
     signal_handle alloc_signal()
     {
         signal_handle handle;
-        if(!_free_signals.pop(handle)) return invalid_signal;
+        if (!_free_signals.pop(handle)) return invalid_signal;
 
         signal& s = _signal_pool[handle.index()];
         s.ref = 1;
@@ -592,7 +627,7 @@ private:
         _cv.notify_one();
     }
 
-    void notify( int n ) {
+    void notify(int n) {
         {
             std::unique_lock<std::mutex> lock(_sync);
             _qsize += n;
@@ -602,14 +637,14 @@ private:
 
     void wait() {
         std::unique_lock<std::mutex> lock(_sync);
-        while(!_qsize) // handle spurious wake-ups
+        while (!_qsize) // handle spurious wake-ups
             _cv.wait(lock);
         --_qsize;
     }
 
     bool try_wait() {
         std::unique_lock<std::mutex> lock(_sync);
-        if(_qsize) {
+        if (_qsize) {
             --_qsize;
             return true;
         }

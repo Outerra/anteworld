@@ -40,6 +40,9 @@
     <Filter Include="coder\lz4">
       <UniqueIdentifier>{d018964f-d4a5-44ce-ada8-1b87570254f7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="profiler">
+      <UniqueIdentifier>{ccf71cad-5e3e-4cad-979d-2d1115bb9800}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\atomic\atomic.cpp">
@@ -140,6 +143,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\taskmaster.cpp">
       <Filter>cxx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\profiler\profiler.cpp">
+      <Filter>profiler</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -401,6 +407,9 @@
       <Filter>intergen</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\taskmaster.h" />
+    <ClInclude Include="..\..\..\profiler\profiler.h">
+      <Filter>profiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\..\..\doc\visualc-syntax\coid.natvis" />

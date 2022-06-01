@@ -55,7 +55,7 @@ struct _Select_Copy
 {
     typedef KEY ret_type;
 
-    ret_type operator()(const VAL& t) const   { return t; }
+    ret_type operator()(const VAL& t) const { return t; }
 };
 
 ///Extracts key object from the value pointer by dereferencing and casting
@@ -64,7 +64,7 @@ struct _Select_CopyPtr
 {
     typedef KEY ret_type;
 
-    ret_type operator()(const VAL* t) const   { return *t; }
+    ret_type operator()(const VAL* t) const { return *t; }
 };
 
 ///Extracts key reference from the value by casting operator
@@ -73,7 +73,7 @@ struct _Select_GetRef
 {
     typedef const KEY& ret_type;
 
-    ret_type operator()(const VAL& t) const   { return t; }
+    ret_type operator()(const VAL& t) const { return t; }
 };
 
 ///Extracts key reference from the value pointer by dereferencing and casting
@@ -82,7 +82,7 @@ struct _Select_GetRefPtr
 {
     typedef const KEY& ret_type;
 
-    ret_type operator()(const VAL* t) const   { return *t; }
+    ret_type operator()(const VAL* t) const { return *t; }
 };
 
 template <class VAL, class KEY>
@@ -106,14 +106,14 @@ struct _Select_DeRef
 template <
     class VAL,
     class EXTRACTKEY,
-    class HASHFUNC=hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
-    class EQFUNC=equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
-    template<class> class ALLOC=AllocStd
-    >
+    class HASHFUNC = hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
+    class EQFUNC = equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
+    template<class> class ALLOC = AllocStd
+>
 class hash_keyset
-    : public hashtable<VAL,HASHFUNC,EQFUNC,EXTRACTKEY,ALLOC>
+    : public hashtable<VAL, HASHFUNC, EQFUNC, EXTRACTKEY, ALLOC>
 {
-    typedef hashtable<VAL,HASHFUNC,EQFUNC,EXTRACTKEY,ALLOC> _HT;
+    typedef hashtable<VAL, HASHFUNC, EQFUNC, EXTRACTKEY, ALLOC> _HT;
 
 public:
 
@@ -125,81 +125,87 @@ public:
 
     typedef size_t                                  size_type;
     typedef ptrdiff_t                               difference_type;
-    typedef value_type*                             pointer;
-    typedef const value_type*                       const_pointer;
-    typedef value_type&                             reference;
-    typedef const value_type&                       const_reference;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
+    typedef const value_type& const_reference;
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
 
-    std::pair<iterator, bool> insert( const value_type& val )
-    {   return this->insert_unique(val);    }
+    std::pair<iterator, bool> insert(const value_type& val)
+    {
+        return this->insert_unique(val);
+    }
 
-    void insert( const value_type* f, const value_type* l )
-    {   this->insert_unique(f, l);   }
+    void insert(const value_type* f, const value_type* l)
+    {
+        this->insert_unique(f, l);
+    }
 
-    void insert( const_iterator f, const_iterator l )
-    {   this->insert_unique(f, l);   }
+    void insert(const_iterator f, const_iterator l)
+    {
+        this->insert_unique(f, l);
+    }
 
     ///Insert value if it's got an unique key
     //@note the key needed for the insertion is extracted from the value using the extractor object provided in the constructor
     //@return NULL if the value could not be inserted, or a constant pointer to the value
-    const VAL* insert_value( value_type&& val )
+    const VAL* insert_value(value_type&& val)
     {
         typename _HT::Node** v = this->__insert_unique(std::forward<value_type>(val));
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Insert value if it's got an unique key
     //@note the key needed for the insertion is extracted from the value using the extractor object provided in the constructor
     //@return NULL if the value could not be inserted, or a constant pointer to the value
-    const VAL* insert_value( const value_type& val )
+    const VAL* insert_value(const value_type& val)
     {
         typename _HT::Node** v = this->__insert_unique(val);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Insert new value or override the existing one under the same key.
     //@note the key needed for the insertion is extracted from the value using the extractor object provided in the constructor
     //@return constant pointer to the value
-    const VAL* insert_or_replace_value( value_type&& val )
+    const VAL* insert_or_replace_value(value_type&& val)
     {
         typename _HT::Node** v = this->__insert_unique__replace(std::forward<value_type>(val));
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Insert new value or override the existing one under the same key.
     //@note the key needed for the insertion is extracted from the value using the extractor object provided in the constructor
     //@return constant pointer to the value
-    const VAL* insert_or_replace_value( const value_type& val )
+    const VAL* insert_or_replace_value(const value_type& val)
     {
         typename _HT::Node** v = this->__insert_unique__replace(val);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Create a default-constructed entry for value object that will be initialized by the caller afterwards
     //@note the value object should be initialized so that it would return the same key as the one passed in here
     //@param key the key under which the value object should be created
-    VAL* insert_value_slot( const key_type& key )
+    VAL* insert_value_slot(const key_type& key)
     {
         typename _HT::Node** v = _HT::_insert_unique_slot(key);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Create an uninitialized entry for value object that will be initialized by the caller afterwards
     //@note the value object should be initialized so that it would return the same key as the one passed in here
     //@param key the key under which the value object should be created
-    VAL* insert_value_slot_uninit( const key_type& key )
+    VAL* insert_value_slot_uninit(const key_type& key)
     {
         typename _HT::Node** v = _HT::_insert_unique_slot_uninit(key);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
     ///Find or create an empty entry for value object that will be initialized by the caller afterwards
     //@note the value object should be initialized so that it would return the same key as the one passed in here
     //@param key the key under which the value object should be created
-    VAL* find_or_insert_value_slot( const key_type& key, bool* isnew=0 )
+    VAL* find_or_insert_value_slot(const key_type& key, bool* isnew = 0)
     {
         typename _HT::Node** v = _HT::_find_or_insert_slot(key, isnew);
         return &(*v)->_val;
@@ -208,7 +214,7 @@ public:
     ///Find or create an empty entry for value object that will be initialized by the caller afterwards
     //@note the value object should be initialized so that it would return the same key as the one passed in here
     //@param key the key under which the value object should be created
-    VAL* find_or_insert_value_slot_uninit( const key_type& key, bool* isnew=0 )
+    VAL* find_or_insert_value_slot_uninit(const key_type& key, bool* isnew = 0)
     {
         typename _HT::Node** v = _HT::_find_or_insert_slot_uninit(key, isnew);
         return &(*v)->_val;
@@ -216,82 +222,82 @@ public:
 
 
     ///Find value object corresponding to given key
-    const VAL* find_value( const key_type& k ) const
+    const VAL* find_value(const key_type& k) const
     {
         const typename _HT::Node* v = _HT::find_node(k);
         return v ? &v->_val : 0;
     }
 
     ///Find value object corresponding to given key
-    const VAL* find_value( uint hash, const key_type& k ) const
+    const VAL* find_value(uint hash, const key_type& k) const
     {
-        const typename _HT::Node* v = _HT::find_node(hash,k);
+        const typename _HT::Node* v = _HT::find_node(hash, k);
         return v ? &v->_val : 0;
     }
 
 
     hash_keyset()
-        : _HT( 128, hasherfn(), key_equal(), extractor() ) {}
+        : _HT(128, hasherfn(), key_equal(), extractor()) {}
 
     explicit hash_keyset(size_type n)
-        : _HT( n, hasherfn(), key_equal(), extractor() ) {}
+        : _HT(n, hasherfn(), key_equal(), extractor()) {}
 
-    explicit hash_keyset( const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex ) {}
-    hash_keyset( const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex ) {}
-    hash_keyset( const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n=128 )
-        : _HT( n, hf, eql, ex ) {}
-
-
-
-    hash_keyset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
-    {
-        insert_unique( f, l );
-    }
-    hash_keyset( const value_type* f, const value_type* l,
-        const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
-    {
-        insert_unique( f, l );
-    }
-    hash_keyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex )
-    {
-        insert_unique( f, l );
-    }
-    hash_keyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
-        : _HT( n, hf, eqf, ex )
-    {
-        insert_unique( f, l );
-    }
+    explicit hash_keyset(const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex) {}
+    hash_keyset(const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex) {}
+    hash_keyset(const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n = 128)
+        : _HT(n, hf, eql, ex) {}
 
 
-    hash_keyset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+
+    hash_keyset(const value_type* f, const value_type* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), extractor())
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_keyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+    hash_keyset(const value_type* f, const value_type* l,
+        const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex)
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_keyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex )
+    hash_keyset(const value_type* f, const value_type* l,
+        const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex)
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
     }
-    hash_keyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
-        : _HT( n, hf, eqf, ex )
+    hash_keyset(const value_type* f, const value_type* l,
+        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n = 128)
+        : _HT(n, hf, eqf, ex)
     {
-        insert_unique( f, l );
+        this->insert_unique(f, l);
+    }
+
+
+    hash_keyset(const_iterator* f, const_iterator* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), extractor())
+    {
+        this->insert_unique(f, l);
+    }
+    hash_keyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex)
+    {
+        this->insert_unique(f, l);
+    }
+    hash_keyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex)
+    {
+        this->insert_unique(f, l);
+    }
+    hash_keyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n = 128)
+        : _HT(n, hf, eqf, ex)
+    {
+        this->insert_unique(f, l);
     }
 };
 
@@ -307,14 +313,14 @@ public:
 template <
     class VAL,
     class EXTRACTKEY,
-    class HASHFUNC=hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
-    class EQFUNC=equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
-    template<class> class ALLOC=AllocStd
-    >
+    class HASHFUNC = hasher<typename type_base<typename EXTRACTKEY::ret_type>::type>,
+    class EQFUNC = equal_to<typename type_base<typename EXTRACTKEY::ret_type>::type, typename HASHFUNC::key_type>,
+    template<class> class ALLOC = AllocStd
+>
 class hash_multikeyset
-    : public hashtable<VAL,HASHFUNC,EQFUNC,EXTRACTKEY,ALLOC>
+    : public hashtable<VAL, HASHFUNC, EQFUNC, EXTRACTKEY, ALLOC>
 {
-    typedef hashtable<VAL,HASHFUNC,EQFUNC,EXTRACTKEY,ALLOC> _HT;
+    typedef hashtable<VAL, HASHFUNC, EQFUNC, EXTRACTKEY, ALLOC> _HT;
 
 public:
 
@@ -326,49 +332,55 @@ public:
 
     typedef size_t                                  size_type;
     typedef ptrdiff_t                               difference_type;
-    typedef value_type*                             pointer;
-    typedef const value_type*                       const_pointer;
-    typedef value_type&                             reference;
-    typedef const value_type&                       const_reference;
+    typedef value_type* pointer;
+    typedef const value_type* const_pointer;
+    typedef value_type& reference;
+    typedef const value_type& const_reference;
 
     typedef typename _HT::iterator                  iterator;
     typedef typename _HT::const_iterator            const_iterator;
 
-    iterator insert( const value_type& val )
-    {   return insert_equal(val);    }
+    iterator insert(const value_type& val)
+    {
+        return this->insert_equal(val);
+    }
 
-    void insert( const value_type* f, const value_type* l )
-    {   insert_equal( f, l );   }
+    void insert(const value_type* f, const value_type* l)
+    {
+        this->insert_equal(f, l);
+    }
 
-    void insert( const_iterator f, const_iterator l )
-    {   insert_equal( f, l );   }
+    void insert(const_iterator f, const_iterator l)
+    {
+        this->insert_equal(f, l);
+    }
 
-    const VAL* insert_value( value_type&& val )
+    const VAL* insert_value(value_type&& val)
     {
         typename _HT::Node** v = this->__insert_equal(std::forward<value_type>(val));
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
-    const VAL* insert_value( const value_type& val )
+    const VAL* insert_value(const value_type& val)
     {
         typename _HT::Node** v = this->__insert_equal(val);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
-    VAL* insert_value_slot( const key_type& key )
+    VAL* insert_value_slot(const key_type& key)
     {
         typename _HT::Node** v = _insert_equal_slot(key);
-        return v  ?  &(*v)->_val  :  0;
+        return v ? &(*v)->_val : 0;
     }
 
-    VAL* find_or_insert_value_slot( const key_type& key, bool* isnew=0 )
+    VAL* find_or_insert_value_slot(const key_type& key, bool* isnew = 0)
     {
         typename _HT::Node** v = _find_or_insert_slot(key, isnew);
         return &(*v)->_val;
     }
 
 
-    const VAL* find_value( const key_type& k ) const
+    const VAL* find_value(const key_type& k) const
     {
         const typename _HT::Node* v = this->find_node(k);
         return v ? &v->_val : 0;
@@ -376,116 +388,116 @@ public:
 
 
     hash_multikeyset()
-        : _HT( 128, hasherfn(), key_equal(), extractor() ) {}
+        : _HT(128, hasherfn(), key_equal(), extractor()) {}
 
     explicit hash_multikeyset(size_type n)
-        : _HT( n, hasherfn(), key_equal(), extractor() ) {}
+        : _HT(n, hasherfn(), key_equal(), extractor()) {}
 
-    explicit hash_multikeyset( const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex ) {}
-    hash_multikeyset( const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex ) {}
-    hash_multikeyset( const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n=128 )
-        : _HT( n, hf, eql, ex ) {}
-
-
-
-    hash_multikeyset( const value_type* f, const value_type* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
-    {
-        insert_unique( f, l );
-    }
-    hash_multikeyset( const value_type* f, const value_type* l,
-        const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
-    {
-        insert_unique( f, l );
-    }
-    hash_multikeyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex )
-    {
-        insert_unique( f, l );
-    }
-    hash_multikeyset( const value_type* f, const value_type* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
-        : _HT( n, hf, eqf, ex )
-    {
-        insert_unique( f, l );
-    }
+    explicit hash_multikeyset(const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex) {}
+    hash_multikeyset(const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex) {}
+    hash_multikeyset(const extractor& ex, const hasherfn& hf, const key_equal& eql, size_type n = 128)
+        : _HT(n, hf, eql, ex) {}
 
 
-    hash_multikeyset( const_iterator* f, const_iterator* l, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), extractor() )
+
+    hash_multikeyset(const value_type* f, const value_type* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), extractor())
     {
-        insert_unique( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multikeyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, size_type n=128 )
-        : _HT( n, hasherfn(), key_equal(), ex )
+    hash_multikeyset(const value_type* f, const value_type* l,
+        const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex)
     {
-        insert_unique( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multikeyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, size_type n=128 )
-        : _HT( n, hf, key_equal(), ex )
+    hash_multikeyset(const value_type* f, const value_type* l,
+        const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex)
     {
-        insert_unique( f, l );
+        this->insert_equal(f, l);
     }
-    hash_multikeyset( const_iterator* f, const_iterator* l,
-        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n=128 )
-        : _HT( n, hf, eqf, ex )
+    hash_multikeyset(const value_type* f, const value_type* l,
+        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n = 128)
+        : _HT(n, hf, eqf, ex)
     {
-        insert_unique( f, l );
+        this->insert_equal(f, l);
+    }
+
+
+    hash_multikeyset(const_iterator* f, const_iterator* l, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), extractor())
+    {
+        this->insert_equal(f, l);
+    }
+    hash_multikeyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, size_type n = 128)
+        : _HT(n, hasherfn(), key_equal(), ex)
+    {
+        this->insert_equal(f, l);
+    }
+    hash_multikeyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, const hasherfn& hf, size_type n = 128)
+        : _HT(n, hf, key_equal(), ex)
+    {
+        this->insert_equal(f, l);
+    }
+    hash_multikeyset(const_iterator* f, const_iterator* l,
+        const extractor& ex, const hasherfn& hf, const key_equal& eqf, size_type n = 128)
+        : _HT(n, hf, eqf, ex)
+    {
+        this->insert_equal(f, l);
     }
 };
 
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline binstream& operator << (binstream& bin, const hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> HT;
     typename HT::hashtable_binstream_container bc(a);
     opcd e = bin.write_array(bc);
 
-    if(e) throw exception(e);
+    if (e) throw exception(e);
     return bin;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline binstream& operator >> (binstream& bin, hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> HT;
     typename HT::hashtable_binstream_container bc(a, UMAXS);
     opcd e = bin.read_array(bc);
 
-    if(e) throw exception(e);
+    if (e) throw exception(e);
     return bin;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator << ( binstream& bin, const hash_multikeyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline binstream& operator << (binstream& bin, const hash_multikeyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> HT;
     typename HT::hashtable_binstream_container bc(a);
     opcd e = bin.write_array(bc);
 
-    if(e) throw exception(e);
+    if (e) throw exception(e);
     return bin;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline binstream& operator >> ( binstream& bin, hash_multikeyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline binstream& operator >> (binstream& bin, hash_multikeyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> HT;
     typename HT::hashtable_binstream_container bc(a, UMAXS);
     opcd e = bin.read_array(bc);
 
-    if(e) throw exception(e);
+    if (e) throw exception(e);
     return bin;
 }
 
@@ -501,16 +513,16 @@ inline metastream& operator << ( metastream& m, const hash_keyset<VAL,EXTRACTKEY
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator || ( metastream& m, hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline metastream& operator || (metastream& m, hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> _HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> _HT;
 
-    if(m.stream_reading()) {
+    if (m.stream_reading()) {
         a.clear();
         typename _HT::hashtable_binstream_container bc(a);
         return m.read_container(bc);
     }
-    else if(m.stream_writing()) {
+    else if (m.stream_writing()) {
         typename _HT::hashtable_binstream_container bc(a);
         return m.write_container(bc);
     }
@@ -540,16 +552,16 @@ inline metastream& operator << ( metastream& m, const hash_multikeyset<VAL,EXTRA
 }*/
 
 template <class VAL, class EXTRACTKEY, class HASHFUNC, class EQFUNC, template<class> class ALLOC>
-inline metastream& operator || ( metastream& m, hash_multikeyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC>& a )
+inline metastream& operator || (metastream& m, hash_multikeyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC>& a)
 {
-    typedef hash_keyset<VAL,EXTRACTKEY,HASHFUNC,EQFUNC,ALLOC> _HT;
+    typedef hash_keyset<VAL, EXTRACTKEY, HASHFUNC, EQFUNC, ALLOC> _HT;
 
-    if(m.stream_reading()) {
+    if (m.stream_reading()) {
         a.clear();
         typename _HT::hashtable_binstream_container bc(a);
         return m.read_container(bc);
     }
-    else if(m.stream_writing()) {
+    else if (m.stream_writing()) {
         typename _HT::hashtable_binstream_container bc(a);
         return m.write_container(bc);
     }

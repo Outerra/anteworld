@@ -38,6 +38,7 @@
 #include "mutex.h"
 #include "../retcodes.h"
 #include "../pthreadx.h"
+#include "../net_ul.h"
 
 #ifdef SYSTYPE_WIN
 
@@ -71,10 +72,10 @@ void _comm_mutex::init( uint spincount, bool recursive )
 
     static const int k = sizeof(CRITICAL_SECTION);
     static_assert( sizeof(_cs) == k, "mismatched size" );
-    
+
     DASSERT( (uints(&_cs) & 7) == 0 );
 
-	InitializeCriticalSectionAndSpinCount( (CRITICAL_SECTION*)&_cs, spincount );
+    InitializeCriticalSectionAndSpinCount( (CRITICAL_SECTION*)&_cs, spincount );
 #else
     pthread_mutexattr_t m;
     pthread_mutexattr_init(&m);
@@ -88,7 +89,7 @@ void _comm_mutex::init( uint spincount, bool recursive )
 ////////////////////////////////////////////////////////////////////////////////
 _comm_mutex::_comm_mutex( NOINIT_t )
 {
-	_init = 0;
+    _init = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +97,7 @@ _comm_mutex::~_comm_mutex()
 {
     if(_init)
 #   ifdef SYSTYPE_WIN
-	    DeleteCriticalSection( (CRITICAL_SECTION*)&_cs );
+        DeleteCriticalSection( (CRITICAL_SECTION*)&_cs );
 #   else
         pthread_mutex_destroy(&_mutex);
 #   endif
@@ -106,7 +107,7 @@ _comm_mutex::~_comm_mutex()
 void _comm_mutex::lock()
 {
 #ifdef SYSTYPE_WIN
-	EnterCriticalSection( (CRITICAL_SECTION*)&_cs );
+    EnterCriticalSection( (CRITICAL_SECTION*)&_cs );
 #else
     (void)pthread_mutex_lock(&_mutex);
 
@@ -120,7 +121,7 @@ void _comm_mutex::lock()
 void _comm_mutex::unlock()
 {
 #ifdef SYSTYPE_WIN
-	LeaveCriticalSection( (CRITICAL_SECTION*)&_cs );
+    LeaveCriticalSection( (CRITICAL_SECTION*)&_cs );
 #else
     pthread_mutex_unlock(&_mutex);
 #endif
@@ -130,36 +131,36 @@ void _comm_mutex::unlock()
 bool _comm_mutex::try_lock()
 {
 #ifdef SYSTYPE_WIN
-	bool ret = 0 != TryEnterCriticalSection( (CRITICAL_SECTION*)&_cs );
+    bool ret = 0 != TryEnterCriticalSection( (CRITICAL_SECTION*)&_cs );
 #else
     bool ret = 0 == pthread_mutex_trylock(&_mutex);
 #	ifdef _DEBUG
-		if(ret)
+        if(ret)
             _owner_thread = thread::self();
 #	endif
 #endif
-	return ret;
+    return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 bool _comm_mutex::timed_lock( uint delaymsec )
 {
 #ifdef SYSTYPE_WIN
-	if( try_lock() ) return true;
-	if( delaymsec > 1 ) {
-		delaymsec--;
-		if( delaymsec > 19 ) {
-			delaymsec = delaymsec >> 1;
-			sysMilliSecondSleep( delaymsec );
-			if( try_lock() ) return true;
-		}
-		sysMilliSecondSleep( delaymsec );
-	}
-	return try_lock();
+    if( try_lock() ) return true;
+    if( delaymsec > 1 ) {
+        delaymsec--;
+        if( delaymsec > 19 ) {
+            delaymsec = delaymsec >> 1;
+            sysMilliSecondSleep( delaymsec );
+            if( try_lock() ) return true;
+        }
+        sysMilliSecondSleep( delaymsec );
+    }
+    return try_lock();
 #else
-	timespec ts;
-	get_abstime( delaymsec, &ts );
-	return 0 == pthread_mutex_timedlock( &_mutex, &ts );
+    timespec ts;
+    get_abstime( delaymsec, &ts );
+    return 0 == pthread_mutex_timedlock( &_mutex, &ts );
 #endif
 }
 
