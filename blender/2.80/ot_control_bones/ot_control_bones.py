@@ -329,7 +329,7 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     max: bpy.props.FloatProperty(name="Maximum", description="maximum value", default=DefaultAction.max, min=0.0, max=6.0, update=update_action)
 
     use_steps: bpy.props.BoolProperty(name="Use steps", description="serialize this field", default=False, update=update_action)
-    steps: bpy.props.IntProperty(name="Step count", description="count of steps between 0 and 1", default=DefaultAction.steps, min=1, max=255, update=update_action)
+    steps: bpy.props.IntProperty(name="Step count", description="count of steps from 0 to 1, 0 means event, >0 means axis", default=DefaultAction.steps, min=0, max=255, update=update_action)
 
     use_channels: bpy.props.BoolProperty(name="Use channels", description="serialize this field", default=False, update=update_action)
     channels: bpy.props.IntProperty(name="Channel count", description="number of extra channels supported by the handler", default=DefaultAction.channels, min=0, max=7, update=update_action)
