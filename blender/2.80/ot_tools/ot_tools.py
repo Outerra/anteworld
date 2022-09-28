@@ -1306,7 +1306,7 @@ def reparent_all(context):
     parents = {}
     parent_bones = {}
     
-    for o in bpy.data.objects:
+    for o in bpy.context.view_layer.objects:
         parents[o.name] = o.parent
         parent_bones[o.name] = o.parent_bone
         bpy.ops.object.select_all(action='DESELECT')
