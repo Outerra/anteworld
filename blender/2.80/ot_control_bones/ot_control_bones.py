@@ -36,7 +36,7 @@ class DefaultAction:
     min = -1.0
     max = 1.0
     steps = 1
-    channels = 0
+    channel = 0
 
 TYPE_PROPERTY_NAME = "ot_controlbone_type"
 ACTION_PROPERTY_NAME = "ot_controlbone_action"
@@ -92,7 +92,7 @@ def deserialize_action(props, bone):
         props.use_min = False
         props.use_max = False
         props.use_steps = False
-        props.use_channels = False
+        props.use_channel = False
         return
 
     item = bone[ACTION_PROPERTY_NAME]
@@ -144,10 +144,10 @@ def deserialize_action(props, bone):
         props.use_steps = False
 
     try:
-        props.channels = int(values[7])
-        props.use_channels = True
+        props.channel = int(values[7])
+        props.use_channel = True
     except:
-        props.use_channels = False
+        props.use_channel = False
 
 def serialize_action(props, bone):
     if not props.use_control:
@@ -182,8 +182,8 @@ def serialize_action(props, bone):
         val_str[6] = str(props.steps);
         used = True
 
-    if props.use_channels:
-        val_str[7] = str(props.channels);
+    if props.use_channel:
+        val_str[7] = str(props.channel);
         used = True
 
     if used:
@@ -331,8 +331,8 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     use_steps: bpy.props.BoolProperty(name="Use steps", description="serialize this field", default=False, update=update_action)
     steps: bpy.props.IntProperty(name="Step count", description="count of steps from 0 to 1, 0 means event, >0 means axis", default=DefaultAction.steps, min=0, max=255, update=update_action)
 
-    use_channels: bpy.props.BoolProperty(name="Use channels", description="serialize this field", default=False, update=update_action)
-    channels: bpy.props.IntProperty(name="Channel count", description="number of extra channels supported by the handler", default=DefaultAction.channels, min=0, max=7, update=update_action)
+    use_channel: bpy.props.BoolProperty(name="Use channel", description="serialize this field", default=False, update=update_action)
+    channel: bpy.props.IntProperty(name="Channel number", description="channel number, must be supported by the handler", default=DefaultAction.channel, min=0, max=7, update=update_action)
 
 
     trans_type: bpy.props.EnumProperty(name="Type", description="type of transformation of bone to animate", items=transform_types, update=update_animation)
@@ -374,7 +374,7 @@ class OtControlElementPanel(bpy.types.Panel):
 
         layout = self.layout
 
-        if context.mode != 'EDIT_ARMATURE':
+        if not (context.mode == 'EDIT_ARMATURE' or context.mode == 'OBJECT'):
             return
 
         props = context.scene.ot_control_element_prop
@@ -389,7 +389,7 @@ class OtControlElementPanel(bpy.types.Panel):
 
         col = row.box()
         col.label(text="Action data")
-        used = props.use_vel or props.use_acc or props.use_cen or props.use_min or props.use_max or props.use_steps or props.use_channels
+        used = props.use_vel or props.use_acc or props.use_cen or props.use_min or props.use_max or props.use_steps or props.use_channel
         draw_type(col, props, "action", used)
         draw_property(col, props, "vel", "use_vel", props.use_vel)
         draw_property(col, props, "acc", "use_acc", props.use_acc)
@@ -397,7 +397,7 @@ class OtControlElementPanel(bpy.types.Panel):
         draw_property(col, props, "min", "use_min", props.use_min)
         draw_property(col, props, "max", "use_max", props.use_max)
         draw_property(col, props, "steps", "use_steps", props.use_steps)
-        draw_property(col, props, "channels", "use_channels", props.use_channels)
+        draw_property(col, props, "channel", "use_channel", props.use_channel)
 
         col = row.box()
         col.label(text="Animation data")
