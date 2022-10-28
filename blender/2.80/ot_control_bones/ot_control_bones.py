@@ -297,14 +297,21 @@ def update_use_control(self, context):
 def get_active_bone():
     view_layer = bpy.context.view_layer
     active = view_layer.objects.active
+    mode = active.mode
 
     if active is not None and active.type == 'ARMATURE':
-        return active.data.edit_bones.active
+        if mode == 'OBJECT':
+            return active.data.bones.active
+        else:
+            return active.data.edit_bones.active
+    elif active is not None and active.type == 'MESH' and active.name.startswith('BONE_'):
+        return active
     else:
         return None
 
+###############################################################################
 
-class OtControlElementSettings(bpy.types.PropertyGroup):
+class OtControlElementProperties(bpy.types.PropertyGroup):
     use_control: bpy.props.BoolProperty(name="Use control element", description="serialize controlbone", default=False, update=update_use_control)
 
     type: bpy.props.EnumProperty(name="Type", description="Element type", items=control_types, update=update_type)
@@ -341,14 +348,24 @@ class OtControlElementSettings(bpy.types.PropertyGroup):
     trans_min: bpy.props.FloatProperty(name="Minimum", description="minimum value transformation could be", default=-1.0, min=-1000, max=1000, update=update_animation)
 
     use_trans_max: bpy.props.BoolProperty(name="Use transform max", description="serialize this field", default=False, update=update_animation)
-    trans_max: bpy.props.FloatProperty(name="Maximum", description="maximum value transformation could be", default=1.0, min=-1000, max=1000, update=update_animation)
+    trans_max: bpy.props.FloatProperty(name="Maximum", description="maximum value transformation could be", default=1.0, min=-1000, max=1000, update=update_animation)\
+    
+    def clear(self):
+        self.handles = ''
+        self.action = ''
+        self.vel = DefaultAction.vel
+        self.acc = DefaultAction.acc
+        self.cen = DefaultAction.cen
+        self.min = DefaultAction.min
+        self.max = DefaultAction.max
+        self.steps = DefaultAction.steps
+        self.channel = DefaultAction.channel
+
 
 class OtControlElementPanel(bpy.types.Panel):
-    bl_idname = "PANEL_PT_OtControlElement"
     bl_label = "Outerra Control Element"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_context = "bone"
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
@@ -374,7 +391,7 @@ class OtControlElementPanel(bpy.types.Panel):
 
         layout = self.layout
 
-        if not (context.mode == 'EDIT_ARMATURE' or context.mode == 'OBJECT'):
+        if not (context.mode.startswith('EDIT') or context.mode == 'OBJECT'):
             return
 
         props = context.scene.ot_control_element_prop
@@ -407,6 +424,57 @@ class OtControlElementPanel(bpy.types.Panel):
         draw_property(col, props, "trans_max", "use_trans_max", props.use_trans_max)
 
 
+class OtControlElementPanelBone(OtControlElementPanel):
+    bl_idname = "PANEL_PT_OtControlElementBone"
+    bl_context = "bone"
+    
+    @classmethod
+    def poll(cls, context):
+        return (context.object is not None and (context.mode.startswith('EDIT') or context.mode == 'OBJECT'))
+    
+class OtControlElementPanelObject(OtControlElementPanel):
+    bl_idname = "PANEL_PT_OtControlElementObject"
+    bl_context = "object"
+    
+    @classmethod
+    def poll(cls, context):
+        return (context.object is not None and context.object.name.startswith('BONE_') and (context.mode.startswith('EDIT') or context.mode == 'OBJECT'))
+
+
+class OtListItemOperator(bpy.types.Operator):
+    bl_idname = "list_item.operator"
+    bl_label = "Select item from list"
+    bl_options = {'REGISTER'}
+    
+    object_name: bpy.props.StringProperty(name="Select object name", default="")
+    bone_name: bpy.props.StringProperty(name="Select bone name", default="")
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+        
+    def execute(self, context):
+        props = bpy.context.scene.ot_control_element_prop
+        
+        obj = bpy.data.objects[self.object_name];
+        if obj is not None:
+            for o in bpy.data.objects:
+                o.select_set(False)
+                
+            obj.select_set(state=True)
+            bpy.context.view_layer.objects.active = obj;
+            if self.bone_name != "":
+                if context.mode.startswith('EDIT'):
+                    bpy.ops.armature.select_all(action='DESELECT')
+                    bones = obj.data.edit_bones
+                    bones.active = bones[self.bone_name]
+                else:
+                    for b in obj.data.bones:
+                        b.select = False
+                    bones = obj.data.bones
+                    bones.active = bones[self.bone_name]
+        return {'FINISHED'}
+
 class OtControlElementListPanel(bpy.types.Panel):
     bl_idname = "PANEL_PT_OtControlElementListPanel"
     bl_label = "Control elements"
@@ -416,17 +484,30 @@ class OtControlElementListPanel(bpy.types.Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
+        props = bpy.context.scene.ot_control_element_prop
+        
         layout = self.layout
         view_layer = bpy.context.view_layer
-        active = view_layer.objects.active
         
-        if active is not None and active.type == 'ARMATURE':
-            bones = active.data.edit_bones
-            for bone in bones:
-                if TYPE_PROPERTY_NAME in bone:
-                    type = bone[TYPE_PROPERTY_NAME]
+        for obj in view_layer.objects:
+            if obj.type == 'ARMATURE':
+                bones = obj.data.edit_bones if context.mode == 'EDIT_ARMATURE' else obj.data.bones
+                for bone in bones:
+                    if TYPE_PROPERTY_NAME in bone:
+                        type = bone[TYPE_PROPERTY_NAME]
+                        values = [x.strip() for x in type.split(';')]
+                        label = bone.name + " (" + values[0] + ")"
+                        op = layout.operator("list_item.operator", text=label)
+                        op.object_name = obj.name
+                        op.bone_name = bone.name
+            elif obj.name.startswith('BONE_'):
+                if TYPE_PROPERTY_NAME in obj:
+                    type = obj[TYPE_PROPERTY_NAME]
                     values = [x.strip() for x in type.split(';')]
-                    layout.label(text=bone.name + " (" + values[0] + ")")
+                    label = obj.name + " (" + values[0] + ")"
+                    op = layout.operator("list_item.operator", text=label)
+                    op.object_name = obj.name
+                    op.bone_name = ''
 
 
 ot_current_bone = None
@@ -446,17 +527,19 @@ def check_active_bone():
         deserialize_action(props, bone)
         deserialize_animation(props, bone)
         props.use_control = TYPE_PROPERTY_NAME in bone or ACTION_PROPERTY_NAME in bone or ANIMATION_PROPERTY_NAME in bone
+        if not props.use_control:
+            props.clear()
         ot_current_bone = bone
     return 0.3
 
 
-classes = (OtControlElementSettings, OtControlElementPanel, OtControlElementListPanel)
+classes = (OtControlElementProperties, OtControlElementPanelBone, OtControlElementPanelObject, OtListItemOperator, OtControlElementListPanel)
 
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.Scene.ot_control_element_prop = bpy.props.PointerProperty(type=OtControlElementSettings)
+    bpy.types.Scene.ot_control_element_prop = bpy.props.PointerProperty(type=OtControlElementProperties)
 
     bpy.app.timers.register(check_active_bone, first_interval=0, persistent=True)
 
