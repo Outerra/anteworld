@@ -158,7 +158,7 @@ function engine(start)
 		
 		//play_sound() is used to play sound once (first parameter is emitter (source ID) and second parameter is sound (sound ID))
 		this.snd.play_sound(SndEmit.SndEmitExhaust, Sounds.Starter);
-		//enqueue_loop() is used to play sound in loop (first parameter is emitter (source ID) and second parameter is sound (sound ID)). This will be played after the previous sound ends
+		//In this case enqueue_loop() is used to play sound in loop after the previous sound ends (first parameter is emitter (source ID) and second parameter is sound (sound ID))
 		this.snd.enqueue_loop(SndEmit.SndEmitExhaust, Sounds.EngineON);
 	}
 	else 
