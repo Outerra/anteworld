@@ -1,0 +1,12 @@
+{
+	"obj" : "Dominad",
+	"matlib" : "Dominad",
+	"physics" : "jsbsim/DA40-NG",
+	"script" : "DA40-NG.js",
+	"description" : "",
+	"parameters" : "",
+	"parts" : "",
+	"tags" : "",
+	"variants" : [],
+	"fdm_root_dir" : "./FDM/",
+}
