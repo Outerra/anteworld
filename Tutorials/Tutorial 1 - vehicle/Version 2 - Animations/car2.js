@@ -1,18 +1,12 @@
 //*****Version 2 - Animations*****
 
-var Wheels = {
-    FLwheel : 0,	
-    FRwheel : 1,	
-	RLwheel : 2,	
-    RRwheel : 3		 
-}
-
 //Declare additional global variables
 var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor;
 var SpeedGaugeMin = 10.0;
 var RadPerKmh = 0.018325957;
 
-var EngineForce = 15000.0;
+var FLwheel, FRwheel, RLwheel, RRwheel, Started;
+var EngineForce = 25000.0;
 var BrakeForce = 5000.0;
 var MaxKmh = 200;
 var ForceLoss = EngineForce / (0.2*MaxKmh + 1);
@@ -30,10 +24,10 @@ function init_chassis()
 		grip: 1,
 	};
 	
-	Wheels.FLwheel = this.add_wheel('wheel_l0', wheelparam); 
-	Wheels.FRwheel = this.add_wheel('wheel_r0', wheelparam); 
-	Wheels.RLwheel = this.add_wheel('wheel_l1', wheelparam); 
-	Wheels.RRwheel = this.add_wheel('wheel_r1', wheelparam);
+	FLwheel = this.add_wheel('wheel_l0', wheelparam); 
+	FRwheel = this.add_wheel('wheel_r0', wheelparam); 
+	RLwheel = this.add_wheel('wheel_l1', wheelparam); 
+	RRwheel = this.add_wheel('wheel_r1', wheelparam);
 	
 	//get_geomob() is used to access instances geometry (with this you can get joints/bones), takes as parameter ID of geometry object (default 0)
 	var body = this.get_geomob(0);
@@ -46,6 +40,7 @@ function init_chassis()
 	DriverDoor = body.get_joint('door_l0');				//Driver's door
 	
 	this.register_event("car/engine/reverse", ReverseAction); 
+	this.register_event("car/engine/on", EngineAction);
 	
 	//Another way to use action handlers, is to directly write the definition, instead of calling another function
 	//Declare additional action handler to open/close driver's door (when 'O' is pressed)
@@ -72,27 +67,21 @@ function init_vehicle()
 	//Initialize geomob variable
 	this.geom = this.get_geomob(0);
 	
+	Started = 0;
 	this.engdir = 1;
-	this.started = 0;
   	this.set_fps_camera_pos({x:-0.4, y:0.0, z:1.2});
-}
-
-function engine(start)
-{
-	if(start) 
-	{
-		this.started=1;
-	}
-	else 
-	{
-		this.started=0;
-	}
 }
 
 function ReverseAction(v)
 {
 	this.engdir = this.engdir>=0 ? -1 : 1;
 	this.fade(this.engdir>0 ? "forward" : "reverse");
+}
+
+function EngineAction()
+{
+	Started = Started == 0 ? 1 : 0;
+	this.fade(Started == 1  ? "Engine ON" : "Engine OFF");
 }
 
 function update_frame(dt, engine, brake, steering, parking)
@@ -111,6 +100,9 @@ function update_frame(dt, engine, brake, steering, parking)
 	this.geom.move_joint_orig(AccelPedal, accelax)
 	
 	var kmh = Math.abs(this.speed()*3.6);
+	
+	if (Started == 1)
+	{
 	var redux = this.engdir>=0 ? 0.2 : 0.6;
 	engine = EngineForce*Math.abs(engine);
 	var force = (this.engdir>=0) == (kmh>=0)
@@ -119,12 +111,10 @@ function update_frame(dt, engine, brake, steering, parking)
 	force -= ForceLoss;
 	force = Math.max(0.0, Math.min(force, engine));
 	engine = force * this.engdir;
-	
-	if(this.started>0) 
-	{
-		this.wheel_force(Wheels.FLwheel, engine);
-		this.wheel_force(Wheels.FRwheel, engine);
 	}
+	
+	this.wheel_force(FLwheel, engine);
+	this.wheel_force(FRwheel, engine);
 	
 	//Rotate speed gauge
 	if(kmh > SpeedGaugeMin)
@@ -132,14 +122,15 @@ function update_frame(dt, engine, brake, steering, parking)
         this.geom.rotate_joint_orig(SpeedGauge, (kmh - SpeedGaugeMin) * RadPerKmh, {x:0,y:1,z:0});    
     }
 	
-	steering *= 0.6;
-	this.steer(Wheels.FLwheel, steering);	//front left wheel
-	this.steer(Wheels.FRwheel, steering);	//front right wheel
+	steering *= 0.3;
+	this.steer(FLwheel, steering);	//front left wheel
+	this.steer(FRwheel, steering);	//front right wheel
 
 	//Rotate steering wheel (first prameter is bone/joint you want to rotate, second parameter is the rotation angle and third parameter (must be in {} brackets) is the axis (around which you want to rotate, in this case you rotate around Z axis) and the direction of rotation (-1 or 1))
-	this.geom.rotate_joint_orig(SteerWheel, 8*steering, {z:1});
+	this.geom.rotate_joint_orig(SteerWheel, 10.5*steering, {z:1});
 
 	brake *= BrakeForce; 
+	brake += 200;
 	this.wheel_brake(-1, brake);
 	
 	//Function used for animating wheels
