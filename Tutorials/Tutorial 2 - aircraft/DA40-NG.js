@@ -1,23 +1,14 @@
+//Declare global variables
 var Propeller, WheelFront, WheelRight, WheelLeft, ElevatorRight, ElevatorLeft, Rudder, AileronRight, AileronLeft, PropBlur;
+
+//Declare sound variables
+var SndRumble, SndEngInn, SndEngOut, SndPropInn, SndPropOut;
+
+//Declare sound emitter variables 
+var SrcEmitExt, SrcEmitInt, SrcEmitRumble;
 
 //Used for joint rotation
 var PI = 3.14159265358979323846;
-
-//Declare sound variables in enum, which will be represented as numbers (this is required, because some functions take integer parameters (play_sound, play_loop, is_looping etc.)).
-var Snds = {
-    SndRumble : 0,	
-    SndEngInn : 1,		
-	SndEngOut : 2,
-	SndPropInn : 3,
-	SndPropOut : 4,
-}
-
-//Declare sound emitter variable in enum, which will be represented as numbers (this is required, because some functions take integer parameters (play_sound, enqueue_loop, set_pitch etc.))
-var SndEmit = {
-	SrcEmitExt : 0,
-	SrcEmitInt : 1,
-	SrcEmitRumble : 2,
-}
 
 //function used to clamp pitch and gain values.
 function Clamp(val, min, max) 
@@ -52,27 +43,27 @@ function init_chassis()
 	
 	//Load sounds
   	//Engine rumble - in this case it's used for the outside aounds and also the inside
-    Snds.SndRumble = this.load_sound("sounds/engine/engn1.ogg");
+    SndRumble = this.load_sound("sounds/engine/engn1.ogg");
 	
 	//Interior sounds - can be heard from inside the plane
     //Engine
-	Snds.SndEngOut = this.load_sound("sounds/engine/engn1_out.ogg");
+	SndEngOut = this.load_sound("sounds/engine/engn1_out.ogg");
 	//Propeller
-	Snds.SndPropOut = this.load_sound("sounds/engine/prop1_out.ogg");
+	SndPropOut = this.load_sound("sounds/engine/prop1_out.ogg");
 
 	//Exterior sounds - can be heard from outside the plane 
     //Engine
-	Snds.SndEngInn = this.load_sound("sounds/engine/engn1_inn.ogg"); 
+	SndEngInn = this.load_sound("sounds/engine/engn1_inn.ogg"); 
 	//Propeller
-	Snds.SndPropInn = this.load_sound("sounds/engine/prop1_inn.ogg");
+	SndPropInn = this.load_sound("sounds/engine/prop1_inn.ogg");
 	
 	//Add sound emitters
 	//For engine rumbling sound
-    SndEmit.SrcEmitRumble = this.add_sound_emitter_id(Propeller, 0, 5.0);
+    SrcEmitRumble = this.add_sound_emitter_id(Propeller, 0, 5.0);
 	//For interior sounds
-	SndEmit.SrcEmitInt = this.add_sound_emitter_id(Propeller, 0, 1.2);
+	SrcEmitInt = this.add_sound_emitter_id(Propeller, 0, 1.2);
 	//For exterior sounds 
-	SndEmit.SrcEmitExt = this.add_sound_emitter_id(Propeller, 0, 3.0);
+	SrcEmitExt = this.add_sound_emitter_id(Propeller, 0, 3.0);
 }
 
 //Function initialize() is used to define per-instance parameters (similarly how vehicles use init_vehicle())
@@ -166,69 +157,68 @@ function update_frame(dt)
 		if (this.get_camera_mode() == 0 ) 
 		{	
 			//Turn off the exterior sounds, when camera is inside the plane
-			this.snd.set_gain (Snds.SndEngOut, 0);
-			this.snd.set_gain (Snds.SndPropOut, 0);
+			this.snd.set_gain (SndEngOut, 0);
+			this.snd.set_gain (SndPropOut, 0);
 			
-			if(!this.snd.is_playing(SndEmit.SrcEmitInt)) 
+			if(!this.snd.is_playing(SrcEmitInt)) 
 			{
 				//Play interior engine sound in a loop
-				this.snd.play_loop(SndEmit.SrcEmitInt, Snds.SndEngInn);
+				this.snd.play_loop(SrcEmitInt, SndEngInn);
 				//Play interior propeller sound in a loop 
-				this.snd.play_loop(SndEmit.SrcEmitInt, Snds.SndPropInn);
+				this.snd.play_loop(SrcEmitInt, SndPropInn);
 				//Play rumble sound in a loop
-				this.snd.play_loop(SndEmit.SrcEmitRumble, Snds.Rumble);
+				this.snd.play_loop(SrcEmitRumble, SndRumble);
 			}
 			
 			//Pitch and gain are set to custom values, feel free to modify them to your liking
 			//Set pitch for interior emitter and clamp it between 0 and 5
-			this.snd.set_pitch(SndEmit.SrcEmitInt, Clamp(eng_rpm/1400.0, 0.0, 5.0));
+			this.snd.set_pitch(SrcEmitInt, Clamp(eng_rpm/1400.0, 0.0, 5.0));
 			//Set gain for interior engine sound and clamp it between 0 and 1
-			this.snd.set_gain(Snds.SndEngInn, Clamp(eng_rpm/1500.0, 0.0, 1.0));
+			this.snd.set_gain(SndEngInn, Clamp(eng_rpm/1500.0, 0.0, 1.0));
 			
 			//Set pitch for rumble emitter and clamp it between 0 and 10
-			this.snd.set_pitch(SndEmit.SrcEmitRumble, Clamp((eng_rpm)/ 1500.0, 0.0, 10.0));
+			this.snd.set_pitch(SrcEmitRumble, Clamp((eng_rpm)/ 1500.0, 0.0, 10.0));
 			//Set gain for rumbling sound and clamp it between 0 and 1
-			this.snd.set_gain (Snds.Rumble, Clamp(eng_rpm / 2000.0, 0.0, 1.0));
+			this.snd.set_gain (SndRumble, Clamp(eng_rpm / 2000.0, 0.0, 1.0));
         }
 		//Exterior
 		else 
 		{
 			//Turn off the interior sounds, when camera is outside the plane
-			this.snd.set_gain (Snds.SndEngInn, 0);
-			this.snd.set_gain (Snds.SndPropInn, 0);
+			this.snd.set_gain (SndEngInn, 0);
+			this.snd.set_gain (SndPropInn, 0);
 			
-			if(!this.snd.is_playing(SndEmit.SrcEmitExt)) 
+			if(!this.snd.is_playing(SrcEmitExt)) 
 			{
 				//Play exterior engine sound in a loop
-				this.snd.play_loop(SndEmit.SrcEmitExt, Snds.SndEngOut);
+				this.snd.play_loop(SrcEmitExt, SndEngOut);
 				//Play exterior propeller sound in a loop
-				this.snd.play_loop(SndEmit.SrcEmitExt, Snds.SndPropOut);
+				this.snd.play_loop(SrcEmitExt, SndPropOut);
 				//Play rumble sound in a loop
-				this.snd.play_loop(SndEmit.SrcEmitRumble, Snds.Rumble);
+				this.snd.play_loop(SrcEmitRumble, SndRumble);
 			}
 			
 			//Set pitch for exterior emitter and clamp it between 0 and 5
-			this.snd.set_pitch(SndEmit.SrcEmitExt, Clamp(eng_rpm/1300.0, 0.0, 5.0));
+			this.snd.set_pitch(SrcEmitExt, Clamp(eng_rpm/1300.0, 0.0, 5.0));
 			//Set gain for exterior engine sound and clamp it between 0 and 1
-			this.snd.set_gain (Snds.SndEngOut, Clamp(eng_rpm/1500.0, 0.0, 1.0));
+			this.snd.set_gain (SndEngOut, Clamp(eng_rpm/1500.0, 0.0, 1.0));
 
 			//Set pitch for rumble emitter and clamp it between 0 and 10
-			this.snd.set_pitch(SndEmit.SrcEmitRumble, Clamp((eng_rpm)/ 1300.0, 0.0, 10.0));
+			this.snd.set_pitch(SrcEmitRumble, Clamp((eng_rpm)/ 1300.0, 0.0, 10.0));
 			//Set gain for rumbling sound and clamp it between 0 and 1
-			this.snd.set_gain (Snds.Rumble, Clamp(eng_rpm / 1500.0, 0.0, 1.0));
+			this.snd.set_gain (SndRumble, Clamp(eng_rpm / 1500.0, 0.0, 1.0));
 		}
 	}
 	else 
 	{
 		//Stop all sounds, when engine is turned off and propeller stops rotating
-		this.snd.stop(SndEmit.SrcExhaustExt);
-		this.snd.stop(SndEmit.SrcExhaustInt);
-		this.snd.stop(SndEmit.SrcEmitRumble);
-		this.snd.set_gain (Snds.SndEngOut, 0.0);
-		this.snd.set_gain (Snds.SndPropOut, 0.0);
-		this.snd.set_gain (Snds.Rumble, 0.0);
-		this.snd.set_gain (Snds.SndEngInn, 0.0);
-		this.snd.set_gain (Snds.SndPropInn, 0.0);
+		this.snd.stop(SrcEmitExt);
+		this.snd.stop(SrcEmitInt);
+		this.snd.stop(SrcEmitRumble);
+		this.snd.set_gain (SndEngOut, 0.0);
+		this.snd.set_gain (SndPropOut, 0.0);
+		this.snd.set_gain (SndRumble, 0.0);
+		this.snd.set_gain (SndEngInn, 0.0);
+		this.snd.set_gain (SndPropInn, 0.0);
     }	
 }
-
