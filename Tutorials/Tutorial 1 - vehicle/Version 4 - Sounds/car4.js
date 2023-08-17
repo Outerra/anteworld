@@ -1,29 +1,13 @@
 //*****Version 4 - Sounds*****
 
-var Wheels = {
-    FLwheel : 0,	
-    FRwheel : 1,	
-	RLwheel : 2,	
-    RRwheel : 3		 
-}
-
-//Declare sound variables in enum, which will be represented as numbers (this is required, because some functions (play_sound, enqueue_loop, is_looping etc.) take integer parameters)
-var Sounds = {
-    Starter : 0,	
-    EngineON : 1,		
-	EngineOFF : 2,		
-}
-
-//Declare sound emitter variables in enum, which will be represented as numbers (this is required, because some functions (play_sound, enqueue_loop, set_pitch etc.) take integer parameters)
-var SndEmit = {
-	SndEmitExhaust : 0
-}
+//Declare sounds and sound emmiter variables
+var SndStarter, SndEngineON, SndEngineOFF, SndEmitExhaust;
 
 var BrakeMask,RevMask,TurnLeftMask,TurnRightMask;
-var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor;
+var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor, FLwheel, FRwheel, RLwheel, RRwheel, Started;
 var SpeedGaugeMin = 10.0;
 var RadPerKmh = 0.018325957;
-var EngineForce = 15000.0;
+var EngineForce = 25000.0;
 var BrakeForce = 5000.0;
 var MaxKmh = 200;
 var ForceLoss = EngineForce / (0.2*MaxKmh + 1);
@@ -41,10 +25,10 @@ function init_chassis()
 		grip: 1,
 	};
 	
-	Wheels.FLwheel = this.add_wheel('wheel_l0', wheelparam); 
-	Wheels.FRwheel = this.add_wheel('wheel_r0', wheelparam); 
-	Wheels.RLwheel = this.add_wheel('wheel_l1', wheelparam); 
-	Wheels.RRwheel = this.add_wheel('wheel_r1', wheelparam);
+	FLwheel = this.add_wheel('wheel_l0', wheelparam); 
+	FRwheel = this.add_wheel('wheel_r0', wheelparam); 
+	RLwheel = this.add_wheel('wheel_l1', wheelparam); 
+	RRwheel = this.add_wheel('wheel_r1', wheelparam); 
 
 	var body = this.get_geomob(0);
 	SteerWheel = body.get_joint('steering_wheel');		
@@ -54,6 +38,7 @@ function init_chassis()
 	DriverDoor = body.get_joint('door_l0');	
 	
 	this.register_event("car/engine/reverse", ReverseAction); 
+	this.register_event("car/engine/on", EngineAction);
 	this.register_axis("car/controls/open", {minval:0, center:0, vel:0.6}, function(v) {
 		var doorax = {z:-1};
 		var doorangle = v * 1.5;
@@ -119,14 +104,14 @@ function init_chassis()
 
 
 	//Load sound samples (located in "sounds" folder) using load_sound() function (takes string filename (audio file name, possibly with path) as parameter)
-	//Assign them to "Sounds" enum variables, so that they can be represented as number (ID) that is later used in code
-	Sounds.Starter = this.load_sound("sounds/starter.ogg");		//will have ID 0
-	Sounds.EngineON = this.load_sound("sounds/2714_on.ogg");	//will have ID 1
-	Sounds.EngineOFF = this.load_sound("sounds/2714_off.ogg");	//will have ID 2
+	//Function load_sound() returns integer ID, which is later used in code( some functions take this ID as parameter(steer, wheel_force, wheel_brake etc.))
+	SndStarter = this.load_sound("sounds/starter.ogg");		//will have ID 0
+	SndEngineON = this.load_sound("sounds/2714_on.ogg");	//will have ID 1
+	SndEngineOFF = this.load_sound("sounds/2714_off.ogg");	//will have ID 2
 
 	//Create sound emitter that will be used by the vehicle(takes joint/bone (from which we want the sound to emit) as parameter)
-	//Assign it to enum variable, so that it can be represented as number (ID) that is later used in code
-	SndEmit.SndEmitExhaust = this.add_sound_emitter("exhaust_0_end");	//will have ID 0
+	//Function add_sound_emitter() returns integer ID, which is later used in code
+	SndEmitExhaust = this.add_sound_emitter("exhaust_0_end");	//will have ID 0
 
 	return {
 		mass: 1120.0,
@@ -142,32 +127,12 @@ function init_vehicle()
 	this.time = 0;
 	this.lturn = this.rturn = this.emer = 0;
 	this.geom = this.get_geomob(0);
+	Started = 0;
 	this.engdir = 1;
-	this.started = 0;
   	this.set_fps_camera_pos({x:-0.4, y:0.0, z:1.2});
 	
 	//this.sound() function lets us access the sounds, which we defined with load_sound() function
 	this.snd = this.sound();
-}
-
-function engine(start)
-{
-	if(start) 
-	{
-		this.started=1;
-		
-		//play_sound() is used to play sound once (first parameter is emitter (source ID) and second parameter is sound (sound ID))
-		this.snd.play_sound(SndEmit.SndEmitExhaust, Sounds.Starter);
-		//In this case enqueue_loop() is used to play sound in loop after the previous sound ends (first parameter is emitter (source ID) and second parameter is sound (sound ID))
-		this.snd.enqueue_loop(SndEmit.SndEmitExhaust, Sounds.EngineON);
-	}
-	else 
-	{
-		this.started=0;
-		
-		//Play sound with ID 2 from emitter with ID 0 once 
-		this.snd.play_sound(SndEmit.SndEmitExhaust, Sounds.EngineOFF);
-	}
 }
 
 function ReverseAction(v)
@@ -175,6 +140,25 @@ function ReverseAction(v)
 	this.engdir = this.engdir>=0 ? -1 : 1;
 	this.fade(this.engdir>0 ? "forward" : "reverse");
 	this.light_mask(RevMask, this.engdir<0);
+}
+
+function EngineAction()
+{
+	Started = Started == 0 ? 1 : 0;
+	this.fade(Started == 1  ? "Engine ON" : "Engine OFF");
+	
+	if(Started) 
+	{
+		//play_sound() is used to play sound once (first parameter is emitter (source ID) and second parameter is sound (sound ID))
+		this.snd.play_sound(SndEmitExhaust, SndStarter);
+		//In this case enqueue_loop() is used to play sound in loop after the previous sound ends (first parameter is emitter (source ID) and second parameter is sound (sound ID))
+		this.snd.enqueue_loop(SndEmitExhaust, SndEngineON);
+	}
+	else 
+	{
+		//Play sound with ID 2 from emitter with ID 0 once 
+		this.snd.play_sound(SndEmitExhaust, SndEngineOFF);
+	}
 }
 
 function update_frame(dt, engine, brake, steering, parking)
@@ -186,6 +170,9 @@ function update_frame(dt, engine, brake, steering, parking)
 	this.geom.move_joint_orig(AccelPedal, accelax)
 	
 	var kmh = this.speed()*3.6;
+	
+	if (Started == 1)
+	{
 	var redux = this.engdir>=0 ? 0.2 : 0.6;
 	engine = EngineForce*Math.abs(engine);
 	var force = (this.engdir>=0) == (kmh>=0)
@@ -194,51 +181,60 @@ function update_frame(dt, engine, brake, steering, parking)
 	force -= ForceLoss;
 	force = Math.max(0.0, Math.min(force, engine));
 	engine = force * this.engdir;
+	}
 	
 	//Start moving only when sound with ID 0 (starter sound) is not playing (without this, the car could move even while the engine is starting)
-	if(!this.snd.is_looping(Sounds.Starter))
+	//Add this code before wheel_force() functions
+	if(!this.snd.is_looping(SndStarter))
 	{
 	engine = 0;
 	}
 	
-	if(this.started>0) 
-	{
-		this.wheel_force(Wheels.FLwheel, engine);
-		this.wheel_force(Wheels.FRwheel, engine);
-	}
+	this.wheel_force(FLwheel, engine);
+	this.wheel_force(FRwheel, engine);
 	
 	if(kmh > SpeedGaugeMin)
 	{
         this.geom.rotate_joint_orig(SpeedGauge, (kmh - SpeedGaugeMin) * RadPerKmh, {x:0,y:1,z:0});    
     }
 	
-	steering *= 0.6;
-	this.steer(Wheels.FLwheel, steering);	//front left wheel
-	this.steer(Wheels.FRwheel, steering);	//front right wheel
-	this.geom.rotate_joint_orig(SteerWheel, 8*steering, {z:1});
+	steering *= 0.3;
+	this.steer(FLwheel, steering);	//front left wheel
+	this.steer(FRwheel, steering);	//front right wheel
+	this.geom.rotate_joint_orig(SteerWheel, 10.5*steering, {z:1});
+
+	this.light_mask(BrakeMask, brake>0);
 
 	brake *= BrakeForce; 
+	brake += 200;
 	this.wheel_brake(-1, brake);
 	this.animate_wheels();
 
-	this.time += dt;
-	var blt = this.time*0.85;
-	var blink = (blt - Math.floor(blt)) > 0.47 ? 1 : 0;
-	
-	this.light_mask(BrakeMask, brake>0);
-	this.light_mask(TurnLeftMask, blink&(this.lturn|this.emer));
-	this.light_mask(TurnRightMask, blink&(this.rturn|this.emer));
+	if(this.lturn || this.rturn || this.emer)
+	{
+		this.time += dt;
+		var blt = this.time*0.85;
+		var blink = (blt - Math.floor(blt)) > 0.47 ? 1 : 0;
+		
+		this.light_mask(TurnLeftMask, blink&(this.lturn|this.emer));
+		this.light_mask(TurnRightMask, blink&(this.rturn|this.emer));
+	}
+	else
+	{
+		this.light_mask(TurnLeftMask, false);
+		this.light_mask(TurnRightMask, false);
+	}
 	
 	//If engine has started, calculate and set volume pitch for emitter
-	if(this.started>0) 
+	if(Started==1) 
 	{
 		//max_rpm() function returns rpm of the fastest revolving wheel
 		var rpm = this.max_rpm();
 		var pitch = Math.abs(kmh/40) + Math.abs(rpm/200.0);
 		var g = rpm>0 ? Math.floor(pitch) : 0;
 		var f = pitch - g;
-		f += 0.5*g;
+		f += 0.5 * g;
 		//First parameter is emitter and second parameter is pitch value (this will affect all sounds emitted from this emitter)
-		this.snd.set_pitch(SndEmit.SndEmitExhaust, 0.5*f + 1.0);
+		this.snd.set_pitch(SndEmitExhaust, (0.5 * f) + 1.0);
 	}
 }
