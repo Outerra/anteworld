@@ -1,19 +1,12 @@
 //*****Version 3 - Lights*****
 
-var Wheels = {
-    FLwheel : 0,	
-    FRwheel : 1,	
-	RLwheel : 2,	
-    RRwheel : 3		
-}
-
 //Declare additional global light variables
 var BrakeMask,RevMask,TurnLeftMask,TurnRightMask;
 
-var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor;
+var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor, FLwheel, FRwheel, RLwheel, RRwheel, Started;
 var SpeedGaugeMin = 10.0;
 var RadPerKmh = 0.018325957;
-var EngineForce = 15000.0;
+var EngineForce = 25000.0;
 var BrakeForce = 5000.0;
 var MaxKmh = 200;
 var ForceLoss = EngineForce / (0.2*MaxKmh + 1);
@@ -31,10 +24,10 @@ function init_chassis()
 		grip: 1,
 	};
 	
-	Wheels.FLwheel = this.add_wheel('wheel_l0', wheelparam); 
-	Wheels.FRwheel = this.add_wheel('wheel_r0', wheelparam); 
-	Wheels.RLwheel = this.add_wheel('wheel_l1', wheelparam); 
-	Wheels.RRwheel = this.add_wheel('wheel_r1', wheelparam);
+	FLwheel = this.add_wheel('wheel_l0', wheelparam); 
+	FRwheel = this.add_wheel('wheel_r0', wheelparam); 
+	RLwheel = this.add_wheel('wheel_l1', wheelparam); 
+	RRwheel = this.add_wheel('wheel_r1', wheelparam);
 
 	var body = this.get_geomob(0);
 	SteerWheel = body.get_joint('steering_wheel');		
@@ -44,6 +37,7 @@ function init_chassis()
 	DriverDoor = body.get_joint('door_l0');				
 	
 	this.register_event("car/engine/reverse", ReverseAction); 
+	this.register_event("car/engine/on", EngineAction);
 	this.register_axis("car/controls/open", {minval:0, center:0, vel:0.6}, function(v) {
 		var doorax = {z:-1};
 		var doorangle = v * 1.5;
@@ -196,22 +190,10 @@ function init_vehicle()
 	this.lturn = this.rturn = this.emer = 0;
 	
 	this.geom = this.get_geomob(0);
+	Started = 0;
 	this.engdir = 1;
-	this.started = 0;
   	this.set_fps_camera_pos({x:-0.4, y:0.0, z:1.2});
 
-}
-
-function engine(start)
-{
-	if(start) 
-	{
-		this.started=1;
-	}
-	else 
-	{
-		this.started=0;
-	}
 }
 
 function ReverseAction(v)
@@ -223,6 +205,12 @@ function ReverseAction(v)
 	this.light_mask(RevMask, this.engdir<0);
 }
 
+function EngineAction()
+{
+	Started = Started == 0 ? 1 : 0;
+	this.fade(Started == 1  ? "Engine ON" : "Engine OFF");
+}
+
 function update_frame(dt, engine, brake, steering, parking)
 {
 	var brakeax = {x:1};
@@ -232,6 +220,9 @@ function update_frame(dt, engine, brake, steering, parking)
 	this.geom.move_joint_orig(AccelPedal, accelax)
 	
 	var kmh = this.speed()*3.6;
+	
+	if (Started == 1)
+	{
 	var redux = this.engdir>=0 ? 0.2 : 0.6;
 	engine = EngineForce*Math.abs(engine);
 	var force = (this.engdir>=0) == (kmh>=0)
@@ -240,35 +231,45 @@ function update_frame(dt, engine, brake, steering, parking)
 	force -= ForceLoss;
 	force = Math.max(0.0, Math.min(force, engine));
 	engine = force * this.engdir;
-	
-		if(this.started>0) 
-	{
-		this.wheel_force(Wheels.FLwheel, engine);
-		this.wheel_force(Wheels.FRwheel, engine);
 	}
+	
+	this.wheel_force(FLwheel, engine);
+	this.wheel_force(FRwheel, engine);
 	
 	if(kmh > SpeedGaugeMin)
 	{
         this.geom.rotate_joint_orig(SpeedGauge, (kmh - SpeedGaugeMin) * RadPerKmh, {x:0,y:1,z:0});    
     }
 	
-	steering *= 0.6;
-	this.steer(Wheels.FLwheel, steering);	//front left wheel
-	this.steer(Wheels.FRwheel, steering);	//front right wheel
-	this.geom.rotate_joint_orig(SteerWheel, 8*steering, {z:1});
+	steering *= 0.3;
+	this.steer(FLwheel, steering);	//front left wheel
+	this.steer(FRwheel, steering);	//front right wheel
+	this.geom.rotate_joint_orig(SteerWheel, 10.5*steering, {z:1});
+
+	//Apply brake light mask (BrakeMask) on brake lights, when brake value is bigger than 0 (activate brake lights)
+	//Add this before calculating brake force with rolling friction,
+	this.light_mask(BrakeMask, brake>0);
 
 	brake *= BrakeForce; 
+	//Rolling friction
+	brake += 200;
 	this.wheel_brake(-1, brake);
 	this.animate_wheels();
 
-	//Calculate blinking time for turn signal lights
-	this.time += dt;
-	var blt = this.time*0.85;
-	var blink = (blt - Math.floor(blt)) > 0.47 ? 1 : 0;
-	
-	//Apply brake light mask (BrakeMask) on brake lights, when brake value is bigger than 0 (activate brake lights)
-	this.light_mask(BrakeMask, brake>0);
-	//Apply light mask for turn lights, depending of which action was handled (left turn lights, right turn lights or all turn lights (emergency)), which will then turn on and off, depending on the "blink" value
-	this.light_mask(TurnLeftMask, blink&(this.lturn|this.emer));
-	this.light_mask(TurnRightMask, blink&(this.rturn|this.emer));
+	if(this.lturn || this.rturn || this.emer)
+	{
+		//Calculate blinking time for turn signal lights
+		this.time += dt;
+		var blt = this.time*0.85;
+		var blink = (blt - Math.floor(blt)) > 0.47 ? 1 : 0;
+		
+		//Apply light mask for turn lights, depending of which action was handled (left turn lights, right turn lights or all turn lights (emergency)), which will then turn on and off, depending on the "blink" value
+		this.light_mask(TurnLeftMask, blink&(this.lturn|this.emer));
+		this.light_mask(TurnRightMask, blink&(this.rturn|this.emer));
+	}
+	else
+	{
+		this.light_mask(TurnLeftMask, false);
+		this.light_mask(TurnRightMask, false);
+	}
 }
