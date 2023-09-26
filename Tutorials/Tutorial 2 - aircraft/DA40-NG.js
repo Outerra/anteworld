@@ -2,7 +2,7 @@
 var Propeller, WheelFront, WheelRight, WheelLeft, ElevatorRight, ElevatorLeft, Rudder, AileronRight, AileronLeft, PropBlur;
 
 //Declare sound variables
-var SndRumble, SndEngInn, SndEngOut, SndPropInn, SndPropOut;
+var SndRumble, SndEngInn, SndEngOut;
 
 //Declare sound emitter variables 
 var SrcEmitExt, SrcEmitInt, SrcEmitRumble;
@@ -48,14 +48,10 @@ function init_chassis()
 	//Interior sounds - can be heard from inside the plane
     //Engine
 	SndEngOut = this.load_sound("sounds/engine/engn1_out.ogg");
-	//Propeller
-	SndPropOut = this.load_sound("sounds/engine/prop1_out.ogg");
 
 	//Exterior sounds - can be heard from outside the plane 
     //Engine
 	SndEngInn = this.load_sound("sounds/engine/engn1_inn.ogg"); 
-	//Propeller
-	SndPropInn = this.load_sound("sounds/engine/prop1_inn.ogg");
 	
 	//Add sound emitters
 	//For engine rumbling sound
@@ -156,57 +152,61 @@ function update_frame(dt)
 		//Interior
 		if (this.get_camera_mode() == 0 ) 
 		{	
-			//Turn off the exterior sounds, when camera is inside the plane
-			this.snd.set_gain (SndEngOut, 0);
-			this.snd.set_gain (SndPropOut, 0);
+			//Turn off the exterior emitter, when camera is inside the plane
+			this.snd.stop(SrcEmitExt);
 			
 			if(!this.snd.is_playing(SrcEmitInt)) 
 			{
 				//Play interior engine sound in a loop
 				this.snd.play_loop(SrcEmitInt, SndEngInn);
-				//Play interior propeller sound in a loop 
-				this.snd.play_loop(SrcEmitInt, SndPropInn);
+			}
+			
+			//Pitch and gain are set to custom values, feel free to modify them to your liking
+			//Set pitch for interior emitter and clamp it between 0 and 1
+			this.snd.set_pitch(SrcEmitInt, Clamp(eng_rpm/4000.0, 0, 1));
+			//Set gain for interior emitter and clamp it between 0 and 0.6
+			this.snd.set_gain(SrcEmitInt, Clamp(eng_rpm/1000.0, 0, 0.6));
+			
+						
+			if(!this.snd.is_playing(SrcEmitRumble)) 
+			{
 				//Play rumble sound in a loop
 				this.snd.play_loop(SrcEmitRumble, SndRumble);
 			}
 			
-			//Pitch and gain are set to custom values, feel free to modify them to your liking
-			//Set pitch for interior emitter and clamp it between 0 and 5
-			this.snd.set_pitch(SrcEmitInt, Clamp(eng_rpm/1400.0, 0.0, 5.0));
-			//Set gain for interior engine sound and clamp it between 0 and 1
-			this.snd.set_gain(SndEngInn, Clamp(eng_rpm/1500.0, 0.0, 1.0));
 			
-			//Set pitch for rumble emitter and clamp it between 0 and 10
-			this.snd.set_pitch(SrcEmitRumble, Clamp((eng_rpm)/ 1500.0, 0.0, 10.0));
-			//Set gain for rumbling sound and clamp it between 0 and 1
-			this.snd.set_gain (SndRumble, Clamp(eng_rpm / 2000.0, 0.0, 1.0));
+			//Set pitch for rumble emitter and clamp it between 0 and 3
+			this.snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0.1, 3));
+			//Set gain for rumble emitter and clamp it between 0 and 1
+			this.snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/1300.0, 0.0, 1.0));
         }
 		//Exterior
 		else 
 		{
-			//Turn off the interior sounds, when camera is outside the plane
-			this.snd.set_gain (SndEngInn, 0);
-			this.snd.set_gain (SndPropInn, 0);
+			//Turn off the interior emitter, when camera is outside the plane
+			this.snd.stop (SrcEmitInt);
 			
 			if(!this.snd.is_playing(SrcEmitExt)) 
 			{
 				//Play exterior engine sound in a loop
 				this.snd.play_loop(SrcEmitExt, SndEngOut);
-				//Play exterior propeller sound in a loop
-				this.snd.play_loop(SrcEmitExt, SndPropOut);
+			}
+			
+			//Set pitch for interior emitter and clamp it between 0 and 1
+			this.snd.set_pitch(SrcEmitExt, Clamp(eng_rpm/4000.0, 0, 1));
+			//Set gain for interior emitter and clamp it between 0 and 0.6
+			this.snd.set_gain (SrcEmitExt, Clamp(eng_rpm/1000.0, 0.0, 0.6));
+			
+				if(!this.snd.is_playing(SrcEmitRumble)) 
+			{
 				//Play rumble sound in a loop
 				this.snd.play_loop(SrcEmitRumble, SndRumble);
 			}
-			
-			//Set pitch for exterior emitter and clamp it between 0 and 5
-			this.snd.set_pitch(SrcEmitExt, Clamp(eng_rpm/1300.0, 0.0, 5.0));
-			//Set gain for exterior engine sound and clamp it between 0 and 1
-			this.snd.set_gain (SndEngOut, Clamp(eng_rpm/1500.0, 0.0, 1.0));
 
-			//Set pitch for rumble emitter and clamp it between 0 and 10
-			this.snd.set_pitch(SrcEmitRumble, Clamp((eng_rpm)/ 1300.0, 0.0, 10.0));
-			//Set gain for rumbling sound and clamp it between 0 and 1
-			this.snd.set_gain (SndRumble, Clamp(eng_rpm / 1500.0, 0.0, 1.0));
+			//Set pitch for rumble emitter and clamp it between 0 and 3
+			this.snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0.1, 3));
+			//Set gain for rumble emitter and clamp it between 0 and 1
+			this.snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/1300.0, 0.0, 1.0));
 		}
 	}
 	else 
@@ -215,10 +215,5 @@ function update_frame(dt)
 		this.snd.stop(SrcEmitExt);
 		this.snd.stop(SrcEmitInt);
 		this.snd.stop(SrcEmitRumble);
-		this.snd.set_gain (SndEngOut, 0.0);
-		this.snd.set_gain (SndPropOut, 0.0);
-		this.snd.set_gain (SndRumble, 0.0);
-		this.snd.set_gain (SndEngInn, 0.0);
-		this.snd.set_gain (SndPropInn, 0.0);
     }	
 }
