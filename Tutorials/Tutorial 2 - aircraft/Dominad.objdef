@@ -6,7 +6,8 @@
 	"description" : "",
 	"parameters" : "",
 	"parts" : "",
-	"tags" : "",
+	"tags" : "airplane",
 	"variants" : [],
 	"fdm_root_dir" : "./FDM/",
+	"hidden_meshes": ["propel_blur#0@0"],
 }
