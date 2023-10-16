@@ -46,22 +46,41 @@ function init_chassis()
 	BladeTwoMesh = this.get_mesh_id('main_blade_01.001#0@0');
 	BladeThreeMesh = this.get_mesh_id('main_blade_01.002#0@0');
 	
+	//Add action handlers
+	this.register_axis("air/lights/landing_lights", {minval: 0, maxval: 1, vel: 10, center: 0 }, function(v) { this.light_mask( 0x3,v > 0); });
+   	this.register_axis("air/lights/nav_lights", {minval: 0, maxval: 1, vel: 10, center: 0 }, function(v) { this.light_mask( 0x3,v > 0, navLightOffset); });
+
+	//Add lights
+	//Landing lights
+	let lightParams = {color:{x:1,y:1,z:1}, angle:100, size:0.1, edge:0.25, intensity:5, fadeout:0.05};
+	this.add_spot_light({x:4.5, y:1.08, z:0.98}, {x:-0.1, y:1, z: 0.3}, lightParams);
+	this.add_spot_light({x:-4.5, y:1.08, z:0.98}, {x:0.1, y:1, z: 0.3}, lightParams);
+
+	//Navigation lights
+	lightParams = {color:{x:0,y:1,z:0}, size:0.035, edge:1, range:0.0001, intensity:20, fadeout:0.1};
+	let navLightOffset =
+	//Right green navigation light
+	this.add_point_light({x:5.08, y:0.18, z:1.33}, lightParams);
+	//Left red navigation light
+	lightParams.color = {x:1,y:0,z:0};
+	this.add_point_light({x:-5.08, y:0.18, z:1.33}, lightParams);
 	
+
 	//Load sounds
   	//Engine rumble - in this case it's used for the outside sounds and also the inside
-	SndRumble = this.load_sound("sounds/engine/engn1.ogg");
+   	SndRumble = this.load_sound("sounds/engine/engn1.ogg");
 	
 	//Interior sounds - can be heard from inside the plane
-        //Engine
+   	//Engine
 	SndEngOut = this.load_sound("sounds/engine/engn1_out.ogg");
 
 	//Exterior sounds - can be heard from outside the plane 
-        //Engine
+   	//Engine
 	SndEngInn = this.load_sound("sounds/engine/engn1_inn.ogg"); 
 	
 	//Add sound emitters
 	//For engine rumbling sound
-        SrcEmitRumble = this.add_sound_emitter_id(Propeller, 0, 5.0);
+   	 SrcEmitRumble = this.add_sound_emitter_id(Propeller, 0, 5.0);
 	//For interior sounds
 	SrcEmitInt = this.add_sound_emitter_id(Propeller, -1, 1.2);
 	//For exterior sounds 
@@ -117,7 +136,7 @@ function initialize()
 
 //Invoked each frame to handle the internal state of the object
 function update_frame(dt)
-{
+{	
 	//Get engine rpm from JSBSim
 	let eng_rpm = this.JSBSim['propulsion/engine[0]/engine-rpm'];
 	//Get wheel speed from JSBSim
@@ -182,11 +201,10 @@ function update_frame(dt)
 			}
 			
 			//Pitch and gain are set to custom values, feel free to modify them to your liking
-			//Set pitch for interior emitter and clamp it between 0 and 1
-			this.Snd.set_pitch(SrcEmitInt, Clamp(eng_rpm/4000.0, 0, 1));
+			//Set pitch for interior emitter and clamp it between 0 and 0.6
+			this.Snd.set_pitch(SrcEmitInt, Clamp(eng_rpm/4000.0, 0, 0.6));
 			//Set gain for interior emitter and clamp it between 0 and 0.6
-			this.Snd.set_gain(SrcEmitInt, Clamp(eng_rpm/1000.0, 0, 0.6));
-			
+			this.Snd.set_gain(SrcEmitInt, Clamp(eng_rpm/4000.0, 0, 0.6));
 						
 			if(!this.Snd.is_playing(SrcEmitRumble)) 
 			{
@@ -195,11 +213,11 @@ function update_frame(dt)
 			}
 			
 			
-			//Set pitch for rumble emitter and clamp it between 0 and 3
-			this.Snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0.1, 3));
-			//Set gain for rumble emitter and clamp it between 0 and 1
-			this.Snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/1300.0, 0.0, 1.0));
-                }
+			//Set pitch for rumble emitter and clamp it between 0 and 2
+			this.Snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0, 2.0));
+			//Set gain for rumble emitter and clamp it between 0 and 1.5
+			this.Snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/2000.0, 0.0, 1.5));
+        	}
 		//Exterior
 		else 
 		{
@@ -212,21 +230,21 @@ function update_frame(dt)
 				this.Snd.play_loop(SrcEmitExt, SndEngOut);
 			}
 			
-			//Set pitch for interior emitter and clamp it between 0 and 1
+			//Set pitch for interior emitter and clamp it between 0 and 0.6
+			this.Snd.set_pitch(SrcEmitExt, Clamp(eng_rpm/4000.0, 0, 0.6));
 			//Set gain for interior emitter and clamp it between 0 and 0.6
-			this.Snd.set_pitch(SrcEmitExt, Clamp(eng_rpm/4000.0, 0, 1));
-			this.Snd.set_gain (SrcEmitExt, Clamp(eng_rpm/1000.0, 0.0, 0.6));
+			this.Snd.set_gain (SrcEmitExt, Clamp(eng_rpm/4000.0, 0, 0.6));
 			
-				if(!this.Snd.is_playing(SrcEmitRumble)) 
+			if(!this.Snd.is_playing(SrcEmitRumble)) 
 			{
 				//Play rumble sound in a loop
 				this.Snd.play_loop(SrcEmitRumble, SndRumble);
 			}
 
-			//Set pitch for rumble emitter and clamp it between 0 and 3
-			this.Snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0.1, 3));
-			//Set gain for rumble emitter and clamp it between 0 and 1
-			this.Snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/1300.0, 0.0, 1.0));
+			//Set pitch for rumble emitter and clamp it between 0 and 2
+			this.Snd.set_pitch(SrcEmitRumble, Clamp(eng_rpm/1200.0, 0, 2.0));
+			//Set gain for rumble emitter and clamp it between 0 and 2
+			this.Snd.set_gain (SrcEmitRumble, Clamp(eng_rpm/1300.0, 0.0, 2.0));
 		}
 	}
 	else 
@@ -235,5 +253,6 @@ function update_frame(dt)
 		this.Snd.stop(SrcEmitExt);
 		this.Snd.stop(SrcEmitInt);
 		this.Snd.stop(SrcEmitRumble);
-       }	
+	}	
 }
+
