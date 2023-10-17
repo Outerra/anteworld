@@ -1,19 +1,20 @@
 //*****Version 2 - Animations*****
+// This tutorial is for adding simple animations using geomob.
 
 //Declare additional global variables
-var SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor;
-var SpeedGaugeMin = 10.0;
-var RadPerKmh = 0.018325957;
+let SteerWheel, SpeedGauge, AccelPedal, BrakePedal, DriverDoor;
+const SpeedGaugeMin = 10.0;
+const RadPerKmh = 0.018325957;
 
-var FLwheel, FRwheel, RLwheel, RRwheel, Started;
-var EngineForce = 25000.0;
-var BrakeForce = 5000.0;
-var MaxKmh = 200;
-var ForceLoss = EngineForce / (0.2*MaxKmh + 1);
+let FLwheel, FRwheel, RLwheel, RRwheel;
+const EngineForce = 25000.0;
+const BrakeForce = 5000.0;
+const MaxKmh = 200;
+const ForceLoss = EngineForce / (0.2*MaxKmh + 1);
 
 function init_chassis()
 { 
-	var wheelparam = {
+	let wheelParam = {
 		radius: 0.31515,
 		width: 0.2,
 		suspension_max: 0.1,
@@ -24,33 +25,39 @@ function init_chassis()
 		grip: 1,
 	};
 	
-	FLwheel = this.add_wheel('wheel_l0', wheelparam); 
-	FRwheel = this.add_wheel('wheel_r0', wheelparam); 
-	RLwheel = this.add_wheel('wheel_l1', wheelparam); 
-	RRwheel = this.add_wheel('wheel_r1', wheelparam);
+	FLwheel = this.add_wheel('wheel_l0', wheelParam); 
+	FRwheel = this.add_wheel('wheel_r0', wheelParam); 
+	RLwheel = this.add_wheel('wheel_l1', wheelParam); 
+	RRwheel = this.add_wheel('wheel_r1', wheelParam);
 	
-	//get_geomob() is used to access instances geometry (with this you can get joints/bones), takes as parameter ID of geometry object (default 0)
-	var body = this.get_geomob(0);
+	//get_geomob() is used to access instance geometry interface (with this you can get joints/bones IDs)
+	//parameter - ID of geometry object (default 0)
+	let body = this.get_geomob(0);
 
-	//Get joints/bones (first parameter) from geomob and assign them to variables
+	//Get joints/bones IDs from geomob interface
 	SteerWheel = body.get_joint('steering_wheel');		//Steering wheel
 	SpeedGauge = body.get_joint('dial_speed');			//Speed gauge 
 	AccelPedal = body.get_joint('pedal_accelerator');	//Accelerator pedal
 	BrakePedal = body.get_joint('pedal_brake');			//Brake pedal
 	DriverDoor = body.get_joint('door_l0');				//Driver's door
 	
-	this.register_event("car/engine/reverse", ReverseAction); 
-	this.register_event("car/engine/on", EngineAction);
+	this.register_event("vehicle/engine/reverse", ReverseAction); 
+	this.register_event("vehicle/engine/on", EngineAction);
 	
-	//Another way to use action handlers, is to directly write the definition, instead of calling another function
+	//Another way to use action handlers, is to directly write the functionality, instead of calling another function
 	//Declare additional action handler to open/close driver's door (when 'O' is pressed)
-	this.register_axis("car/controls/open", {minval:0, center:0, vel:0.6}, function(v) {
+	//In this case, use register_axis(), here you can change the opening range, speed and other parameters (more in "Version 0 - Info" or Outerra Wiki) 
+	this.register_axis("vehicle/controls/open", {minval:0, maxval: 1, center:0, vel:0.6}, function(v) {
 		//Define around which axis and in which direction the door will move
-		var doorax = {z:-1};
+		let doorAx = {z:-1};
 		//Multiplied with 1.5 to wide open door
-		var doorangle = v * 1.5;
-		//rotate_joint_orig() is used to rotate joint, first parameter is the joint you want to rotate, second parameter specifies the angle, to which it should rotate and third parameter is the rotation axis (in this case it rotates around Z axis) and the direction of rotation (-1 or 1)
-		this.geom.rotate_joint_orig(DriverDoor, doorangle, doorax);
+		let doorAngle = v * 1.5;
+		//rotate_joint_orig() is used to rotate joint by given angle and back to default position
+		//1.parameter - bone/joint ID
+		//2.parameter - vec rotation angle in radians
+		//3.parameter - rotation axis vector (must be normalized) - axis around which the bone rotates (in this case around Z axis) and the direction of rotation (-1...1)
+		this.Geom.rotate_joint_orig(DriverDoor, doorAngle, doorAx);
+		//Note: action handlers use geomob (Geom) functionality for current instance, which was initialized in init_vehicle()
 	}); 
 
 	return {
@@ -64,53 +71,55 @@ function init_chassis()
 
 function init_vehicle()
 {	
-	//Initialize geomob variable
-	this.geom = this.get_geomob(0);
+	//Get instance geometry interface, which will be used for current instance (to rotate bone, move bone, etc. )
+	this.Geom = this.get_geomob(0);
 	
-	Started = 0;
-	this.engdir = 1;
+	this.Started = 0;
+	this.EngDir = 1;
   	this.set_fps_camera_pos({x:-0.4, y:0.0, z:1.2});
 }
 
 function ReverseAction(v)
 {
-	this.engdir = this.engdir>=0 ? -1 : 1;
-	this.fade(this.engdir>0 ? "forward" : "reverse");
+	this.EngDir = this.EngDir>=0 ? -1 : 1;
+	this.fade(this.EngDir>0 ? "Forward" : "Reverse");
 }
 
 function EngineAction()
 {
-	Started = Started == 0 ? 1 : 0;
-	this.fade(Started == 1  ? "Engine ON" : "Engine OFF");
+	this.Started = this.Started === 0 ? 1 : 0;
+	this.fade(this.Started === 1  ? "Engine ON" : "Engine OFF");
 }
 
 function update_frame(dt, engine, brake, steering, parking)
 {
 	//Define additional local variables
-	var brakeax = {x:1};
+	let brakeAx = {x:1};
 	//Brake pedal rotation angle will depend on the brake value
-	var brakeangle = brake*0.4;	
+	let brakeAngle = brake*0.4;	
 	//You can also use more than one axis
-	var accelax = {y:(-engine*0.02), z:(-engine*0.02)}
+	let accelAx = {y:(-engine*0.02), z:(-engine*0.02)}
 	
 	//Rotate brake pedal
-	this.geom.rotate_joint_orig(BrakePedal, brakeangle, brakeax);
+	this.Geom.rotate_joint_orig(BrakePedal, brakeAngle, brakeAx);
 	
-	//move_joint_orig() is used to move joint, first parameter is the joint you want to rotate and second parameter is the rotation axis and direction
-	this.geom.move_joint_orig(AccelPedal, accelax)
+	//move_joint_orig() is used to move joint
+	//1.parameter - joint you want to move
+	//2.parameter - movement axis and direction
+	this.Geom.move_joint_orig(AccelPedal, accelAx)
 	
-	var kmh = Math.abs(this.speed()*3.6);
+	let kmh = Math.abs(this.speed()*3.6);
 	
-	if (Started == 1)
+	if (this.Started === 1)
 	{
-	var redux = this.engdir>=0 ? 0.2 : 0.6;
+	let redux = this.EngDir>=0 ? 0.2 : 0.6;
 	engine = EngineForce*Math.abs(engine);
-	var force = (this.engdir>=0) == (kmh>=0)
+	let force = (kmh>=0) === (this.EngDir>=0) 
 		? engine/(redux*Math.abs(kmh) + 1)
 		: engine;
 	force -= ForceLoss;
 	force = Math.max(0.0, Math.min(force, engine));
-	engine = force * this.engdir;
+	engine = force * this.EngDir;
 	}
 	
 	this.wheel_force(FLwheel, engine);
@@ -119,15 +128,18 @@ function update_frame(dt, engine, brake, steering, parking)
 	//Rotate speed gauge
 	if(kmh > SpeedGaugeMin)
 	{
-        this.geom.rotate_joint_orig(SpeedGauge, (kmh - SpeedGaugeMin) * RadPerKmh, {x:0,y:1,z:0});    
+        this.Geom.rotate_joint_orig(SpeedGauge, (kmh - SpeedGaugeMin) * RadPerKmh, {x:0,y:1,z:0});    
     }
 	
 	steering *= 0.3;
 	this.steer(FLwheel, steering);	//front left wheel
 	this.steer(FRwheel, steering);	//front right wheel
 
-	//Rotate steering wheel (first prameter is bone/joint you want to rotate, second parameter is the rotation angle and third parameter (must be in {} brackets) is the axis (around which you want to rotate, in this case you rotate around Z axis) and the direction of rotation (-1 or 1))
-	this.geom.rotate_joint_orig(SteerWheel, 10.5*steering, {z:1});
+	//Rotate steering wheel 
+	//1.prameter - bone/joint you want to rotate
+	//2.parameter - rotation angle 
+	//3.parameter (must be in {} brackets) - axis, around which you want to rotate (in this case you rotate around Z axis) and the direction of rotation (-1 or 1))
+	this.Geom.rotate_joint_orig(SteerWheel, 10.5*steering, {z:1});
 
 	brake *= BrakeForce; 
 	brake += 200;
