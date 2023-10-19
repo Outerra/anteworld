@@ -40,7 +40,7 @@ function init_chassis(param)
 	//Event handlers  are invoked on key or button press (for example a fire action)
 	//Examples:	this.register_event("air/controls/eject", function(v){...});
 	//			this.register_button("air/controls/eject", function(v){...});
-	//Note: register_button() is helper function, which internally calls register_event() on key press and also release.
+	//Note: register_button() is helper function for creating buttons, that should return to default position after releasing (without the need to use register_axis() and add "options" parameters).
 	
 	//Value handlers are receiving a tracked value which is by default in -1..1 range. If user has the action bound to a joystick axis, the handler will receive the axis position. If it's bound to keyboard or joystick buttons, the value is tracked internally depending on the binding modes and the handler configuration
 	//Example:	this.register_axis("air/heli/collective", options, function(v,dt){...});
