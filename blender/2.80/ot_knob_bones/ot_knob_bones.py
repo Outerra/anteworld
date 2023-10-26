@@ -40,11 +40,11 @@ class DEFAULT_VALUES:
     channel = 0
     
 CONTROL_TYPES_DEFAULTS = (
-    {'min' : 0, 'max' : 1, 'vel' : 1000, 'acc' : 1000, 'center' : 1000, 'positions' : 2, 'anim_type' : 'translateY', 'anim_min' : 0, 'anim_max' : 1}, #button
-    {'min' : 0, 'max' : 1, 'vel' : 1000, 'acc' : 1000, 'center' : 1000, 'positions' : 2, 'anim_type' : 'translateX', 'anim_min' : 0, 'anim_max' : 1}, #slider
-    {'min' : 0, 'max' : 1, 'vel' : 1000, 'acc' : 1000, 'center' : 1000, 'positions' : 2, 'anim_type' : 'rotateY', 'anim_min' : 0, 'anim_max' : 90}, #knob
-    {'min' : 0, 'max' : 1, 'vel' : 1000, 'acc' : 1000, 'center' : 1000, 'positions' : 2, 'anim_type' : 'rotateX', 'anim_min' : 0, 'anim_max' : 45}, #lever
-    {'min' : 0, 'max' : 1, 'vel' : 1000, 'acc' : 1000, 'center' : 1000, 'positions' : 3, 'anim_type' : 'rotateX', 'anim_min' : -15, 'anim_max' : 15}, #stick
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #button
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'translateX', 'anim_min': 0, 'anim_max': 1}, #slider
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'rotateY', 'anim_min': 0, 'anim_max': 90}, #knob
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 45}, #lever
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 3, 'anim_type': 'rotateX', 'anim_min': -15, 'anim_max': 15}, #stick
 )
     
 TYPE_PROPERTY_NAME = "ot_knob_type"
@@ -612,8 +612,11 @@ class OT_PT_control_element_panel(bpy.types.Panel):
         if context.mode == 'OBJECT':
             self.layout.label(text="This plugin is usable only in edit mode.")
             return
-        if len(context.selected_bones) != 1:
+        if len(context.selected_bones) > 1:
             self.layout.label(text="Multiple selection is not supported for now.")
+            return
+        elif len(context.selected_bones) == 0:
+            self.layout.label(text="Select bone to edit.")
             return
 
         def draw_property(layout, props, name, check_prop, check_prop_name, prop_label = None):
@@ -946,7 +949,7 @@ def register():
     #convert_all_old_properties()
     bpy.app.handlers.load_post.append(load_handler)
     bpy.types.Scene.ot_control_element_prop = bpy.props.PointerProperty(type=OT_control_element_properties)
-    bpy.app.timers.register(check_active_bone, first_interval=0)
+    bpy.app.timers.register(check_active_bone, first_interval=0, persistent=True)
     
     """bpy.msgbus.subscribe_rna(
         key=bpy.context.object.data.edit_bones.active,
