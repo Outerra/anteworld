@@ -40,7 +40,7 @@ class DEFAULT_VALUES:
     channel = 0
     
 CONTROL_TYPES_DEFAULTS = (
-    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #button
+    {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 1, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #button
     {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'translateX', 'anim_min': 0, 'anim_max': 1}, #slider
     {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'rotateY', 'anim_min': 0, 'anim_max': 90}, #knob
     {'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 45}, #lever
@@ -486,7 +486,7 @@ class OT_WM_OT_create_knob(bpy.types.Operator):
     )
     
     DEFAULTS = (
-        {'type': 'button', 'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 2, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #push_button
+        {'type': 'button', 'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 1000, 'positions': 1, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #push_button
         {'type': 'button', 'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 0, 'positions': 2, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': 1}, #latching_button
         {'type': 'button', 'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 0, 'positions': 2, 'anim_type': 'translateY', 'anim_min': 0, 'anim_max': -1}, #pull_push_button
         {'type': 'button', 'min': 0, 'max': 1, 'vel': 1000, 'acc': 1000, 'center': 0, 'positions': 2, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 10}, #rocker_switch
@@ -499,8 +499,27 @@ class OT_WM_OT_create_knob(bpy.types.Operator):
     )
     
     def on_type_change(self, context):
-        if self.type == 'slide_switch' or self.type == 'rotary_switch' or self.type == 'lever' or self.type == 'gear_stick':
-            self.positions = 3 if self.type == 'gear_stick' else 2
+        #default_idx = [i[0] for i in self.OPTIONS].index(self.type)
+        #self.positions = self.DEFAULTS[default_idx - 1]['positions']
+        
+        if self.type == 'push_button':
+            self.positions = 1
+        elif self.type == 'latching_button':
+            self.positions = 2
+        elif self.type == 'pull_push_button':
+            self.positions = 2
+        elif self.type == 'rocker_switch':
+            self.positions = 2
+        elif self.type == 'toggle_switch':
+            self.positions = 2
+        elif self.type == 'slide_switch':
+            self.positions = 2
+        elif self.type == 'rotary_switch':
+            self.positions = 2
+        elif self.type == 'lever':
+            self.positions = 2
+        elif self.type == 'gear_stick':
+            self.positions = 3
     
     object_name: bpy.props.StringProperty(name="Select object name", default="")
     bone_name: bpy.props.StringProperty(name="Select bone name", default="")
