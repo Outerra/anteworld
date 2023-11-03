@@ -21,8 +21,7 @@ function Clamp(val, min, max)
 //Invoked only when the model is first time loaded, or upon reload
 function init_chassis()
 {
-	//Get joins/bones
-	//You can use this.get_joint_id() function to get bone directly, instead of getting geomob (this.get_geomob(0)) to use get_joint() function, how it was used in previous vehicle tutorial 
+	//Get joins/bones	 
 	Propeller = this.get_joint_id('Bone_propel');
 	WheelFront = this.get_joint_id('Bone_front_wheel');
 	WheelRight = this.get_joint_id('Bone_right_wheel');
