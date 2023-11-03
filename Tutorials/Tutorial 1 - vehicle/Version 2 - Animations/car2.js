@@ -29,17 +29,14 @@ function init_chassis()
 	FRwheel = this.add_wheel('wheel_r0', wheelParam); 
 	RLwheel = this.add_wheel('wheel_l1', wheelParam); 
 	RRwheel = this.add_wheel('wheel_r1', wheelParam);
-	
-	//get_geomob() is used to access instance geometry interface (with this you can get joints/bones IDs)
-	//parameter - ID of geometry object (default 0)
-	let body = this.get_geomob(0);
 
-	//Get joints/bones IDs from geomob interface
-	SteerWheel = body.get_joint('steering_wheel');		//Steering wheel
-	SpeedGauge = body.get_joint('dial_speed');			//Speed gauge 
-	AccelPedal = body.get_joint('pedal_accelerator');	//Accelerator pedal
-	BrakePedal = body.get_joint('pedal_brake');			//Brake pedal
-	DriverDoor = body.get_joint('door_l0');				//Driver's door
+
+	//Use get_joint_id() to get joints/bones IDs
+	SteerWheel = this.get_joint_id('steering_wheel');		//Steering wheel
+	SpeedGauge = this.get_joint_id('dial_speed');			//Speed gauge 
+	AccelPedal = this.get_joint_id('pedal_accelerator');	//Accelerator pedal
+	BrakePedal = this.get_joint_id('pedal_brake');			//Brake pedal
+	DriverDoor = this.get_joint_id('door_l0');				//Driver's door
 	
 	this.register_event("vehicle/engine/reverse", ReverseAction); 
 	this.register_event("vehicle/engine/on", EngineAction);
@@ -71,7 +68,10 @@ function init_chassis()
 
 function init_vehicle()
 {	
+
 	//Get instance geometry interface, which will be used for current instance (to rotate bone, move bone, etc. )
+    //get_geomob() is used to access instance geometry interface
+	//parameter - ID of geometry object (default 0)
 	this.Geom = this.get_geomob(0);
 	
 	this.Started = 0;
@@ -149,3 +149,4 @@ function update_frame(dt, engine, brake, steering, parking)
 	this.animate_wheels();
 	//This method simplifies the animation of wheels for basic cases, without needing to animate the model via the geomob
 }
+
