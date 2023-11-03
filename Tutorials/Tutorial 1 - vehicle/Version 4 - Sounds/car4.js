@@ -31,12 +31,11 @@ function init_chassis()
 	RLwheel = this.add_wheel('wheel_l1', wheelParam); 
 	RRwheel = this.add_wheel('wheel_r1', wheelParam); 
 
-	let body = this.get_geomob(0);
-	SteerWheel = body.get_joint('steering_wheel');		
-	SpeedGauge = body.get_joint('dial_speed');							
-	AccelPedal = body.get_joint('pedal_accelerator');
-	BrakePedal = body.get_joint('pedal_brake');				
-	DriverDoor = body.get_joint('door_l0');	
+	SteerWheel = this.get_joint_id('steering_wheel');		
+	SpeedGauge = this.get_joint_id('dial_speed');							
+	AccelPedal = this.get_joint_id('pedal_accelerator');
+	BrakePedal = this.get_joint_id('pedal_brake');				
+	DriverDoor = this.get_joint_id('door_l0');	
 	
 	this.register_event("vehicle/engine/reverse", ReverseAction); 
 	this.register_event("vehicle/engine/on", EngineAction);
