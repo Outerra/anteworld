@@ -444,6 +444,47 @@ class OT_WM_OT_create_knob(bpy.types.Operator):
             self.layout.prop(self, "positions");
 
 
+# copy properties to clipboard
+class OT_WM_OT_copy_knob(bpy.types.Operator):
+    """Copy knob definition"""
+    bl_idname = "wm.copy_knob"
+    bl_label = "Copy knob"
+    
+    def execute(self, context):
+        source = context.scene.ot_control_element_prop
+        target = context.scene.ot_control_element_prop_copy
+        for prop_name in source.__annotations__.keys():
+            try:
+                setattr(target, prop_name, getattr(source, prop_name))
+            except (AttributeError, TypeError):
+                pass
+        return {'FINISHED'}
+
+# paste properties to bone
+class OT_WM_OT_paste_knob(bpy.types.Operator):
+    """Paste knob definition"""
+    bl_idname = "wm.paste_knob"
+    bl_label = "Paste knob"
+    
+    object_name: bpy.props.StringProperty(name="Select object name", default="")
+    bone_name: bpy.props.StringProperty(name="Select bone name", default="")
+    
+    @classmethod
+    def poll(cls, context):
+        return context.scene.ot_control_element_prop_copy.use_control
+    
+    def execute(self, context):
+        obj = bpy.data.objects[self.object_name];
+        if obj is None:
+            return {'CANCELLED'}
+        bone = obj.data.edit_bones[self.bone_name]
+        if bone is None:
+            return {'CANCELLED'}
+        
+        context.scene.ot_control_element_prop_copy.set_to_bone(bone)
+        context.scene.ot_control_element_prop.set_from_bone(bone)
+        return {'FINISHED'}
+
 # popup window for delete bone knob properties
 class OT_WM_OT_delete_knob(bpy.types.Operator):
     """Delete knob definition"""
@@ -514,7 +555,13 @@ class OT_PT_control_element_panel(bpy.types.Panel):
         props = context.scene.ot_control_element_prop
         
         if not props.use_control:
-            op = layout.operator(OT_WM_OT_create_knob.bl_idname, text="Initialize knob")
+            buttons_row = layout.row()
+            
+            op = buttons_row.operator(OT_WM_OT_paste_knob.bl_idname)
+            op.object_name = bpy.context.view_layer.objects.active.name
+            op.bone_name = bpy.context.view_layer.objects.active.data.edit_bones.active.name
+            
+            op = buttons_row.operator(OT_WM_OT_create_knob.bl_idname, text="Initialize knob")
             op.object_name = bpy.context.view_layer.objects.active.name
             op.bone_name = bpy.context.view_layer.objects.active.data.edit_bones.active.name
             return
@@ -549,7 +596,9 @@ class OT_PT_control_element_panel(bpy.types.Panel):
         draw_property(col, props, "anim_min", None, None, anim_min_label)
         draw_property(col, props, "anim_max", None, None, anim_max_label)
 
-        op = layout.operator(OT_WM_OT_delete_knob.bl_idname, text="Delete knob")
+        buttons_row = layout.row()
+        buttons_row.operator(OT_WM_OT_copy_knob.bl_idname)
+        op = buttons_row.operator(OT_WM_OT_delete_knob.bl_idname, text="Delete knob")
         op.object_name = bpy.context.view_layer.objects.active.name
         op.bone_name = bpy.context.view_layer.objects.active.data.edit_bones.active.name
 
@@ -665,6 +714,8 @@ class OT_PT_control_element_list_panel(bpy.types.Panel):
 classes = (
     OT_control_element_properties,
     OT_WM_OT_create_knob,
+    OT_WM_OT_copy_knob,
+    OT_WM_OT_paste_knob,
     OT_WM_OT_delete_knob,
     OT_PT_control_element_panel,
     OT_OT_list_item_convert_operator,
@@ -703,39 +754,46 @@ def convert_old_properties_bone(bone):
             bone[ACTION_NAME_PROPERTY_NAME] = values[0];
         try:
             val = float(values[1])
-            bone[ACTION_VELOCITY_PROPERTY_NAME] = val;
+            if val != 1000:
+                bone[ACTION_VELOCITY_PROPERTY_NAME] = val;
         except:
             pass
         try:
             val = float(values[2])
-            bone[ACTION_ACCELERATION_PROPERTY_NAME] = val;
+            if val != 1000:
+                bone[ACTION_ACCELERATION_PROPERTY_NAME] = val;
         except:
             pass
         try:
             val = float(values[3])
             bone[ACTION_CENTERING_PROPERTY_NAME] = val;
         except:
-            pass
+            bone[ACTION_CENTERING_PROPERTY_NAME] = 0.0
+        
         try:
             val = float(values[4])
             bone[ACTION_MIN_VALUE_PROPERTY_NAME] = val;
         except:
-            pass
+            bone[ACTION_MIN_VALUE_PROPERTY_NAME] = 0.0
+        
         try:
             val = float(values[5])
             bone[ACTION_MAX_VALUE_PROPERTY_NAME] = val;
         except:
-            pass
+            bone[ACTION_MAX_VALUE_PROPERTY_NAME] = 1.0
+        
         try:
             val = int(values[6])
             bone[ACTION_POSITIONS_PROPERTY_NAME] = val;
         except:
-            pass
+            bone[ACTION_POSITIONS_PROPERTY_NAME] = 0
+        
         try:
             val = int(values[7])
             bone[ACTION_CHANNEL_PROPERTY_NAME] = val;
         except:
             pass
+        
         bone.pop("ot_controlbone_action", None)
         
     TRANSFORM_TYPES = ('rX', 'rY', 'rZ', 'tX', 'tY', 'tZ')
@@ -747,18 +805,21 @@ def convert_old_properties_bone(bone):
             try:
                 idx = TRANSFORM_TYPES.index(values[0])
                 bone[ANIMATION_TYPE_PROPERTY_NAME] = ANIMATION_TYPES[idx][0]
-                try:
-                    val = float(values[1])
-                    bone[ANIMATION_MIN_VALUE_PROPERTY_NAME] = val;
-                except:
-                    pass
-                try:
-                    val = float(values[2])
-                    bone[ANIMATION_MAX_VALUE_PROPERTY_NAME] = val;
-                except:
-                    pass
             except:
-                pass
+                bone[ANIMATION_TYPE_PROPERTY_NAME] = 'rotateX'
+            
+            try:
+                val = float(values[1])
+                bone[ANIMATION_MIN_VALUE_PROPERTY_NAME] = val;
+            except:
+                bone[ANIMATION_MIN_VALUE_PROPERTY_NAME] = 0.0
+            
+            try:
+                val = float(values[2])
+                bone[ANIMATION_MAX_VALUE_PROPERTY_NAME] = val;
+            except:
+                bone[ANIMATION_MAX_VALUE_PROPERTY_NAME] = 10.0
+            
         bone.pop("ot_controlbone_animation", None)
         
 def convert_old_properties_object(object):
@@ -818,6 +879,7 @@ def register():
     #convert_all_old_properties()
     bpy.app.handlers.load_post.append(load_handler)
     bpy.types.Scene.ot_control_element_prop = bpy.props.PointerProperty(type=OT_control_element_properties)
+    bpy.types.Scene.ot_control_element_prop_copy = bpy.props.PointerProperty(type=OT_control_element_properties)
     bpy.app.timers.register(check_active_bone, first_interval=0, persistent=True)
     
     """bpy.msgbus.subscribe_rna(
