@@ -190,6 +190,22 @@ class OtMirrorOnOffPanel(bpy.types.Panel):
         row = col.row()
         row.operator("view3d.ot_display_mirror_modifiers_on")
         row.operator("view3d.ot_display_mirror_modifiers_off")
+        
+class OtTriangulateOnOffPanel(bpy.types.Panel):
+    bl_idname = "PANEL_PT_OtTriangulateOnOffPanel"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+    bl_label = "Triangulate on/off"
+
+    def draw(self, context):
+        layout = self.layout
+
+        col = layout.column()
+        col.alignment = 'EXPAND'
+        row = col.row()
+        row.operator("view3d.ot_display_triangulate_modifiers_on")
+        row.operator("view3d.ot_display_triangulate_modifiers_off")
 
 class OtArrayOnOffPanel(bpy.types.Panel):
     bl_idname = "PANEL_PT_OtArrayOnOffPanel"
@@ -253,6 +269,38 @@ class OtDisplayMirrorModifiersOff(bpy.types.Operator):
 
     def execute(self, context):
         mirror_modifiers_off(context)
+        return {'FINISHED'}
+        
+class OtDisplayTriangulateModifiersOn(bpy.types.Operator):
+    '''Display all triangulate modifiers'''
+    bl_idname = "view3d.ot_display_triangulate_modifiers_on"
+    bl_label = "On"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        triangulate_modifiers_on(context)
+        return {'FINISHED'}
+
+class OtDisplayTriangulateModifiersOff(bpy.types.Operator):
+    '''Hide all triangulate modifiers'''
+    bl_idname = "view3d.ot_display_triangulate_modifiers_off"
+    bl_label = "Off"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        triangulate_modifiers_off(context)
         return {'FINISHED'}
 
 class OtDisplayArrayModifiersOn(bpy.types.Operator):
@@ -429,6 +477,15 @@ class OtOtherToolsPanel(bpy.types.Panel):
       
         row = col.row()
         row.operator("view3d.ot_reparent_all")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_all_with_bone_parent")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_selected")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_selected_with_siblings")
 
 
 class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
@@ -448,7 +505,7 @@ class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
         return {'FINISHED'}     
 
 class OtOtherToolsReparentAll(bpy.types.Operator):
-    '''Reparent all objects with parent keeping the current trasform'''
+    '''Reparent all objects keeping the current transform'''
     bl_idname = "view3d.ot_reparent_all"
     bl_label = "Reparent all objects"
     bl_space_type = "VIEW_3D"
@@ -462,6 +519,56 @@ class OtOtherToolsReparentAll(bpy.types.Operator):
     def execute(self, context):
         reparent_all(context)
         return {'FINISHED'}    		
+
+class OtOtherToolsReparentAllWithBoneParent(bpy.types.Operator):
+    '''Reparent all objects with bone parent keeping the current transform'''
+    bl_idname = "view3d.ot_reparent_all_with_bone_parent"
+    bl_label = "Reparent all objects with bone parent"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_all_bones(context)
+        return {'FINISHED'}    		
+
+        
+class OtOtherToolsReparentSelected(bpy.types.Operator):
+    '''Reparent selected objects keeping the current transform'''
+    bl_idname = "view3d.ot_reparent_selected"
+    bl_label = "Reparent selected objects"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_selected(context)
+        return {'FINISHED'}    		
+
+class OtOtherToolsReparentSelectedWithSiblings(bpy.types.Operator):
+    '''Reparent selected objects and their siblings keeping the current transform'''
+    bl_idname = "view3d.ot_reparent_selected_with_siblings"
+    bl_label = "Reparent selected objects with siblings"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_selected_with_siblings(context)
+        return {'FINISHED'}    		
+
 
 '''    
 ///    
@@ -729,6 +836,46 @@ def mirror_modifiers_off(context):
         for o in sel:
             for m in o.modifiers:
                 if m.type == 'MIRROR':
+                    m.show_render = False
+                    m.show_viewport = False
+                    m.show_in_editmode = False
+                    m.show_on_cage = False
+                    
+def triangulate_modifiers_on(context):
+    sel = bpy.context.selected_objects 
+
+    if not(sel):
+        for o in bpy.data.objects:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = True
+                    m.show_viewport = True
+                    m.show_in_editmode = True
+                    m.show_on_cage = True
+    else:
+        for o in sel:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = True
+                    m.show_viewport = True
+                    m.show_in_editmode = True
+                    m.show_on_cage = True
+
+def triangulate_modifiers_off(context):
+    sel = bpy.context.selected_objects 
+
+    if not(sel):
+        for o in bpy.data.objects:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
+                    m.show_render = False
+                    m.show_viewport = False
+                    m.show_in_editmode = False
+                    m.show_on_cage = False
+    else:
+        for o in sel:
+            for m in o.modifiers:
+                if m.type == 'TRIANGULATE':
                     m.show_render = False
                     m.show_viewport = False
                     m.show_in_editmode = False
@@ -1213,19 +1360,61 @@ def save_selected_obj_names(context):
             f.write("%s\n" % on)
 			
 ##########################################################################################
+def reparent_selected(context):
+    selected_objects = []
+    for o in bpy.context.selected_objects:
+        for ovl in bpy.context.view_layer.objects:
+            if o.name == ovl.name:
+                selected_objects.append(ovl)
+                break
+                
+    reparent_selected_internal(context, selected_objects)
+    
+##########################################################################################
 			
 def reparent_all(context):
+    reparent_selected_internal(context, bpy.context.view_layer.objects)
+
+##########################################################################################
+    
+def reparent_all_bones(context):
+    selected_objects = []
+    for o in bpy.context.view_layer.objects:
+        if o.parent_bone != '':
+            selected_objects.append(o)
+    
+    reparent_selected_internal(context,selected_objects)
+
+##########################################################################################
+
+def reparent_selected_with_siblings(context):
+    selected_objects = []
+    parent_names = set()
+    
+    for o in context.selected_objects:
+        if o.parent_bone != '':
+            parent_names.add(o.parent_bone)
+            
+    for o in bpy.context.view_layer.objects:
+        if o.parent_bone in parent_names:
+            selected_objects.append(o)
+            
+    reparent_selected_internal(context,selected_objects)
+
+##########################################################################################
+
+def reparent_selected_internal(context, selected):
     parents = {}
     parent_bones = {}
     
-    for o in bpy.data.objects:
+    for o in selected:
         parents[o.name] = o.parent
         parent_bones[o.name] = o.parent_bone
         bpy.ops.object.select_all(action='DESELECT')
         o.select_set(True)
         bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
     
-    for o in bpy.data.objects:
+    for o in selected:
         bpy.ops.object.select_all(action='DESELECT')
         parent = parents[o.name]
         if parent:
@@ -1248,7 +1437,6 @@ def reparent_all(context):
     
     bpy.ops.object.select_all(action='DESELECT')
 
-##########################################################################################
 
 classes = (OT_UL_OtVtxGroupUI,
     OtRemoveSelectedVertexGroup,
@@ -1258,6 +1446,8 @@ classes = (OT_UL_OtVtxGroupUI,
     OtSelectGroupFaces,
     OtDisplayMirrorModifiersOn,
     OtDisplayMirrorModifiersOff,
+    OtDisplayTriangulateModifiersOn,
+    OtDisplayTriangulateModifiersOff,
     OtDisplayArrayModifiersOn,
     OtDisplayArrayModifiersOff,
     OtDisplaySolidifyModifiersOn,
@@ -1266,8 +1456,12 @@ classes = (OT_UL_OtVtxGroupUI,
     OtAddLodCurveProperties,
     OtOtherToolsSaveSelectedObjectNames,
     OtOtherToolsReparentAll,
+    OtOtherToolsReparentAllWithBoneParent,
+    OtOtherToolsReparentSelected,
+    OtOtherToolsReparentSelectedWithSiblings,
     OtAddCollisionMeshProperties,
     OtMirrorOnOffPanel,
+    OtTriangulateOnOffPanel,
     OtArrayOnOffPanel,
     OtSolidifyOnOffPanel,
     OtVertexGroupsPanel,
