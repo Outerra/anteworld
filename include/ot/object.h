@@ -34,163 +34,123 @@ public:
 
     // --- interface methods ---
 
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
     //@return type of the underlying object
     virtual ot::objcat type() const = 0;
-
     //@return unique object id
     virtual uint id() const = 0;
-
     
     virtual void* get_custom_data() const = 0;
-
     virtual void set_custom_data( void* p ) = 0;
-
     virtual uint get_editor_id() const = 0;
-
     virtual void set_editor_id( uint id ) = 0;
-
     virtual pkg::geomob* get_pkg_geomob() const = 0;
-
     //@return object path (package url)
     virtual coid::token get_objurl() const = 0;
-
     
     virtual bool get_objdef_info( ifc_out ot::pkginfo::objdef& info ) const = 0;
-
     //@return ECEF world position
-    virtual double3 get_pos() const = 0;
-
+    virtual const double3& get_pos() const = 0;
     ///Set world position
     //@param commit if false, do not update internal info yet - used for mouse drag
     virtual void set_pos( const double3& pos, bool commit = true ) = 0;
-
     //@return object rotation from the reference frame (-z forward, +y up)
-    virtual quat get_rot() const = 0;
-
+    virtual const quat& get_rot() const = 0;
     ///Set object rotation from the reference frame (-z forward, +y up)
     virtual void set_rot( const quat& rot ) = 0;
-
     ///Set position and rotation
     virtual void set_pos_rot( const double3& pos, const quat& rot ) = 0;
-
     ///Get full positional data (with velocities)
     //@return 0 if object not ready (no data returned), >0 if ready and active, <0 if sleeping
-    virtual int get_positional_data( ot::dynamic_pos& data ) const = 0;
-
+    virtual int get_positional_data( ifc_out ot::dynamic_pos& data ) const = 0;
     ///Set full positional data (with velocities)
     //@return 0 if object not ready and the position could not be set, else ok
     virtual int set_positional_data( const ot::dynamic_pos& data ) = 0;
-
     ///Set model space position for FPS camera
     virtual void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable ) = 0;
-
     ///Set model space rotation frame
     //@param rot model space rotation
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
     //@param use bone rotation if true, bone rotation is applied
     virtual void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation ) = 0;
-
     ///Set FOV to chassis fps preset and also to current camera if vehicle is entered and fpc camera is active
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
     virtual void set_fps_camera_fov( float hfov, float vfov = 0 ) = 0;
-
     //@return current FPS camera position
     //@note same value for given class (chassis) of vehicles
     virtual float3 get_fps_camera_pos() const = 0;
-
     //@return current FPS camera rotation in model space
     //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
     //@note same value for given class (chassis) of vehicles
     virtual quat get_fps_camera_rot( bool base = false ) const = 0;
-
     ///Get FPS camera preset FOV for this chassis
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
     virtual float2 get_fps_camera_fov() const = 0;
-
     ///Get heading/pitch/roll angles of the object in radians
     virtual float3 heading_pitch_roll() const = 0;
-
     //@param id 0 the main body
     virtual iref<ot::geomob> get_geomob( int id ) = 0;
-
     ///Enter the vehicle with preferred camera mode
     //@param camode camera mode to enter
     //@param bindio controls binding mode
     //@return current camera mode
     virtual ot::ECameraMode enter( ot::ECameraMode camode = ot::CamPrevious, ot::EControlsBinding bindio = ot::BindControls ) = 0;
-
     ///Return camera control to UFO controller
     virtual void exit() = 0;
-
     ///Fetch input controls data captured when vehicle was entered with ot::BindCapture
     //@param buf captured input controls data
     //@param append true if data should be appended into the buffer, false for swap/set
     //@note performs a buffer swap with internal controls buffer, keep using the same buffer to avoid unnecessary allocations
     virtual void fetch_controls( ifc_out coid::dynarray32<int32>& buf, bool append ) = 0;
-
     ///Apply input controls data
     //@param cmd input command array pointer returned from fetch_controls
     //@param ncmds number of commands in the array
     virtual void apply_controls( const int32* cmd, uint ncmds ) = 0;
-
     ///Pause/unpause simulation
     virtual void pause( bool p ) = 0;
-
     ///Remove from the scene
     virtual void remove_from_scene() = 0;
-
     /// show/hide whole geom object
     virtual void set_visible( bool visible ) = 0;
-
     //@return true if the object is visible
     virtual bool is_visible() const = 0;
-
     //@return true if the geom is fully loaded
     virtual bool is_ready() const = 0;
-
     //@return true if the object is persistent in the world
     virtual bool is_persistent() const = 0;
-
     //@return true if script loading failed and object can't get into the ready state
     virtual bool is_script_error() const = 0;
-
     //@return true if update_frame is enabled
     virtual bool is_script_enabled() const = 0;
-
     ///Enable/disable invocation of script update_frame
     virtual void enable_script( bool en ) = 0;
-
     ///Update object in cache, change to permanent if necessary (only effective on static objects)
     virtual void commit() = 0;
-
     ///Set collision group and mask
     virtual void set_collision_group( uint group, uint mask ) = 0;
-
     ///Get collision group and mask
     //@param mask optional mask value
     //@return collision group id
     virtual uint get_collision_group( ifc_out uint* mask ) const = 0;
-
     ///Apply extra force
     //@param mpos model-space postion to act on
     //@param force model or world-space force vector
     //@param worldspace true for world-space, false for model-space force vector
     virtual void extra_force( const float3& mpos, const float3& force, bool worldspace = false ) = 0;
-
     ///Apply extra force impulse (force * dt)
     //@param mpos model-space postion to act on
     //@param impulse model or world-space force impulse vector
     //@param worldspace true for world-space, false for model-space force vector
     virtual void extra_impulse( const float3& mpos, const float3& impulse, bool worldspace = false ) = 0;
-
     //@return current offset from model pivot to center of mass
     virtual float3 com_offset() const = 0;
-
     //@return the underlying physics collision object, if any
     virtual btCollisionObject* collision_object() const = 0;
-
+#pragma warning(pop)
     // --- creators ---
 
     static iref<object> get( const btCollisionObject* co );
@@ -198,7 +158,7 @@ public:
     // --- internal helpers ---
 
     ///Interface revision hash
-    static const int HASHID = 3076909281u;
+    static const int HASHID = 3119845835u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
@@ -232,7 +192,12 @@ public:
         }
     }
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -271,7 +236,7 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::object"_T;
-        tmp << "@client-3076909281"_T << '.' << type;
+        tmp << "@client-3119845835"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -288,14 +253,14 @@ inline iref<object> object::get(const btCollisionObject* co)
     typedef iref<object> (*fn_creator)(const btCollisionObject*);
 
     static fn_creator create = 0;
-    static constexpr coid::token ifckey = "ot::object.get@3076909281.ifc"_T;
+    static constexpr coid::token ifckey = "ot::object.get@3119845835.ifc"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get"_T, "ot::object.get"_T, "@3076909281"_T);
+        log_mismatch("get"_T, "ot::object.get"_T, "@3119845835"_T);
         return 0;
     }
 

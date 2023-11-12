@@ -260,7 +260,7 @@ struct token
     }
 
     friend bool operator == (const char* sz, const token& tok) {
-        return tok == sz;
+        return tok.cmpeqz(sz);
     }
 
     bool operator == (char c) const {
@@ -276,7 +276,7 @@ struct token
     }
 
     friend bool operator != (const char* sz, const token& tok) {
-        return tok == sz;
+        return !tok.cmpeqz(sz);
     }
 
     bool operator != (char c) const {
@@ -337,6 +337,14 @@ struct token
     bool cmpeqc(const token& str, bool casecmp) const
     {
         return casecmp ? cmpeq(str) : cmpeqi(str);
+    }
+
+    bool cmpeqz(const char* sz) const
+    {
+        uints n = lens();
+        if (strncmp(ptr(), sz, n) == 0 && sz[n] == 0)
+            return true;
+        return false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -696,12 +704,12 @@ struct token
 
     ///Flags for cut_xxx methods concerning the treating of separator
     enum ESeparatorTreat {
-        fKEEP_SEPARATOR = 0,    //< do not remove the separator if found
-        fREMOVE_SEPARATOR = 1,    //< remove the separator from source token after the cutting
-        fREMOVE_ALL_SEPARATORS = 3,    //< remove all continuous separators from the source token
-        fRETURN_SEPARATOR = 4,    //< if neither fREMOVE_SEPARATOR nor fREMOVE_ALL_SEPARATORS is set, return the separator with the cut token, otherwise keep with the source
-        fON_FAIL_RETURN_EMPTY = 8,    //< if the separator is not found, return an empty token. If not set, whole source token is cut and returned.
-        fSWAP = 16,   //< swap resulting source and destination tokens. Note fRETURN_SEPARATOR and fON_FAIL_RETURN_EMPTY flags concern the actual returned value, i.e. after swap.
+        fKEEP_SEPARATOR         = 0,    //< do not remove the separator if found
+        fREMOVE_SEPARATOR       = 1,    //< remove the separator from source token after the cutting
+        fREMOVE_ALL_SEPARATORS  = 3,    //< remove all continuous separators from the source token
+        fRETURN_SEPARATOR       = 4,    //< if neither fREMOVE_SEPARATOR nor fREMOVE_ALL_SEPARATORS is set, return the separator with the cut token, otherwise keep with the source
+        fON_FAIL_RETURN_EMPTY   = 8,    //< if the separator is not found, return an empty token. If not set, whole source token is cut and returned.
+        fSWAP                   = 16,   //< swap resulting source and destination tokens. Note fRETURN_SEPARATOR and fON_FAIL_RETURN_EMPTY flags concern the actual returned value, i.e. after swap.
     };
 
     ///Behavior of the cut operation. Constructed using ESeparatorTreat flags or-ed.
@@ -764,32 +772,32 @@ struct token
 
     //@{ Most used traits
     ///Keep the separator with the source string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_keep_sep_with_source() {
+    static constexpr cut_trait cut_trait_keep_sep_with_source_default_full() {
         return cut_trait(fKEEP_SEPARATOR);
     }
 
     ///Return the separator with the returned string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_keep_sep_with_returned() {
+    static constexpr cut_trait cut_trait_keep_sep_with_returned_default_full() {
         return cut_trait(fRETURN_SEPARATOR);
     }
 
     ///Keep the separator with the source string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_keep_sep() {
+    static constexpr cut_trait cut_trait_keep_sep_default_full() {
         return cut_trait(fKEEP_SEPARATOR);
     }
 
     ///Return the separator with the returned string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_return_with_sep() {
+    static constexpr cut_trait cut_trait_return_with_sep_default_full() {
         return cut_trait(fRETURN_SEPARATOR);
     }
 
     ///Remove the separator from both the source and the returned string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_remove_sep() {
+    static constexpr cut_trait cut_trait_remove_sep_default_full() {
         return cut_trait(fREMOVE_SEPARATOR);
     }
 
     ///Remove all contiguous separators from both the source and the returned string, return the whole string if no separator found
-    static constexpr cut_trait cut_trait_remove_all() {
+    static constexpr cut_trait cut_trait_remove_all_default_full() {
         return cut_trait(fREMOVE_ALL_SEPARATORS);
     }
 
@@ -879,7 +887,7 @@ struct token
     }
 
     ///Cut left token up to specified character delimiter
-    token cut_left(char c, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left(char c, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = strchr(c);
@@ -892,7 +900,7 @@ struct token
     }
 
     ///Cut left token up to specified character delimiters
-    token cut_left(char c1, char c2, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left(char c1, char c2, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = strchr2(c1, c2);
@@ -905,7 +913,7 @@ struct token
     }
 
     ///Cut left token, up to a character from specified group of single characters as delimiters
-    token cut_left_group(const token& separators, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_group(const token& separators, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         if (separators.len() == 1)
             return cut_left(separators.first_char(), ctr);
@@ -926,7 +934,7 @@ struct token
 
     //@param P a functor of type bool(char)
     template <typename P>
-    token cut_left_predicate(P predicate, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_predicate(P predicate, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = _ptr + count_not(predicate);
@@ -942,13 +950,13 @@ struct token
             return ctr.process_notfound(*this, r);
     }
 
-    token cut_left_group(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+    token cut_left_group(char separator, cut_trait ctr = cut_trait_remove_sep_default_full()) {
         return cut_left(separator, ctr);
     }
 
     ///Cut left token up to the substring
     //@param icase true if case should be ignored
-    token cut_left(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = _ptr + count_until_substring(ss, icase);
@@ -963,7 +971,7 @@ struct token
     }
 
     ///Cut left token up to the substring
-    token cut_left(const substring& ss, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left(const substring& ss, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = _ptr + count_until_substring(ss);
@@ -978,7 +986,7 @@ struct token
     }
 
     ///Cut left substring, searching for separator backwards
-    token cut_left_back(const char c, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_back(const char c, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         const char* p = strrchr(c);
@@ -992,7 +1000,7 @@ struct token
     }
 
     ///Cut left substring, searching backwards for a character from specified group of single characters as delimiters
-    token cut_left_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         if (separators.len() == 1)
             return cut_left_back(separators.first_char(), ctr);
@@ -1014,14 +1022,14 @@ struct token
             return ctr.process_notfound(*this, r);
     }
 
-    token cut_left_group_back(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+    token cut_left_group_back(char separator, cut_trait ctr = cut_trait_remove_sep_default_full()) {
         return cut_left_back(separator, ctr);
     }
 
     ///Cut left substring, searching backwards for a character that satisfies delimiter predicate
     //@param P a functor of type bool(char)
     template <typename P>
-    token cut_left_predicate_back(P predicate, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_predicate_back(P predicate, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         uints off = count_not(predicate);
@@ -1042,7 +1050,7 @@ struct token
 
     ///Cut left token, searching for a substring separator backwards
     //@param icase true if case should be ignored
-    token cut_left_back(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_back(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         uints off = 0;
@@ -1069,7 +1077,7 @@ struct token
     }
 
     ///Cut left token, searching for a substring separator backwards
-    token cut_left_back(const substring& ss, cut_trait ctr = cut_trait_remove_sep())
+    token cut_left_back(const substring& ss, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         token r;
         uints off = 0;
@@ -1097,72 +1105,72 @@ struct token
 
 
     ///Cut right token, searching for specified character delimiter
-    token cut_right(const char c, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right(const char c, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left(c, ctr.make_swap());
     }
 
     ///Cut right token, searching for a character from specified group of single characters as delimiters
-    token cut_right_group(const token& separators, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_group(const token& separators, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_group(separators, ctr.make_swap());
     }
 
-    token cut_right_group(char separator, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_group(char separator, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_right(separator, ctr);
     }
 
     //@param P a functor of type bool(char)
     template <typename P>
-    token cut_right_predicate(P predicate, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_predicate(P predicate, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_predicate(predicate, ctr.make_swap());
     }
 
     ///Cut right token up to the specified substring
-    token cut_right(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left(ss, icase, ctr.make_swap());
     }
 
     ///Cut right token up to the specified substring
-    token cut_right(const substring& ss, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right(const substring& ss, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left(ss, ctr.make_swap());
     }
 
     ///Cut right token, searching for the specified character separator backwards
-    token cut_right_back(const char c, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_back(const char c, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_back(c, ctr.make_swap());
     }
 
     ///Cut right token, searching backwards for a character from specified group of single characters as delimiters
-    token cut_right_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_group_back(const token& separators, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_group_back(separators, ctr.make_swap());
     }
 
-    token cut_right_group_back(char separator, cut_trait ctr = cut_trait_remove_sep()) {
+    token cut_right_group_back(char separator, cut_trait ctr = cut_trait_remove_sep_default_full()) {
         return cut_right_back(separator, ctr);
     }
 
     //@param P a functor of type bool(char)
     template <typename P>
-    token cut_right_predicate_back(P predicate, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_predicate_back(P predicate, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_predicate_back(predicate, ctr.make_swap());
     }
 
     ///Cut right substring, searching for separator backwards
-    token cut_right_back(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_back(const token& ss, bool icase, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_back(ss, icase, ctr.make_swap());
     }
 
     ///Cut right substring, searching for separator backwards
-    token cut_right_back(const substring& ss, cut_trait ctr = cut_trait_remove_sep())
+    token cut_right_back(const substring& ss, cut_trait ctr = cut_trait_remove_sep_default_full())
     {
         return cut_left_back(ss, ctr.make_swap());
     }
@@ -1732,7 +1740,7 @@ struct token
     token get_line(bool terminated_only = false)
     {
         token r = cut_left('\n',
-            terminated_only ? cut_trait_remove_sep_default_empty() : cut_trait_remove_sep());
+            terminated_only ? cut_trait_remove_sep_default_empty() : cut_trait_remove_sep_default_full());
         if (r.last_char() == '\r')
             --r._pte;
         return r;
@@ -2039,7 +2047,7 @@ struct token
     struct tonum
     {
         uint BaseN;
-        bool success;
+        bool success = false;
 
 
         tonum(uint BaseN = 10) : BaseN(BaseN) {}
@@ -2806,17 +2814,17 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-///Token constructed from string literals
+///Token constructed only from string literals
 class token_literal : public token
 {
 public:
-    token_literal()
+    constexpr token_literal()
     {}
 
-    token_literal(std::nullptr_t) : token(nullptr)
+    constexpr token_literal(std::nullptr_t) : token(nullptr)
     {}
 
-    token_literal(const token_literal& tok) : token(static_cast<const token&>(tok))
+    constexpr token_literal(const token_literal& tok) : token(static_cast<const token&>(tok))
     {}
 
     ///String literal constructor, optimization to have fast literal strings available as tokens
@@ -2824,15 +2832,37 @@ public:
     // and the preceding char is not 0
     // Call token::from_cstring(array) to force treating the array as a zero-terminated string
     template <int N>
-    token_literal(const char(&str)[N])
-        : token(str)
+    coid_constexpr_for token_literal(const char(&str)[N])
+        : token(str, str + N - 1)
     {}
 
+
+
     //@return zero terminated string
-    const char* c_str() const {
+    constexpr const char* c_str() const {
         return ptr();
     }
 };
+
+
+
+#ifdef COID_USER_DEFINED_LITERALS
+COID_NAMESPACE_END
+
+#ifdef _T
+#pragma message("_T macro will conflict with token string literal")
+#undef _T
+#endif
+
+///String literal returning token (_T suffix)
+inline constexpr coid::token operator "" _T(const char* s, size_t len)
+{
+    return coid::token(s, len);
+}
+
+COID_NAMESPACE_BEGIN
+#endif //COID_USER_DEFINED_LITERALS
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2934,25 +2964,6 @@ private:
 
 
 COID_NAMESPACE_END
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef COID_USER_DEFINED_LITERALS
-
-#ifdef _T
-#pragma message("_T macro will conflict with token string literal")
-#undef _T
-#endif
-
-///String literal returning token (_T suffix)
-inline constexpr coid::token operator "" _T(const char* s, size_t len)
-{
-    return coid::token(s, len);
-}
-
-#endif //COID_USER_DEFINED_LITERALS
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

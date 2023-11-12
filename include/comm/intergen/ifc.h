@@ -112,6 +112,10 @@ namespace coid {
 /// of the (event) call or limited
 #define ifc_volatile
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcomment"
+#endif
 /* @note
   Use the following style comments to include the enclosed code in generated interface client header file:
     //ifc{
@@ -138,6 +142,9 @@ namespace coid {
     //ifc{ ns::ifc1+
     ...
 */
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,10 +201,11 @@ public:
 
     ///Supported interface client types (dispatcher back-ends)
     enum class backend : int8 {
+        none,                           //< empty clients
         cxx,                            //< c++ back-end implementation
-        js,
-        jsc,
-        lua,
+        js,                             //< javascript
+        jsc,                            //< jsc (unsupported)
+        lua,                            //< lua clients
 
         count_,
         unknown = -1
@@ -253,13 +261,13 @@ public:
 
 #endif //COID_VARIADIC_TEMPLATES
 
-    static void ifclog_ext(coid::log::type type, const coid::tokenhash& hash, const void* inst, const coid::token& txt) {
+    static void ifclog_ext(coid::log::type type, const coid::token& from, const void* inst, const coid::token& txt) {
         //deduce type if none set
         coid::token rest = txt;
         if (type == coid::log::none)
             type = coid::logmsg::consume_type(rest);
 
-        ref<coid::logmsg> msgr = coid::interface_register::canlog(type, hash, inst);
+        ref<coid::logmsg> msgr = coid::interface_register::canlog(type, from, inst);
         if (!msgr)
             return;
 

@@ -106,12 +106,13 @@ COID_NAMESPACE_END
 
 //@{ Debug-only assertions, release build doesn't execute the expression
 #define DASSERT(expr)               XASSERTCOND(expr) coid::__rassert(0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; } while(0)
-#define DASSERTX(expr,txt)          XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; } while(0)
+#define DASSERTX(expr,txt)          XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,0); XASSERT_FINAL; } while(0)
 #define DASSERT_ONCE(expr)          do{ static bool once = false; if(expr || once) break;  bool __assert_e = coid::__rassert(0,__FILE__,__LINE__,__FUNCTION__,#expr); once = true; XASSERT_FINAL; } while(0)
 //@}
 
 //@{ Assert in debug, return \a ret on failed assertion (also in release)
 #define DASSERT_RET(expr, ...)      XASSERTCOND(expr) coid::__rassert(0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; return __VA_ARGS__; } while(0)
+#define DASSERT_RETX(expr,txt, ...) XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,0); XASSERT_FINAL; return __VA_ARGS__; } while(0)
 //@}
 
 #else //no _DEBUG
@@ -121,6 +122,7 @@ COID_NAMESPACE_END
 #define DASSERT_ONCE(expr)
 
 #define DASSERT_RET(expr, ...)      do{ if(expr) break; coid::__retassert(); return __VA_ARGS__; } while(0)
+#define DASSERT_RETX(expr,txt, ...) do{ if(expr) break; coid::__retassert(); return __VA_ARGS__; } while(0)
 
 #endif //_DEBUG
 
@@ -135,9 +137,9 @@ COID_NAMESPACE_END
 
 //@{ Assert in debug, log in release, return \a ret on failed assertion (also in release)
 #define LASSERT(expr)               XASSERTCOND(expr) coid::__rassert(0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; } while(0)
-#define LASSERTX(expr,txt)          XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; } while(0)
+#define LASSERTX(expr,txt)          XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,0); XASSERT_FINAL; } while(0)
 #define LASSERT_RET(expr, ...)      XASSERTCOND(expr) coid::__rassert(0,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; return __VA_ARGS__; } while(0)
-#define LASSERT_RETX(expr,txt, ...) XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,#expr); XASSERT_FINAL; return __VA_ARGS__; } while(0)
+#define LASSERT_RETX(expr,txt, ...) XASSERTCOND(expr) coid::__rassert(coid::opt_string() << txt,__FILE__,__LINE__,__FUNCTION__,0); XASSERT_FINAL; return __VA_ARGS__; } while(0)
 //@}
 
 

@@ -40,13 +40,11 @@
 
 #include "namespace.h"
 
-#include "alloc/commalloc.h"
 #include "binstream/bstype.h"
 #include "hash/hashfunc.h"
 
 #include <cstring>
 #include <ctime>
-#include <functional>
 
 #include "token.h"
 #include "dynarray.h"
@@ -87,12 +85,12 @@ public:
         output_iterator(charstr& p) : _p(&p) { }
     };
 
-    charstr() {}
+    constexpr charstr() {}
 
     charstr(const token& tok)
     {
-        if(tok.is_empty()) return;
-        assign(tok.ptr(), tok.len());
+        if (!tok.is_empty())
+            assign(tok.ptr(), tok.len());
     }
 
     ///String literal constructor, optimization to have fast literal strings available as tokens
@@ -126,7 +124,7 @@ public:
     {}
 
     ///move constructor
-    charstr(charstr&& str) {
+    charstr(charstr&& str) noexcept {
         takeover(str);
     }
 
@@ -167,14 +165,21 @@ public:
         dst.takeover(_tstr);
     }
 
+    template <typename T>
+    static void swap(T& a, T& b) {
+        T tmp = static_cast<T&&>(a);
+        a = static_cast<T&&>(b);
+        b = static_cast<T&&>(tmp);
+    }
+
     ///Swap strings
     friend void swap( charstr& a, charstr& b )
     {
-        std::swap(a._tstr, b._tstr);
+        swap(a._tstr, b._tstr);
     }
 
     void swap( charstr& other ) {
-        std::swap(_tstr, other._tstr);
+        swap(_tstr, other._tstr);
     }
 
     template<class COUNT>
@@ -392,7 +397,7 @@ public:
         return *this;
     }
 
-    charstr& operator = (charstr&& str) {
+    charstr& operator = (charstr&& str) noexcept {
         return takeover(str);
     }
 
@@ -460,8 +465,8 @@ public:
     charstr& operator = (double d) { reset(); return operator += (d); }
 
     ///Formatted numbers - int/uint
-    template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator = (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    template<int WIDTH, uint BASE, int ALIGN, class NUM>
+    charstr& operator = (const num_fmt_object<WIDTH, BASE, ALIGN, NUM>& v) {
         append_num(BASE, v.value, WIDTH, ALIGN);
         return *this;
     }
@@ -478,6 +483,9 @@ public:
         return *this;
     }
 
+
+    //@return string as a token
+    token get_token() const { return token(ptr(), ptre()); }
 
     //@{ retrieve nth character
     char last_char() const { uints n = lens(); return n ? _tstr[n - 1] : 0; }
@@ -550,8 +558,8 @@ public:
     charstr& operator += (double d) { append_float(d, 10); return *this; }
 
     ///Formatted numbers - int/uint
-    template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator += (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    template<int WIDTH, uint BASE, int ALIGN, class NUM>
+    charstr& operator += (const num_fmt_object<WIDTH, BASE, ALIGN, NUM>& v) {
         append_num(BASE, v.value, WIDTH, ALIGN);
         return *this;
     }
@@ -598,8 +606,8 @@ public:
     charstr& operator << (double d) { return operator += (d); }
 
     ///Formatted numbers - int/uint
-    template<int WIDTH, int BASE, int ALIGN, class NUM>
-    charstr& operator << (const num_fmt_object<WIDTH, BASE, ALIGN, NUM> v) {
+    template<int WIDTH, uint BASE, int ALIGN, class NUM>
+    charstr& operator << (const num_fmt_object<WIDTH, BASE, ALIGN, NUM>& v) {
         append_num(BASE, v.value, WIDTH, (EAlignNum)ALIGN);
         return *this;
     }
@@ -889,7 +897,7 @@ public:
     void append_float(double d, int nfrac, uints maxsize = 0)
     {
         if(!maxsize)
-            maxsize = std::abs(nfrac) + 4;
+            maxsize = std::abs(ints(nfrac)) + 4;
         char* buf = get_append_buf(maxsize);
         char* end = charstrconv::append_float(buf, buf + maxsize, d, nfrac);
 
@@ -1429,7 +1437,7 @@ public:
     void append_encode_base64(token str)
     {
         static const char* table_ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        char* buf = alloc_append_buf(((str.len() + 2) / 3) * 4);
+        char* buf = alloc_append_buf(((uints(str.len()) + 2) / 3) * 4);
 
         while(str.len() >= 3)
         {
@@ -1528,7 +1536,7 @@ public:
         for(uints i = 0;; )
         {
             append(prefix);
-            char* pdst = get_append_buf(itemsize * 2);
+            char* pdst = get_append_buf(uints(itemsize) * 2);
 
             if(sysIsLittleEndian)
             {
@@ -1654,8 +1662,8 @@ public:
     {
         uint n = 0;
         char* pe = (char*)ptre();
-        for(char* p = (char*)ptr(); p < pe; ++p) {
-            if(*p == from) {
+        for (char* p = (char*)ptr(); p < pe; ++p) {
+            if (*p == from) {
                 *p = to;
                 ++n;
             }
@@ -1711,6 +1719,29 @@ public:
 
         if(npos + n > slen)  return false;
         _tstr.del(npos, n > slen - npos ? slen - npos : n);
+        return true;
+    }
+
+    ///Replace ndel characters at position pos with a string
+    //@param pos insertion position
+    //@param ndel number of characters to delete at pos
+    //@param tins token to insert at pos
+    //@return false if position is invalid
+    bool insdel(int pos, uint ndel, const token& tins) {
+        uint slen = len();
+        uint npos = pos < 0 ? slen + pos : pos;
+
+        if (npos > slen)  return false;
+        if (npos + ndel > slen)
+            ndel = slen - npos;
+        uint nins = tins.len();
+        if (nins > ndel) {
+            _tstr.ins(npos, nins - ndel);
+        }
+        else if (nins < ndel) {
+            _tstr.del(npos, ndel - nins);
+        }
+        xmemcpy(_tstr.ptr() + npos, tins.ptr(), nins);
         return true;
     }
 

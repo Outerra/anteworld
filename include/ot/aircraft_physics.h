@@ -34,21 +34,29 @@ public:
 
     // --- interface methods ---
 
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
     ///Titan hack
     //@return custom data value
-    uint64 get_custom_data_value() const;
+    uint64 get_custom_data_value() const
+    { return VT_CALL(uint64,() const,0)(); }
 
     //@param id 0 the main body
-    iref<ot::geomob> get_geomob( int id );
+    iref<ot::geomob> get_geomob( int id )
+    { return VT_CALL(iref<ot::geomob>,(int),1)(id); }
 
     //@return ot::jsb interface to JSBSim instance
-    iref<ot::jsb> jsb();
+    iref<ot::jsb> jsb()
+    { return VT_CALL(iref<ot::jsb>,(),2)(); }
 
     //@return of::snd_group interface
-    iref<ot::sndgrp> sound();
+    iref<ot::sndgrp> sound()
+    { return VT_CALL(iref<ot::sndgrp>,(),3)(); }
 
     ///Set attenuation for sounds coming from outside
-    void set_interior_sound_attenuation( float att );
+    void set_interior_sound_attenuation( float att )
+    { return VT_CALL(void,(float),4)(att); }
 
     //@return fb interface for IR/NVG settings
     
@@ -57,7 +65,8 @@ public:
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@param channels number of extra channels that the handler supports
     //@return slot id or -1 on fail
-    int register_event_ext( const coid::token& name, uint group = 0, uint channels = 0 );
+    int register_event_ext( const coid::token& name, uint group = 0, uint channels = 0 )
+    { return VT_CALL(int,(const coid::token&,uint,uint),5)(name,group,channels); }
 
     ///Register axis action handler
     //@param name hierarchic action name, file/group/action
@@ -65,15 +74,18 @@ public:
     //@param defval initial value for the axis
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 );
+    int register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 )
+    { return VT_CALL(int,(const coid::token&,const ot::ramp_params&,float,uint),6)(name,ramp,defval,group); }
 
     ///Activate or deactivate given action group
     //@params group group id
     //@param activate activate/deactivate the group
-    void action_group( uint group, bool activate );
+    void action_group( uint group, bool activate )
+    { return VT_CALL(void,(uint,bool),7)(group,activate); }
 
     ///Clear existing action groups
-    void clear_action_groups();
+    void clear_action_groups()
+    { return VT_CALL(void,(),8)(); }
 
     ///Define circular spotlight source
     //@param offset model-space offset relative to the bone or model pivot
@@ -82,7 +94,8 @@ public:
     //@param joint joint name to attach the light to
     //@return light emitter id
     //@note can be called only from within init_chassis
-    uint add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint = coid::token() );
+    uint add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint = coid::token() )
+    { return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),9)(offset,dir,lp,joint); }
 
     ///Define point light source
     //@param offset model-space offset relative to the bone or model pivot
@@ -90,89 +103,110 @@ public:
     //@param joint joint name to attach the light to
     //@return light emitter id
     //@note can be called only from within init_chassis
-    uint add_point_light( const float3& offset, const ot::light_params& lp, const coid::token& joint = coid::token() );
+    uint add_point_light( const float3& offset, const ot::light_params& lp, const coid::token& joint = coid::token() )
+    { return VT_CALL(uint,(const float3&,const ot::light_params&,const coid::token&),10)(offset,lp,joint); }
 
     ///Turn light on/off
-    void light( uint id, bool on );
+    void light( uint id, bool on )
+    { return VT_CALL(void,(uint,bool),11)(id,on); }
 
     ///Turn light on/off
-    void light_mask( uint mask, bool on, uint offset = 0 );
+    void light_mask( uint mask, bool on, uint offset = 0 )
+    { return VT_CALL(void,(uint,bool,uint),12)(mask,on,offset); }
 
     ///Toggle light
-    void light_toggle( uint id );
+    void light_toggle( uint id )
+    { return VT_CALL(void,(uint),13)(id); }
 
     ///Toggle lights by bit mask
-    void light_toggle_mask( uint mask, uint offset = 0 );
+    void light_toggle_mask( uint mask, uint offset = 0 )
+    { return VT_CALL(void,(uint,uint),14)(mask,offset); }
 
     ///Set light color/intensity
-    void light_color( uint id, const float4& color, float range = 0 );
+    void light_color( uint id, const float4& color, float range = 0 )
+    { return VT_CALL(void,(uint,const float4&,float),15)(id,color,range); }
 
     ///All lights off
-    void lights_off( bool instant = false );
+    void lights_off( bool instant = false )
+    { return VT_CALL(void,(bool),16)(instant); }
 
     ///Return current solar time and cosine of sun-zenith angle
     //@param time [out] solar time at vehicle location, in miliseconds
     //@param sun_coef sun position relative to horizon: 0 sun at horizon, 1 sun at zenith, -1 sun at anti-zenith
-    void solar_time( ifc_out double& time, ifc_out float& sun_coef ) const;
+    void solar_time( ifc_out double& time, ifc_out float& sun_coef ) const
+    { return VT_CALL(void,(double&,float&) const,17)(time,sun_coef); }
 
     ///Set model space position for FPS camera
-    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable );
+    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable )
+    { return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),18)(pos,joint_id,joint_rotation); }
 
     ///Set model space rotation frame
     //@param rot model space rotation
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
     //@param use bone rotation if true, bone rotation is applied
-    void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation );
+    void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
+    { return VT_CALL(void,(const quat&,ot::ERotationMode),19)(rot,mouse_rotation); }
 
     ///Set FOV to chassis fps preset and also to current camera if vehicle is entered and fpc camera is active
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
-    void set_fps_camera_fov( float hfov, float vfov = 0 );
+    void set_fps_camera_fov( float hfov, float vfov = 0 )
+    { return VT_CALL(void,(float,float),20)(hfov,vfov); }
 
     //@return current FPS camera position
-    float3 get_fps_camera_pos() const;
+    float3 get_fps_camera_pos() const
+    { return VT_CALL(float3,() const,21)(); }
 
     //@return current FPS camera rotation in model space
     //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    quat get_fps_camera_rot( bool base = false ) const;
+    quat get_fps_camera_rot( bool base = false ) const
+    { return VT_CALL(quat,(bool) const,22)(base); }
 
     ///Get FPS camera preset FOV for this chassis
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
-    float2 get_fps_camera_fov() const;
+    float2 get_fps_camera_fov() const
+    { return VT_CALL(float2,() const,23)(); }
 
     ///Set model space orientation for FPS camera
     //@param yaw yaw angle in radians, positive values to the right
     //@param pitch pitch angle in radians, positive up
     //@param roll roll angle in radians, positive clockwise
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
-    void set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation );
+    void set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
+    { return VT_CALL(void,(float,float,float,ot::ERotationMode),24)(yaw,pitch,roll,mouse_rotation); }
 
     //@return current yaw/pitch/roll angles of the camera in model space in radians
     //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
-    float3 get_fps_camera_ypr( bool base = false ) const;
+    float3 get_fps_camera_ypr( bool base = false ) const
+    { return VT_CALL(float3,(bool) const,25)(base); }
 
     
     //@param target ECEF coordinates of the point
     //@param level_horizon keep horizon level (roll the camera)
     //@return true if tracking was enabled, false if center wasn't on terrain or the current camera mode is not FPS
-    bool set_fps_camera_tracking_point( const double3& target, bool level_horizon );
+    bool set_fps_camera_tracking_point( const double3& target, bool level_horizon )
+    { return VT_CALL(bool,(const double3&,bool),26)(target,level_horizon); }
 
     
     //@param level_horizon keep horizon level (roll the camera)
     //@return true if tracking was enabled, false if center wasn't on terrain or the current camera mode is not FPS
-    bool set_fps_camera_tracking( bool level_horizon );
+    bool set_fps_camera_tracking( bool level_horizon )
+    { return VT_CALL(bool,(bool),27)(level_horizon); }
 
     ///Disable tracking
-    bool set_fps_camera_tracking_off();
+    bool set_fps_camera_tracking_off()
+    { return VT_CALL(bool,(),28)(); }
 
     ///Get heading/pitch/roll angles of the object in radians
-    float3 heading_pitch_roll() const;
+    float3 heading_pitch_roll() const
+    { return VT_CALL(float3,() const,29)(); }
 
     ///Set initial pitch/roll angles
     //@param pitch pitch angle in degrees
     //@param roll roll angle in degrees
-    void set_pitch_roll( float pitch, float roll );
+    void set_pitch_roll( float pitch, float roll )
+    { return VT_CALL(void,(float,float),30)(pitch,roll); }
 
     /// reset simulation
     /// user is responsible to initialize all params through jsbsim properties
@@ -185,50 +219,53 @@ public:
     /// _jsbic->SetLongitudeRadIC(glm::radians(lat_lon.y));
     /// _jsbic->SetAltitudeASLFtIC(altitude * M2F());
     /// _jsbic->SetVcalibratedKtsIC(speed_kts);
-    void reset_ic();
+    void reset_ic()
+    { return VT_CALL(void,(),31)(); }
 
     /// initialize simulation from initial conditions
     /// _jsbexec->ResetToInitialConditions(0);
     /// _jsbexec->RunIC();
-    void initialize_ic();
+    void initialize_ic()
+    { return VT_CALL(void,(),32)(); }
 
-    bool engine_running() const;
+    bool engine_running() const
+    { return VT_CALL(bool,() const,33)(); }
 
     ///
-    void activate_event_group( const coid::token& name );
+    void activate_event_group( const coid::token& name )
+    { return VT_CALL(void,(const coid::token&),34)(name); }
 
     //@return current camera mode or seat (negative values), or ot::CamFree if camera isn't bound to this object
-    ot::ECameraMode get_camera_mode() const;
+    ot::ECameraMode get_camera_mode() const
+    { return VT_CALL(ot::ECameraMode,() const,35)(); }
 
     ///Post message to the fading log
-    void fade( const coid::token& text ) const;
+    void fade( const coid::token& text ) const
+    { return VT_CALL(void,(const coid::token&) const,36)(text); }
 
     ///Post log message with recognized prefixes: error,warning,info,dbg,debug,perf
-    void log( const coid::token& text ) const;
-
-    ///Obsolete
-    void log_err( const coid::token& text );
-
-    void log_dbg( const coid::token& text );
-
-    void log_inf( const coid::token& text );
+    void log( const coid::token& text ) const
+    { return VT_CALL(void,(const coid::token&) const,37)(text); }
 
     ///Fire a colored plasma thing
     //@param pos model-space launch position
     //@param dir model-space launch direction
     //@param speed firing velocity in m/s
     //@param color plasma color
-    void fire( const float3& pos, const float3& dir, float speed, float caliber, const float3& color, uint joint = pkg::InvalidBoneId );
+    void fire( const float3& pos, const float3& dir, float speed, float caliber, const float3& color, uint joint = pkg::InvalidBoneId )
+    { return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),38)(pos,dir,speed,caliber,color,joint); }
 
     ///Explode ground at model position
     //@param ge explosion parameters
-    void explode_ground( const ot::ground_explosion& ge );
+    void explode_ground( const ot::ground_explosion& ge )
+    { return VT_CALL(void,(const ot::ground_explosion&),39)(ge); }
 
     //@return height of model-space point above terrain or maxheight if terrain is lower
     //@param pos model-space launch position
     //@param maxheight max height to check
     //@param joint bone id to be relative to
-    float elevation_above_terrain( const float3& pos, float maxheight, uint joint = pkg::InvalidBoneId ) const;
+    float elevation_above_terrain( const float3& pos, float maxheight, uint joint = pkg::InvalidBoneId ) const
+    { return VT_CALL(float,(const float3&,float,uint) const,40)(pos,maxheight,joint); }
 
     ///Test if ray from model intersects with terrain
     //@param pos model-space position
@@ -236,7 +273,8 @@ public:
     //@param maxdist max ray distance to check (keep short if possible)
     //@param joint bone id to be relative to
     //@return intersection distance or >= maxdist if no hit
-    float ray_test( const float3& pos, const float3& dir, float maxdist, ifc_out float3* norm = 0, ifc_out double3* hitpoint = 0, uint joint = pkg::InvalidBoneId ) const;
+    float ray_test( const float3& pos, const float3& dir, float maxdist, ifc_out float3* norm = 0, ifc_out double3* hitpoint = 0, uint joint = pkg::InvalidBoneId ) const
+    { return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,41)(pos,dir,maxdist,norm,hitpoint,joint); }
 
     ///Test if ray from model hits an object
     //@param pos model-space position
@@ -245,8 +283,10 @@ public:
     //@param exclude_self true if ray should not hit origin body
     //@param joint bone id to be relative to
     //@return object hit
-    iref<ot::object> object_test( const float3& pos, const float3& dir, float maxdist, bool exclude_self, ifc_out float3* norm = 0, ifc_out double3* hitpoint = 0, uint joint = pkg::InvalidBoneId ) const;
+    iref<ot::object> object_test( const float3& pos, const float3& dir, float maxdist, bool exclude_self, ifc_out float3* norm = 0, ifc_out double3* hitpoint = 0, uint joint = pkg::InvalidBoneId ) const
+    { return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,42)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
 
+#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -306,7 +346,7 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 3167667403u;
+    static const int HASHID = 889549929u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
@@ -344,7 +384,12 @@ public:
     //@note host side helper
     static iref<aircraft_physics> intergen_active_interface(::jsbsim_plane* host);
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -383,7 +428,7 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::aircraft_physics"_T;
-        tmp << "@client-3167667403"_T << '.' << type;
+        tmp << "@client-889549929"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -416,162 +461,19 @@ inline iref<T> aircraft_physics::get( T* _subclass_, jsbsim_plane* p )
     typedef iref<T> (*fn_creator)(aircraft_physics*, jsbsim_plane*);
 
     static fn_creator create = 0;
-    static constexpr coid::token ifckey = "ot::aircraft_physics.get@3167667403"_T;
+    static constexpr coid::token ifckey = "ot::aircraft_physics.get@889549929"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get"_T, "ot::aircraft_physics.get"_T, "@3167667403"_T);
+        log_mismatch("get"_T, "ot::aircraft_physics.get"_T, "@889549929"_T);
         return 0;
     }
 
     return create(_subclass_, p);
 }
-
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-inline uint64 aircraft_physics::get_custom_data_value() const
-{ return VT_CALL(uint64,() const,0)(); }
-
-inline iref<ot::geomob> aircraft_physics::get_geomob( int id )
-{ return VT_CALL(iref<ot::geomob>,(int),1)(id); }
-
-inline iref<ot::jsb> aircraft_physics::jsb()
-{ return VT_CALL(iref<ot::jsb>,(),2)(); }
-
-inline iref<ot::sndgrp> aircraft_physics::sound()
-{ return VT_CALL(iref<ot::sndgrp>,(),3)(); }
-
-inline void aircraft_physics::set_interior_sound_attenuation( float att )
-{ return VT_CALL(void,(float),4)(att); }
-
-inline int aircraft_physics::register_event_ext( const coid::token& name, uint group, uint channels )
-{ return VT_CALL(int,(const coid::token&,uint,uint),5)(name,group,channels); }
-
-inline int aircraft_physics::register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval, uint group )
-{ return VT_CALL(int,(const coid::token&,const ot::ramp_params&,float,uint),6)(name,ramp,defval,group); }
-
-inline void aircraft_physics::action_group( uint group, bool activate )
-{ return VT_CALL(void,(uint,bool),7)(group,activate); }
-
-inline void aircraft_physics::clear_action_groups()
-{ return VT_CALL(void,(),8)(); }
-
-inline uint aircraft_physics::add_spot_light( const float3& offset, const float3& dir, const ot::light_params& lp, const coid::token& joint )
-{ return VT_CALL(uint,(const float3&,const float3&,const ot::light_params&,const coid::token&),9)(offset,dir,lp,joint); }
-
-inline uint aircraft_physics::add_point_light( const float3& offset, const ot::light_params& lp, const coid::token& joint )
-{ return VT_CALL(uint,(const float3&,const ot::light_params&,const coid::token&),10)(offset,lp,joint); }
-
-inline void aircraft_physics::light( uint id, bool on )
-{ return VT_CALL(void,(uint,bool),11)(id,on); }
-
-inline void aircraft_physics::light_mask( uint mask, bool on, uint offset )
-{ return VT_CALL(void,(uint,bool,uint),12)(mask,on,offset); }
-
-inline void aircraft_physics::light_toggle( uint id )
-{ return VT_CALL(void,(uint),13)(id); }
-
-inline void aircraft_physics::light_toggle_mask( uint mask, uint offset )
-{ return VT_CALL(void,(uint,uint),14)(mask,offset); }
-
-inline void aircraft_physics::light_color( uint id, const float4& color, float range )
-{ return VT_CALL(void,(uint,const float4&,float),15)(id,color,range); }
-
-inline void aircraft_physics::lights_off( bool instant )
-{ return VT_CALL(void,(bool),16)(instant); }
-
-inline void aircraft_physics::solar_time( double& time, float& sun_coef ) const
-{ return VT_CALL(void,(double&,float&) const,17)(time,sun_coef); }
-
-inline void aircraft_physics::set_fps_camera_pos( const float3& pos, uint joint_id, ot::EJointRotationMode joint_rotation )
-{ return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),18)(pos,joint_id,joint_rotation); }
-
-inline void aircraft_physics::set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
-{ return VT_CALL(void,(const quat&,ot::ERotationMode),19)(rot,mouse_rotation); }
-
-inline void aircraft_physics::set_fps_camera_fov( float hfov, float vfov )
-{ return VT_CALL(void,(float,float),20)(hfov,vfov); }
-
-inline float3 aircraft_physics::get_fps_camera_pos() const
-{ return VT_CALL(float3,() const,21)(); }
-
-inline quat aircraft_physics::get_fps_camera_rot( bool base ) const
-{ return VT_CALL(quat,(bool) const,22)(base); }
-
-inline float2 aircraft_physics::get_fps_camera_fov() const
-{ return VT_CALL(float2,() const,23)(); }
-
-inline void aircraft_physics::set_fps_camera_ypr( float yaw, float pitch, float roll, ot::ERotationMode mouse_rotation )
-{ return VT_CALL(void,(float,float,float,ot::ERotationMode),24)(yaw,pitch,roll,mouse_rotation); }
-
-inline float3 aircraft_physics::get_fps_camera_ypr( bool base ) const
-{ return VT_CALL(float3,(bool) const,25)(base); }
-
-inline bool aircraft_physics::set_fps_camera_tracking_point( const double3& target, bool level_horizon )
-{ return VT_CALL(bool,(const double3&,bool),26)(target,level_horizon); }
-
-inline bool aircraft_physics::set_fps_camera_tracking( bool level_horizon )
-{ return VT_CALL(bool,(bool),27)(level_horizon); }
-
-inline bool aircraft_physics::set_fps_camera_tracking_off()
-{ return VT_CALL(bool,(),28)(); }
-
-inline float3 aircraft_physics::heading_pitch_roll() const
-{ return VT_CALL(float3,() const,29)(); }
-
-inline void aircraft_physics::set_pitch_roll( float pitch, float roll )
-{ return VT_CALL(void,(float,float),30)(pitch,roll); }
-
-inline void aircraft_physics::reset_ic()
-{ return VT_CALL(void,(),31)(); }
-
-inline void aircraft_physics::initialize_ic()
-{ return VT_CALL(void,(),32)(); }
-
-inline bool aircraft_physics::engine_running() const
-{ return VT_CALL(bool,() const,33)(); }
-
-inline void aircraft_physics::activate_event_group( const coid::token& name )
-{ return VT_CALL(void,(const coid::token&),34)(name); }
-
-inline ot::ECameraMode aircraft_physics::get_camera_mode() const
-{ return VT_CALL(ot::ECameraMode,() const,35)(); }
-
-inline void aircraft_physics::fade( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,36)(text); }
-
-inline void aircraft_physics::log( const coid::token& text ) const
-{ return VT_CALL(void,(const coid::token&) const,37)(text); }
-
-inline void aircraft_physics::log_err( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),38)(text); }
-
-inline void aircraft_physics::log_dbg( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),39)(text); }
-
-inline void aircraft_physics::log_inf( const coid::token& text )
-{ return VT_CALL(void,(const coid::token&),40)(text); }
-
-inline void aircraft_physics::fire( const float3& pos, const float3& dir, float speed, float caliber, const float3& color, uint joint )
-{ return VT_CALL(void,(const float3&,const float3&,float,float,const float3&,uint),41)(pos,dir,speed,caliber,color,joint); }
-
-inline void aircraft_physics::explode_ground( const ot::ground_explosion& ge )
-{ return VT_CALL(void,(const ot::ground_explosion&),42)(ge); }
-
-inline float aircraft_physics::elevation_above_terrain( const float3& pos, float maxheight, uint joint ) const
-{ return VT_CALL(float,(const float3&,float,uint) const,43)(pos,maxheight,joint); }
-
-inline float aircraft_physics::ray_test( const float3& pos, const float3& dir, float maxdist, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(float,(const float3&,const float3&,float,float3*,double3*,uint) const,44)(pos,dir,maxdist,norm,hitpoint,joint); }
-
-inline iref<ot::object> aircraft_physics::object_test( const float3& pos, const float3& dir, float maxdist, bool exclude_self, float3* norm, double3* hitpoint, uint joint ) const
-{ return VT_CALL(iref<ot::object>,(const float3&,const float3&,float,bool,float3*,double3*,uint) const,45)(pos,dir,maxdist,exclude_self,norm,hitpoint,joint); }
-
-#pragma warning(pop)
 
 } //namespace
 

@@ -87,14 +87,9 @@ public:
         return *this;
     }
 
-#ifdef SYSTYPE_MSVC
-    template< typename T >
-    friend binstream& operator << (binstream &out, const str_ptr<T> &obj);
-#else
     friend binstream& operator << TEMPLFRIEND(binstream &out, const str_ptr<T> &obj);
-#endif
 
-    bool is_set() const		    { return _p != 0; }
+    bool is_set() const         { return _p != 0; }
 };
 
 template <class T>
@@ -213,15 +208,8 @@ public:
 
     T*& get_ptr () const        { return (T*&)_p; }
 
-#ifdef SYSTYPE_MSVC
-    template< typename T >
     friend binstream& operator << (binstream &out, const local<T> &loca);
-    template< typename T >
     friend binstream& operator >> (binstream &in, local<T> &loca);
-#else
-    friend binstream& operator << TEMPLFRIEND(binstream &out, const local<T> &loca);
-    friend binstream& operator >> TEMPLFRIEND(binstream &in, local<T> &loca);
-#endif
 
     bool is_set() const		{ return _p != 0; }
 

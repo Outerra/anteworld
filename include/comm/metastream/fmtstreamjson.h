@@ -124,12 +124,12 @@ public:
         set_default_separators();
     }
 
-    virtual token fmtstream_name()          { return "fmtstreamjson"; }
+    virtual token fmtstream_name() override         { return "fmtstreamjson"; }
 
     uint get_indent() const {return _indent;}
     void set_indent( uint indent ) {_indent = indent;}
 
-    virtual void flush()
+    virtual void flush() override
     {
         if( _binw == NULL )
             return;
@@ -149,7 +149,7 @@ public:
         _bufw.reset();
     }
 
-    virtual void acknowledge( bool eat = false )
+    virtual void acknowledge( bool eat = false ) override
     {
         if(!eat)
         {
@@ -167,13 +167,13 @@ public:
         reset_read();
     }
 
-    virtual void reset_read()
+    virtual void reset_read() override
     {
         _tokenizer.reset();
         _sesinitr = 0;
     }
 
-    virtual void reset_write()
+    virtual void reset_write() override
     {
         _bufw.reset();
         if(_binw) _binw->reset_write();
@@ -184,7 +184,7 @@ public:
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
-    opcd write( const void* p, type t )
+    opcd write( const void* p, type t ) override
     {
         if(!_sesinitw)
         {
@@ -350,7 +350,7 @@ public:
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
-    opcd read( void* p, type t )
+    opcd read( void* p, type t ) override
     {
         if(!_sesinitr)
         {
@@ -629,7 +629,7 @@ public:
     }
 
 
-    virtual opcd write_array_separator( type t, uchar end )
+    virtual opcd write_array_separator( type t, uchar end ) override
     {
         if( !end && t.is_next_array_element() )
         {
@@ -639,7 +639,7 @@ public:
         return 0;
     }
 
-    virtual opcd read_array_separator( type t )
+    virtual opcd read_array_separator( type t ) override
     {
         DASSERT( t.type != type::T_CHAR && t.type != type::T_KEY && t.type != type::T_BINARY );
 

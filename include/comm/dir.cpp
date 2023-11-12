@@ -45,14 +45,13 @@
 #include "str.h"
 #include "pthreadx.h"
 
-//#include <sys/utime.h>
-
 COID_NAMESPACE_BEGIN
 
 #if defined(SYSTYPE_MSVC)
 #define xstat64 _stat64
 #else
 #define xstat64 stat64
+#include <unistd.h>
 #endif
 
 
@@ -96,7 +95,6 @@ charstr directory::create_tmp_dir(const token& prefix)
     charstr tmpdir = get_tmp_dir();
 
     directory::treat_trailing_separator(tmpdir, true);
-    uint len = tmpdir.len();
 
     timet now = timet::now();
     int offs = now & 0xffffffff;
@@ -143,20 +141,6 @@ bool directory::is_subpath(token root, token path)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool directory::subpath(token root, token& path)
-{
-    while (root && path) {
-        token r = root.cut_left_group(DIR_SEPARATORS);
-        token p = path.cut_left_group(DIR_SEPARATORS);
-
-        if (r != p)
-            break;
-    }
-
-    return root.is_empty();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 int directory::append_path(charstr& dst, token path, bool keep_below)
 {
     if (is_absolute_path(path))
@@ -191,13 +175,13 @@ int directory::append_path(charstr& dst, token path, bool keep_below)
             if (tdst.is_empty())
                 return 0;           //too many .. in path
 
-            token cut = tdst.cut_right_group_back(DIR_SEPARATORS, token::cut_trait_keep_sep_with_returned());
+            token cut = tdst.cut_right_group_back(DIR_SEPARATORS, token::cut_trait_keep_sep_with_returned_default_full());
             if (directory::is_separator(cut.first_char()))
                 sep = cut.first_char();
 
             if (c == 0) {
                 dst.resize(tdst.len());
-                return is_below ? -1 : 1;
+                return is_below ? 1 : -1;
             }
 
             ++path;
@@ -229,12 +213,12 @@ int directory::append_path(charstr& dst, token path, bool keep_below)
 
         dst << path;
 
-        return is_below ? -1 : 1;
+        return is_below ? 1 : -1;
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file_from(const token& src, const token& name)
+opcd directory::copy_file_from(const token& src, bool preserve_dates, const token& name)
 {
     _curpath.resize(_baselen);
 
@@ -248,11 +232,11 @@ opcd directory::copy_file_from(const token& src, const token& name)
     else
         _curpath << name;
 
-    return copy_file(src, _curpath);
+    return copy_file(src, _curpath, preserve_dates);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file_to(const token& dst, const token& name)
+opcd directory::copy_file_to(const token& dst, bool preserve_dates, const token& name)
 {
     _curpath.resize(_baselen);
 
@@ -266,17 +250,17 @@ opcd directory::copy_file_to(const token& dst, const token& name)
     else
         _curpath << name;
 
-    return copy_file(_curpath, dst);
+    return copy_file(_curpath, dst, preserve_dates);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_current_file_to(const token& dst)
+opcd directory::copy_current_file_to(const token& dst, bool preserve_dates)
 {
-    return copy_file(_curpath, dst);
+    return copy_file(_curpath, dst, preserve_dates);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file(zstring src, zstring dst)
+opcd directory::copy_file(zstring src, zstring dst, bool preserve_dates)
 {
     if(src.get_token() == dst.get_token())
         return 0;
@@ -307,6 +291,12 @@ opcd directory::copy_file(zstring src, zstring dst)
             break;
         else
             return re;
+    }
+
+    if (preserve_dates) {
+        xstat st;
+        if (stat(src, &st))
+            set_file_times(dst, st.st_atime, st.st_mtime);
     }
 
     return 0;
@@ -370,8 +360,8 @@ opcd directory::delete_directory(zstring src, bool recursive)
     opcd was_err;
 
     if (recursive) {
-        list_file_paths(src, "*", 1, [&was_err](const charstr& path, int isdir) {
-            opcd err = isdir
+        list_file_paths(src, "*", recursion_mode::dir_enter, [&was_err](const charstr& path, recursion_mode type) {
+            opcd err = type != recursion_mode::file
                 ? delete_directory(path, false)
                 : delete_file(path);
 
@@ -383,7 +373,7 @@ opcd directory::delete_directory(zstring src, bool recursive)
             return was_err;
     }
 
-    return 0 == ::rmdir(no_trail_sep(src)) ? opcd(0) : ersIO_ERROR;
+    return 0 == _rmdir(no_trail_sep(src)) ? opcd(0) : ersIO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,10 +399,10 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
             //copy to dst/
             token file = src.get_token().cut_right_group_back("\\/"_T);
             dsts << file;
-            err = move ? move_file(src, dsts) : copy_file(src, dsts);
+            err = move ? move_file(src, dsts) : copy_file(src, dsts, true);
         }
         else
-            err = move ? move_file(src, dst) : copy_file(src, dst);
+            err = move ? move_file(src, dst) : copy_file(src, dst, true);
 
         return err;
     }
@@ -432,23 +422,23 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
 
     uint dlen = dsts.len();
 
-    list_file_paths(src, "*", 3, [&](const charstr& path, int isdir) {
+    list_file_paths(src, "*", recursion_mode::dir_enter_exit, [&](const charstr& path, recursion_mode isdir) {
         token newpath = token(path.ptr() + slen, path.ptre());
-        
+
         dsts.resize(dlen);
         dsts << newpath;
 
-        if (isdir == 2) {
+        if (isdir == recursion_mode::dir_enter) {
             err = mkdir(dsts);
         }
-        else if (isdir == 1) {
+        else if (isdir == recursion_mode::dir_exit) {
             if (move)
                 err = delete_directory(path, false);
         }
         else if (move)
             err = move_file(path, dsts);
         else
-            err = copy_file(path, dsts);
+            err = copy_file(path, dsts, true);
 
         if (!was_err && err)
             was_err = err;
@@ -463,13 +453,13 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
 ////////////////////////////////////////////////////////////////////////////////
 bool directory::is_writable(zstring fname)
 {
-    return 0 == ::access(no_trail_sep(fname), 2);
+    return 0 == _access(no_trail_sep(fname), 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 bool directory::set_writable(zstring fname, bool writable)
 {
-    return 0 == ::chmod(no_trail_sep(fname), writable ? (S_IREAD | S_IWRITE) : S_IREAD);
+    return 0 == _chmod(no_trail_sep(fname), writable ? (S_IREAD | S_IWRITE) : S_IREAD);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -702,5 +692,44 @@ bool directory::compact_path(charstr& dst, char tosep)
     return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+bool directory::list_file_paths(const token& path, const token& extension, recursion_mode mode,
+    const coid::function<void(const charstr&, recursion_mode)>& fn)
+{
+    directory dir;
+
+    if (dir.open(path, "*.*") != ersNOERR)
+        return false;
+
+    bool all_files = extension == '*';
+    bool ext_with_dot = extension.first_char() == '.' || extension.is_empty();
+
+    while (dir.next()) {
+        if (dir.is_entry_regular()) {
+            bool valid = all_files;
+            if (!all_files) {
+                token fname = dir.get_last_file_name_token();
+
+                if (fname.ends_with_icase(extension)
+                    && (ext_with_dot || fname.nth_char(-1 - ints(extension.len())) == '.'))
+                    valid = true;
+            }
+
+            if (valid)
+                fn(dir.get_last_full_path(), recursion_mode::file);
+        }
+        else if (mode != recursion_mode::file && dir.is_entry_subdirectory()) {
+            if (int(mode) & int(recursion_mode::dir_enter))
+                fn(dir.get_last_full_path(), recursion_mode::dir_enter);
+
+            directory::list_file_paths(dir.get_last_full_path(), extension, mode, fn);
+
+            if (int(mode) & int(recursion_mode::dir_exit))
+                fn(dir.get_last_full_path(), recursion_mode::dir_exit);
+        }
+    }
+
+    return true;
+}
 
 COID_NAMESPACE_END

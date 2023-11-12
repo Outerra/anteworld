@@ -1724,9 +1724,9 @@ static FORCEINLINE void* win32direct_mmap(size_t size, size_t commit_size, void*
   return (ptr != 0)? ptr: MFAIL;
 }
 
-static FORCEINLINE void* win32mmap_commit(void* ptr, size_t commit_size) {
+/*static FORCEINLINE void* win32mmap_commit(void* ptr, size_t commit_size) {
     return VirtualAlloc(ptr, commit_size, MEM_COMMIT, PAGE_READWRITE);
-}
+}*/
 
 /* This function supports releasing coalesced segments */
 static FORCEINLINE int win32munmap(void* ptr, size_t size, int v) {
@@ -1933,24 +1933,24 @@ static FORCEINLINE void x86_clear_lock(int* sl) {
 #endif /* ... yield ... */
 
 #if !defined(USE_RECURSIVE_LOCKS) || USE_RECURSIVE_LOCKS == 0
-/* Plain spin locks use single word (embedded in malloc_states) */
-static int spin_acquire_lock(int *sl) {
-  int spins = 0;
-  while (*(volatile int *)sl != 0 || CAS_LOCK(sl)) {
-    if ((++spins & SPINS_PER_YIELD) == 0) {
-      SPIN_LOCK_YIELD;
-    }
-  }
-  return 0;
-}
-
-#define MLOCK_T               int
+#define MLOCK_T               long
 #define TRY_LOCK(sl)          !CAS_LOCK(sl)
 #define RELEASE_LOCK(sl)      CLEAR_LOCK(sl)
 #define ACQUIRE_LOCK(sl)      (CAS_LOCK(sl)? spin_acquire_lock(sl) : 0)
 #define INITIAL_LOCK(sl)      (*sl = 0)
 #define DESTROY_LOCK(sl)      (0)
 static MLOCK_T malloc_global_mutex = 0;
+
+/* Plain spin locks use single word (embedded in malloc_states) */
+static int spin_acquire_lock(MLOCK_T* sl) {
+    int spins = 0;
+    while (*(volatile MLOCK_T*)sl != 0 || CAS_LOCK(sl)) {
+        if ((++spins & SPINS_PER_YIELD) == 0) {
+            SPIN_LOCK_YIELD;
+        }
+    }
+    return 0;
+}
 
 #else /* USE_RECURSIVE_LOCKS */
 /* types for lock owners */

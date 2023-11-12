@@ -89,7 +89,7 @@ struct wheel
     //float roll_influence;               //< roll stabilization
     //float rotation_obs;                 //< rotation direction for animation (default 1)
     bool differential;                  //< true if the wheel is paired with another through a differential
-    
+
     wheel()
     : radius1(1.0f)
     , width(0.2f)
@@ -126,7 +126,8 @@ struct vehicle_params
     float mass = 1000.0f;               //< vehicle mass [kg]
     float3 com_offset;                  //< center of mass offset
 
-    float clearance = 0.0f;             //< clearance from ground, default wheel radius
+    float clearance = 0;                //< clearance from ground, default wheel radius
+    float bumper_clearance = 0;         //< clearance in front and back (train bumpers)
 
     // obsolete - now handled by ext controls and configured from script
     //float steering_speed;               //< wheel steering speed when using keyboard [half range per sec]
@@ -160,12 +161,12 @@ struct vehicle_params
     float hydro_h1 = 0;                 //< height of the triangular prism part of the boat underwater
     float hydro_h2 = 0;                 //< height of the box part of the boat
     float hydro_volcoef = 0;            //< closed volume coefficient (0..1), how much of the volume is hollow
-    
+
     float3 hdamp_rec;
     float h1_rec = 1;
 
     coid::charstr config;
-    
+
 
     void init( float l, float w, bool boat )
     {
@@ -326,11 +327,15 @@ inline metastream& operator || (metastream& m, ot::vehicle_params& w)
 
         //use obsolete values for defaults
         ot::vehicle_params::steering_cfg defcfg;
-        if (wsteer) defcfg.steering_thr = steering_ecf;
-        if (wcentr) defcfg.centering_thr = centering_ecf;
+
+        if (m.stream_reading()) {
+            if (wsteer) defcfg.steering_thr = steering_ecf;
+            if (wcentr) defcfg.centering_thr = centering_ecf;
+        }
 
         m.member("steering_params", w.steering, defcfg);
         m.member("clearance", w.clearance, 0.0f);
+        m.member("bumper_clearance", w.bumper_clearance, 0.0f);
         m.member("Cx", w.Cx, float4(0));
         m.member("hydro_offset", w.hydro_offset, 1.0f);
         m.member("hydro_uplift", w.hydro_uplift, 0.0f);

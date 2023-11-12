@@ -179,12 +179,12 @@ public:
     {
         token   tok;                    //< value string, points to input string or to tokbuf
         token   outok;                  //< value string, points to a string including its leading and trailing delimiters
-        int     id;                     //< token id (group type or string type)
-        int     termid;                 //< terminator id, for strings or blocks with multiple trailing sequences, or keyword id for keywords
-        int     state;                  //< >0 leading, <0 trailing, =0 chunked
+        int     id = 0;                 //< token id (group type or string type)
+        int     termid = 0;             //< terminator id, for strings or blocks with multiple trailing sequences, or keyword id for keywords
+        int     state = 0;              //< >0 leading, <0 trailing, =0 chunked
         charstr tokbuf;                 //< buffer that keeps processed string in case it had to be altered (escape seq.replacements etc.)
         token_hash hash;                //< hash value computed for tokens (but not for strings or blocks)
-        bool icase;                     //< case-insensitive string
+        bool icase = false;             //< case-insensitive string
 
 
         bool operator == (int i) const { return i == id; }
@@ -247,7 +247,7 @@ public:
                 buf = tok;
         }
 
-        ///Swap content 
+        ///Swap content
         token swap_to_token_or_string(charstr& dstr)
         {
             if (!tokbuf.is_empty())
@@ -1819,7 +1819,7 @@ public:
     /// provide specific error text, call throw exception().
     //@return string object that can be used to fill specific info; the string is
     /// already prefilled with whatever the on_error_prefix() handler inserted into it
-    //@note 
+    //@note
     charstr& prepare_exception(int force_line = -1)
     {
         _err = lexception::ERR_EXTERNAL_ERROR;
@@ -2060,7 +2060,7 @@ protected:
 
         charstr name;                   //< entity name
         uchar type;                     //< EType values
-        uchar status;                   //< 
+        uchar status;                   //<
         ushort id;                      //< entity id, index to containers by entity type
 
 
@@ -2132,10 +2132,10 @@ protected:
         }
     };
 
-    ///Escape sequence translator descriptor 
+    ///Escape sequence translator descriptor
     struct escape_rule : entity
     {
-        char esc;                       //< escape character
+        char esc = 0;                   //< escape character
         fn_replace_esc_seq  replfn;     //< custom replacement function
 
         dynarray<escpair> pairs;        //< static replacement pairs
@@ -2403,7 +2403,7 @@ protected:
         { }
     };
 
-    ///String descriptor. Rule that interprets all input between two character 
+    ///String descriptor. Rule that interprets all input between two character
     /// sequences as one token, with additional escape sequence processing.
     struct string_rule : stringorblock
     {

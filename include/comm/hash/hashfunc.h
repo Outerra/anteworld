@@ -42,11 +42,11 @@
 #include "../namespace.h"
 #include "../commtypes.h"
 #include <ctype.h>
-#include <functional>
 
 
 COID_NAMESPACE_BEGIN
 
+struct token;
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class KEYSTORE, class KEYLOOKUP = KEYSTORE>

@@ -54,58 +54,83 @@ iglexer::iglexer()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int iglexer::find_method( const token& classname, dynarray<charstr>& commlist )
+int iglexer::find_method(const token& classname, dynarray<paste_block>& classpasters, dynarray<charstr>& commlist)
 {
     //DASSERT( ignored(CURLY) ); //not to catch nested {}
 
     const lextoken& tok = last();
-    uint nv=0;
+    uint nv = 0;
 
     do {
         ignore(MLCOM, false);
-        int c = matches_either(SLCOM,MLCOM);
-        if(c == 2)
-            complete_block();
-        ignore(MLCOM, true);
+        ignore(SLCOM, false);
 
-        if(c) {
+        int ic = matches_either(IFC_LINE_COMMENT, IFC_BLOCK_COMMENT);
+        if (ic) {
+            complete_block();
+
+            paste_block* pb = classpasters.add();
+
+            token t = tok;
+            t.skip_space().trim_whitespace();
+            token cond = t.get_line();
+            pb->block = t;
+            //pb->namespc = namespc;
+            pb->pos = paste_block::position::inside_class;
+            pb->condx = cond;
+
+            ignore(MLCOM, true);
+            ignore(SLCOM, true);
+            continue;
+        }
+
+        int mc = matches_either(SLCOM, MLCOM);
+        if (mc == 2)
+            complete_block();
+
+        if (mc) {
             charstr& txt = commlist.get_or_add(nv++);
             txt.reset();
 
             token t = last().tok;
             char k = t.first_char();
 
-            if(c == 2 && (k == '*' || k == '!')) {
+            if (mc == 2 && (k == '*' || k == '!')) {
                 ++t;
                 t.trim_char('*');
                 txt << "/**" << t << "**/";
             }
-            else if(c == 1 && (k == '/' || k == '@' || k == '!')) {
+            else if (mc == 1 && (k == '/' || k == '@' || k == '!')) {
                 ++t;
-                if(k == '!')
+                if (k == '!')
                     k = '@';
                 txt << "//" << k << t;
             }
+        }
 
+        ignore(MLCOM, true);
+        ignore(SLCOM, true);
+
+        if (mc)
             continue;
+
+        if (matches(RLCMD)) {
+            return tok.termid + 1;
         }
-        else if(matches(RLCMD)) {
-            return tok.termid+1;
-        }
-        else if(matches(IGKWD)) {
+        else if (matches(IGKWD)) {
             commlist.resize(nv);
-            return -1-tok.termid;
+            return -1 - tok.termid;
         }
-        else if(matches('{')) {
+        else if (matches('{')) {
             complete_block();
             continue;
         }
         else
-            nv=0;
+            nv = 0;
 
         next();
     }
-    while( tok.id  &&  !tok.trailing(CURLY) );
+    while (tok.id && !tok.trailing(CURLY));
 
     return 0;
 }

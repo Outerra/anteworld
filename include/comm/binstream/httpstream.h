@@ -207,10 +207,10 @@ public:
                 char* pc = (char*) get_raw( _hdrpos, 20 );
 
                 //write content length
-				if(len() > 0) {
-					uints csize = len() - _hdrpos - 20-4;
-					charstrconv::num_formatter<uints>::insert( pc, 20, csize, 10, 20, ALIGN_NUM_RIGHT );
-				}
+                if(len() > 0) {
+                    uints csize = len() - _hdrpos - 20-4;
+                    charstrconv::num_formatter<uints>::insert( pc, 20, csize, 10, 20, ALIGN_NUM_RIGHT );
+                }
             }
 
             if(final)
@@ -506,7 +506,7 @@ public:
     }
 
     virtual opcd transfer_to( binstream& dst, uints datasize=UMAXS, uints* size_written=0, uints blocksize = 4096 )
-	{
+    {
         return _cache.transfer_to(dst, datasize, size_written);
     }
 
@@ -525,19 +525,19 @@ public:
         else {
             uri.cut_left( substring_proto(), token::cut_trait_remove_sep_default_empty() );
 
-            token host = uri.cut_left('/', token::cut_trait_keep_sep_with_source());
+            token host = uri.cut_left('/', token::cut_trait_keep_sep_with_source_default_full());
             _urihdr = uri;
 
             (_proxyreq = "Host: ") << host << "\r\n";
         }
-    
+
         return _urihdr;
     }
 /*
     void set_host( const netAddress& addr )
     {
         charstr a;
-		addr.getHost(a, true);
+        addr.getHost(a, true);
         (_proxyreq = "Host: ") << a << "\r\n";
         _urihdr = a;
     }
@@ -724,7 +724,7 @@ protected:
         if(is_listener)
         {
             _tcache << "HTTP/1.1 " << _errcode << _RESP;
-            
+
             if(content_len)
                 _tcache << _content_type_rsp;
 
@@ -744,7 +744,7 @@ protected:
         else {
             _tcache << (content_len ? _POST : _GET)
                 << _urihdr << _POST1 << _proxyreq << _POST2;
-            
+
             if(content_len)
                 _tcache << _content_type_qry;
         }
@@ -805,7 +805,7 @@ protected:
                  txtstream txt(bf);
                  txt << (token)buf
                      << "-------------------------------------------------------------------------------------\n\n";
-				 */
+                 */
                  return ersFAILED;
             }
         }
@@ -833,7 +833,7 @@ inline opcd httpstream::header::decode( bool is_listener, httpstream& http, bins
     _location.reset();
     _content_encoding.reset();
 
-    //skip any nonsense 
+    //skip any nonsense
     opcd e;
     for(;;)
     {
@@ -850,7 +850,7 @@ inline opcd httpstream::header::decode( bool is_listener, httpstream& http, bins
 
         buf.reset_write();
     }
-     
+
     token n, tok = buf;
     tok.skip_char(' ');
 
@@ -924,7 +924,7 @@ inline opcd httpstream::header::decode( bool is_listener, httpstream& http, bins
         {
             for(;;)
             {
-                token k = h.cut_left_group(", ", token::cut_trait_remove_all() );
+                token k = h.cut_left_group(", ", token::cut_trait_remove_all_default_full() );
                 if( k.is_empty() )  break;
 
                 if( k.cmpeqi("deflate") )
@@ -943,7 +943,7 @@ inline opcd httpstream::header::decode( bool is_listener, httpstream& http, bins
         {
             for(;;)
             {
-                token k = h.cut_left_group(", ", token::cut_trait_remove_all() );
+                token k = h.cut_left_group(", ", token::cut_trait_remove_all_default_full() );
                 if( k.is_empty() )  break;
 
                 if( k.cmpeqi("close") )

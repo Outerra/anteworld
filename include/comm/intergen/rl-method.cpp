@@ -41,7 +41,7 @@ bool Method::parse( iglexer& lex, int prefix )
         if(!t.is_empty()) {
             templsub << char('<');
             for( int i=0; !t.is_empty(); ++i ) {
-                token x = t.cut_left(' ');
+                t.cut_left(' ');
 
                 if(i)  templsub << ", ";
                 templsub << t.cut_left(',');
@@ -57,7 +57,7 @@ bool Method::parse( iglexer& lex, int prefix )
     biref = ptrtype == 2;
 
     //rettype fncname '(' ...
-    
+
     if( !lex.matches(lex.IDENT, rettype) )
         lex.syntax_err() << "expecting return type\n";
     else if( lex.matches('*') )
@@ -188,7 +188,7 @@ bool Method::Arg::parse( iglexer& lex )
         lex.syntax_err() << "expecting argument name\n";
         return false;
     }
-    
+
     if( lex.matches('[') ) {
         size << lex.next_as_block(lex.SQUARE);
         if(!size)
@@ -198,7 +198,7 @@ bool Method::Arg::parse( iglexer& lex )
     if( lex.matches('=') ) {
         do {
             const lexer::lextoken& tok = lex.next();
-            
+
             if( tok == ','  ||  tok == ')'  ||  tok.end() ) {
                 lex.push_back();
                 break;

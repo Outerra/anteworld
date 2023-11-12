@@ -41,6 +41,7 @@
 #include "hash/hashfunc.h"
 #include "binstream/binstreambuf.h"
 #include "metastream/metastream.h"
+#include "atomic/pool_base.h"
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
@@ -69,7 +70,7 @@ public:
 
     iref(const iref_t& r) : _p(r.add_refcount()) {}
 
-    iref(iref_t&& r) : _p(0) {
+    iref(iref_t&& r) noexcept : _p(0) {
         takeover(std::forward<iref_t>(r));
     }
 
@@ -194,7 +195,7 @@ public:
         return *this;
     }
 
-    const iref_t& operator = (iref_t&& r) {
+    const iref_t& operator = (iref_t&& r) noexcept {
         takeover(std::forward<iref_t>(r));
         return *this;
     }

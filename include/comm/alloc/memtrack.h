@@ -40,9 +40,8 @@
 
 #include "../namespace.h"
 #include "_malloc.h"
-#include <algorithm>
-#include <cstddef>
 #include <typeinfo>
+#include <utility>
 
 namespace coid {
 
@@ -121,13 +120,13 @@ inline void dbg_memtrack_free(const std::type_info* tracking, size_t size) {}
 COID_NAMESPACE_BEGIN
 
 struct memtrack {
-    ptrdiff_t size;                     //< size allocated since the last memtrack_list call
-    size_t cursize;                     //< total allocated size
-    size_t lifesize;                    //< lifetime allocated size
-    unsigned int nallocs;               //< number of allocations since the last memtrack_list call
-    unsigned int ncurallocs;            //< total current number of allocations
-    unsigned int nlifeallocs;           //< lifetime number of allocations
-    const char* name;                   //< class identifier
+    ptrdiff_t size = 0;                 //< size allocated since the last memtrack_list call
+    size_t cursize = 0;                 //< total allocated size
+    size_t lifesize = 0;                //< lifetime allocated size
+    unsigned int nallocs = 0;           //< number of allocations since the last memtrack_list call
+    unsigned int ncurallocs = 0;        //< total current number of allocations
+    unsigned int nlifeallocs = 0;       //< lifetime number of allocations
+    const char* name = 0;               //< class identifier
 
     void swap(memtrack& m) {
         std::swap(size, m.size);
@@ -138,8 +137,6 @@ struct memtrack {
         std::swap(nlifeallocs, m.nlifeallocs);
         std::swap(name, m.name);
     }
-
-    memtrack() : size(0), cursize(0), lifesize(0), nallocs(0), ncurallocs(0), nlifeallocs(0), name(0) {}
 };
 
 

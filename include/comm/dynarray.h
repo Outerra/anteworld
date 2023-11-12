@@ -39,14 +39,8 @@
 #include "namespace.h"
 
 #include "trait.h"
-#include "function.h"
-#include "range.h"
 #include "binstream/binstream.h"
 #include "alloc/commalloc.h"
-
-#include <iterator>
-#include <algorithm>
-
 
 COID_NAMESPACE_BEGIN
 
@@ -111,7 +105,7 @@ protected:
     friend struct dynarray_relocator;
     template<typename, typename, typename> friend class dynarray;
 
-    T* _ptr;
+    T* _ptr = 0;
 
 public:
 
@@ -121,13 +115,13 @@ public:
 
     COIDNEWDELETE(dynarray);
 
-    dynarray() : _ptr(0) {
-        A::instance();
+    constexpr dynarray() {
+        //A::instance();
     }
 
     ///Reserve specified number of items in constructor
-    explicit dynarray(uints reserve_count) : _ptr(0) {
-        A::instance();
+    explicit dynarray(uints reserve_count) {
+        //A::instance();
         reserve(reserve_count, false);
     }
 
@@ -140,7 +134,7 @@ public:
             _set_count(0);
         }
         else {
-            A::instance();
+            //A::instance();
             _ptr = 0;
             reserve(count, false);
         }
@@ -153,6 +147,11 @@ public:
     ///copy constructor
     dynarray(const dynarray& p) : _ptr(0)
     {
+        uints virtsize = A::reserved_size(p._ptr);
+        if (virtsize > 0) {
+            reserve_virtual(virtsize / sizeof(T));
+        }
+
         uints n = p.sizes();
         alloc(n);
 
@@ -161,13 +160,20 @@ public:
         }
     }
 
-    dynarray(dynarray&& p) : _ptr(0) {
+    dynarray(dynarray&& p) noexcept : _ptr(0) {
         takeover(p);
     }
 
     ///assignment operator - duplicate
     dynarray& operator = (const dynarray& p)
     {
+        discard();
+
+        uints virtsize = A::reserved_size(p._ptr);
+        if (virtsize > 0) {
+            reserve_virtual(virtsize / sizeof(T));
+        }
+
         uints n = p.sizes();
         alloc(n);
 
@@ -177,7 +183,7 @@ public:
         return *this;
     }
 
-    dynarray& operator = (dynarray&& p) {
+    dynarray& operator = (dynarray&& p) noexcept {
         return takeover(p);
     }
 
@@ -233,15 +239,8 @@ public:
 
     T*& ptr_ref() { return _ptr; }
 
-#ifdef SYSTYPE_MSVC
-    template< typename T, typename C, typename A >
-    friend binstream& operator << (binstream &out, const dynarray<T, C, A> &dyna);
-    template< typename T, typename C, typename A >
-    friend binstream& operator >> (binstream &in, dynarray<T, C, A> &dyna);
-#else
-    friend binstream& operator << TEMPLFRIEND(binstream &out, const dynarray<T, COUNT, A> &dyna);
-    friend binstream& operator >> TEMPLFRIEND(binstream &in, dynarray<T, COUNT, A> &dyna);
-#endif
+    friend binstream& operator << (binstream &out, const dynarray<T, COUNT, A> &dyna);
+    friend binstream& operator >> (binstream &in, dynarray<T, COUNT, A> &dyna);
 
     typedef binstream_container_base::fnc_stream	fnc_stream;
 
@@ -777,6 +776,7 @@ public:
     /// Uses either operator T<T or a functor(T,T)
     /// add_sortT() can use a different key type than T, provided an operator T<K exists, or functor(T,K) was provided.
     //@param key key to use to find the element position in sorted array
+    //@param fn a functor that returns >0 for T<K, or else <= 0
     //@param n number of elements to insert
     /** this uses the provided \a key just to find the position, doesn't insert the key
         @see push_sort() **/
@@ -820,7 +820,8 @@ public:
     };
 
     ///Push item into array if it doesn't exist
-    T& push_if_absent(const T& v) {
+    //@return item reference
+    T& push_unique(const T& v) {
         ints id = index_of(v);
         return id < 0
             ? *push(v)
@@ -828,7 +829,8 @@ public:
     }
 
     ///Push item into array if it doesn't exist
-    T& push_if_absent(T&& v) {
+    //@return item reference
+    T& push_unique(T&& v) {
         ints id = index_of(v);
         return id < 0
             ? *push(std::forward<T>(v))
@@ -901,6 +903,7 @@ public:
     }
 
     ///Insert an element to the array at sorted position (using compare function)
+    //@param fn a functor that returns >0 for T<K, or else <= 0
     template<typename FUNC>
     T* push_sort(const T& v, const FUNC& fn)
     {
@@ -910,6 +913,7 @@ public:
     }
 
     ///Insert an element to the array at sorted position (using compare function)
+    //@param fn a functor that returns >0 for T<K, or else <= 0
     template<typename FUNC>
     T* push_sort(T&& v, const FUNC& fn)
     {
@@ -1107,23 +1111,22 @@ public:
 
     ///Reserve \a nitems of elements
     /** @param nitems number of items to reserve
-        @param ikeep keep existing elements (true) or do not necessarily keep them (false)
+        @param ikeep keep existing elements (true) or discard them (false)
         @param m [optional] memory space to use (fresh alloc only)
         @return pointer to the first item of array */
-    T* reserve(uints nitems, bool ikeep, mspace m = 0)
+    T* reserve(uints nitems, bool ikeep = true, mspace m = 0)
     {
         uints n = _count();
 
-        if (nitems > n  &&  nitems * sizeof(T) > _size())
-        {
-            if (!ikeep) {
-                _destroy();
-                n = 0;
-            }
-
-            _realloc(nitems, n, m);
-            _set_count(n);
+        if (!ikeep) {
+            _destroy();
+            n = 0;
         }
+
+        if (nitems > n  &&  nitems * sizeof(T) > _size())
+            _realloc(nitems, n, m);
+
+        _set_count(n);
         return _ptr;
     }
 
@@ -1162,7 +1165,7 @@ public:
     }
 
     ///Get value from array or a default one if index is out of range
-    T get_safe(uints i, const T& def) const
+    const T& get_safe(uints i, const T& def) const
     {
         return i < _count() ? _ptr[i] : def;
     }
@@ -1311,9 +1314,10 @@ public:
     T* contains_back(const K& key, const EQ& eq) { return const_cast<T*>(contains_back(key, eq)); }
     //@}
 
-    ///Binary search whether sorted array contains element comparable to \a key
-    /// Uses operator T<K or functor(T,K) to search for the element, and operator T==K for equality comparison
+    ///Binary search to check whether a sorted array contains element comparable to \a key
+    /// Uses operator T<K and operator T==K for equality comparison, or functor(T,K) to search for the element
     //@return ptr to element if found or 0 otherwise
+    //@param fn a functor that returns >0 for T<K, 0 for T==K, <0 for T>K
     //@param sort_index optional ptr to variable receiving sort index
     //@{
     template<class K>
@@ -1335,7 +1339,7 @@ public:
         if (sort_index)
             *sort_index = lb;
 
-        return lb >= size() || !(_ptr[lb] == key)
+        return lb >= size() || fn(_ptr[lb], key) != 0
             ? 0
             : _ptr + lb;
     }
@@ -1371,6 +1375,7 @@ public:
 
     ///Find or insert element into a sorted array
     //@param key key to search for
+    //@param fn a functor that returns >0 for T<K, 0 for T==K, <0 for T>K
     //@param isnew [out] set to true if value was newly created
     //@note there must exist < operator able to do (T < K) comparison
     template<class K, class FUNC>
@@ -1409,6 +1414,7 @@ public:
     }
 
     ///Binary search sorted array using function object f(T,K) for comparing T<K
+    //@param fn a functor that returns >0 for T<K, else <= 0
     template<class K, class FUNC>
     count_t lower_bound(const K& key, const FUNC& fn) const
     {
@@ -1421,7 +1427,7 @@ public:
         for (; j > i;)
         {
             m = (i + j) >> 1;
-            if (fn(_ptr[m], key))
+            if (greater_than_zero(fn(_ptr[m], key)))
                 i = m + 1;
             else
                 j = m;
@@ -1430,7 +1436,7 @@ public:
     }
 
     ///Binary search sorted array
-    //@note there must exist < operator able to do (K < T) comparison
+    //@note there must exist < operator able to do T<K comparison
     template<class K>
     count_t upper_bound(const K& key) const
     {
@@ -1440,15 +1446,16 @@ public:
         for (; j > i;)
         {
             m = (i + j) >> 1;
-            if (key < _ptr[m])
-                j = m;
-            else
+            if (_ptr[m] < key)
                 i = m + 1;
+            else
+                j = m;
         }
         return (count_t)i;
     }
 
-    ///Binary search sorted array using function object f(K,T) for comparing K<T
+    ///Binary search sorted array using function object f(T,K) for comparing T<K
+    //@param fn a functor that returns >0 for T<K, else <= 0
     template<class K, class FUNC>
     count_t upper_bound(const K& key, const FUNC& fn) const
     {
@@ -1458,10 +1465,10 @@ public:
         for (; j > i;)
         {
             m = (i + j) >> 1;
-            if (fn(key, _ptr[m]))
-                i = m + 1;
-            else
+            if (greater_than_zero(fn(_ptr[m], key)))
                 j = m;
+            else
+                i = m + 1;
         }
         return (count_t)i;
     }
@@ -1517,11 +1524,7 @@ public:
     T* ins_value(uints pos, const T& v)
     {
         DASSERT(pos != UMAXS);
-        if (pos > sizes())
-        {
-            uints ov = pos - _count();
-            add(ov);
-        }
+        DASSERT(pos <= sizes());
 
         addnc(1);
         T* p = __ins(_ptr, pos, _count() - 1, 1);
@@ -1532,11 +1535,7 @@ public:
     T* ins_value(uints pos, T&& v)
     {
         DASSERT(pos != UMAXS);
-        if (pos > sizes())
-        {
-            uints ov = pos - _count();
-            add(ov);
-        }
+        DASSERT(pos <= sizes());
 
         addnc(1);
         T* p = __ins(_ptr, pos, _count() - 1, 1);
@@ -1544,7 +1543,19 @@ public:
         return new(p) T(std::forward<T>(v));
     }
 
-    ///Delete elements from given position
+    /// swaps an element with the last one and pops it
+    /// can be used as fast delete when order of elements does not matter
+    /// @param pos position from where to delete
+    void swap_and_pop(uints pos)
+    {
+        const uints s = _count();
+        if (s < 1) return;
+
+        std::swap(_ptr[pos], _ptr[s - 1]);
+        pop();
+    }
+
+    ///Delete elements from given positiond
     /** @param pos position from what to delete
         @param nitems number of items to delete */
     void del(uints pos, uints nitems = 1) {
@@ -1590,6 +1601,7 @@ public:
     /// Uses either operator T<K or a functor(T,K) for binary search, and operator T==K for equality comparison
     //@return number of deleted items
     //@param key key to localize the first item to delete
+    //@param fn a functor that returns >0 for T<K, or else <= 0
     //@param n maximum number of items to delete
     //@{
     template<class K>
@@ -1612,7 +1624,7 @@ public:
         uints c = lower_bound(key, fn);
         uints i, m = _count();
         for (i = c; i < m && n>0; ++i, --n) {
-            if (!(_ptr[i] == key))
+            if (fn(_ptr[i], key) != 0)
                 break;
         }
         if (i > c)
@@ -1702,6 +1714,9 @@ public:
     uints reserved_remaining() const { return A::size(_ptr) - sizeof(T)*A::count(_ptr); }
     uints reserved_total() const { return A::size(_ptr); }
 
+    //@return reserved virtual size, if the memory was allocaded by reserve_virtual, otherwise 0
+    uints reserved_virtual() const { return A::reserved_size(_ptr); }
+
 
     typedef T*                          iterator;
     typedef const T*                    const_iterator;
@@ -1746,22 +1761,6 @@ private:
         return _ptr + n;
     };
 };
-
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-template<class COUNT, class A>
-range<T>::range(const dynarray<T, COUNT, A>& a)
-    : range<T>(const_cast<T*>(a.ptr()), const_cast<T*>(a.ptre()))
-{}
-
-template<class T>
-template<class COUNT, class A>
-range<T>& range<T>::operator = (const dynarray<T, COUNT, A>& a)
-{
-    _ptr = const_cast<T*>(a.ptr());
-    _pte = const_cast<T*>(a.ptre());
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 ///take control over buffer controlled by \a dest dynarray, \a dest ptr will be set to zero

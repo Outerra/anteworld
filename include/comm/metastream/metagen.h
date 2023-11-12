@@ -67,6 +67,8 @@ class metagen //: public binstream
     {
         int IDENT, NUM, DQSTRING, STEXT, COMMTAG;
 
+        virtual ~mtglexer() {}
+
         virtual void on_error_prefix(bool rules, charstr& dst, int line) override
         {
             if (!rules) {
@@ -308,7 +310,7 @@ class metagen //: public binstream
         token name;
         enum { UNKNOWN, DEFAULT, INLINE, OPEN, COND_POS, COND_NEG } cond;
         Value value;
-        int depth;
+        int depth = 0;
 
 
         operator const token& () const { return name; }
@@ -325,7 +327,6 @@ class metagen //: public binstream
             const lextoken& tok = lex.last();
 
             bool condneg = false;
-            bool special = false;
             if (tok == '!') {
                 condneg = true;
                 lex.next();
@@ -510,7 +511,6 @@ class metagen //: public binstream
 
                 lex.next();
 
-                int def = -1;
                 bool lastopen = false;
 
                 attr.reset();
@@ -703,7 +703,7 @@ class metagen //: public binstream
     struct TagSimple : Tag
     {
         dynarray<Attribute> attr;       //< conditions and attributes
-        char escape;
+        char escape = 0;
 
         ///Process the variable, default code does simple substitution
         virtual void process_content(metagen& mg, const Varx& var) const

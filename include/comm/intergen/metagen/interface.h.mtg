@@ -41,15 +41,27 @@ $-(if inhmask?)$
 
 $-(/if)$
 public:
+$-[pasteinners]$
+
+$@value$
+$-[/pasteinners]$
 
     // --- interface methods ---
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
 
 $-[method !static? !destroy?]$
 $(if !comments.empty?)$$[comments]-$
     $@value$
 $[/comments]$$(/if)-$
-    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $(if fnarg?)$( $-memfnclass after="::"-$ *$name$)($fnargs$)$(elif)$$name$$(/if)$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$ $-(if ..virtual?)$ = 0$(/if)$;
+    $(if ..virtual?)$virtual $(/if)$$return.type$ $name$($[args rest="," after=" "]$ $ifckwds after=" "$$type$ $(if fnarg?)$( $-memfnclass after="::"-$ *$name$)($fnargs$)$(elif)$$name$$(/if)$$size$ $-(if defval?)$ = $defval$$(/if)$$[/args]$) $-(if const?)$ const$(/if)$$(if ..virtual?)$ = 0;$(/if)$
+$-(if !..virtual?)$
+    { return VT_CALL($return.type$,($[args rest=","]$ $-(if fnarg?)$$type$($memfnclass after="::"$*)($fnargs$)$(elif)$$type$$(/if)-$ $size$$[/args]$) $-(if const?)$ const$(/if)$,$index$)($[args rest=","]$ $-(if xref?)$std::forward<$basetype$>($(/if)-$ $name$ $-(if xref?)$)$(/if)-$ $[/args]$); }
+$(/if)-$
 $[/method]-$
+
+#pragma warning(pop)
 $-(if !event.empty?)$
 
 protected:
@@ -72,7 +84,7 @@ public:
     // --- host helpers to check presence of handlers in scripts ---
 
 $-[event !static?]$
-    virtual bool is_bound_$name$() { return true; }
+    virtual bool is_bound_$intname$() { return true; }
 $-[/event]$
 
 public:
@@ -154,7 +166,12 @@ $-(if varname?)$
     static iref<$name$> intergen_active_interface(::$classnsx rest="::" after="::"$$class$* host);
 
 $-(/if)$
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -281,18 +298,6 @@ inline iref<$..name$> $..name$::$name$($-[args rest=", "]$$type$ $name$$size$$[/
 }
 
 $-[/method]$
-$-(if !virtual?)$
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-$-[method !static? !destroy?]$
-inline $return.type$ $..name$::$name$($[args rest="," after=" "]$ $type$ $(if fnarg?)$( $-memfnclass after="::"-$ *$name$)($fnargs$)$(elif)$$name$$(/if)$$size$$[/args]$) $-(if const?)$ const$(/if)$
-{ return VT_CALL($return.type$,($[args rest=","]$ $-(if fnarg?)$$type$($memfnclass after="::"$*)($fnargs$)$(elif)$$type$$(/if)-$ $size$$[/args]$) $-(if const?)$ const$(/if)$,$index$)($[args rest=","]$ $-(if xref?)$std::forward<$basetype$>($(/if)-$ $name$ $-(if xref?)$)$(/if)-$ $[/args]$); }
-$[/method]-$
-
-#pragma warning(pop)
-$(/if)-$
-
 $-[ns]$
 } //namespace
 $-[/ns]$

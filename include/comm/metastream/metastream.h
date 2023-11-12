@@ -43,6 +43,7 @@
 
 #include "../namespace.h"
 #include "../dynarray.h"
+#include "../range.h"
 #include "../str.h"
 #include "../commexception.h"
 
@@ -112,20 +113,16 @@ public:
     void* context = NULL;
 
 
-    metastream() {
-        init();
-    }
+    metastream() = default;
 
     explicit metastream(fmtstream& bin)
     {
-        init();
         bind_formatting_stream(bin);
     }
 
     explicit metastream(fmtstream& bin, void* ctx)
     {
         context = ctx;
-        init();
         bind_formatting_stream(bin);
     }
 
@@ -328,7 +325,7 @@ public:
     ///Define a member variable
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool member(const token& name, T& v)
     {
@@ -338,21 +335,22 @@ public:
         }
 
         meta_variable<T>(name, &v);
-        return true;
+        return false;
     }
 
     ///Define a member variable with default value to use if missing in stream
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename D>
     bool member(const token& name, T& v, const D& defval)
     {
-        bool used = true;
+        bool used = false;
 
         if (_binw) {
             *this || *(typename resolve_enum<T>::type*)&v;
+            used = true;
         }
         else if (_binr) {
             used = read_optional(v);
@@ -361,6 +359,7 @@ public:
         }
         else
             meta_variable_optional<T>(name, &v);
+
         return used;
     }
 
@@ -369,11 +368,11 @@ public:
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
     //@param write_default if false, does not write value that equals the defval into output stream
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename D>
     bool member(const token& name, T& v, const D& defval, bool write_default)
     {
-        bool used = true;
+        bool used = false;
 
         if (_binw) {
             used = write_optional(!cache_prepared() && !write_default && v == defval
@@ -386,17 +385,19 @@ public:
         }
         else
             meta_variable_optional<T>(name, &v);
+
         return used;
     }
 
     ///Define a fixed size array member variable
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
+    //@param optional true if value may not exist
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, size_t N>
-    bool member(const token& name, T(&v)[N])
+    bool member(const token& name, T(&v)[N], bool optional = false)
     {
-        member_array<N>(name, v);
-        return true;
+        return member_array<N>(name, v, optional, false);
     }
 
     ///Define a member variable referenced by a pointer (non-streamable) except const char*
@@ -408,15 +409,15 @@ public:
     template<typename T, typename = std::enable_if_t<!std::is_same<const char*, T*>::value>>
     bool member(const token& name, T*& v, bool streamed = false)
     {
-        member_ptr(name, v, streamed);
-        return true;
+        return member_ptr(name, v, streamed);
     }
 
     ///Define a member variable referenced by a pointer, assumed to be already allocated when streaming to/from
     //@param name variable name, used as a key in output formats
     //@param v pointer to variable to read/write to
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
-    metastream& member_indirect(const token& name, T*& v)
+    bool member_indirect(const token& name, T*& v)
     {
         typedef typename std::remove_const<T>::type TNC;
 
@@ -425,27 +426,32 @@ public:
                 throw exception() << "null pointer";
 
             *this || *(typename resolve_enum<TNC>::type*)v;
+            return true;
         }
         else
             meta_variable_indirect<TNC>(name, (ints)&v);
-        return *this;
+
+        return false;
     }
 
     ///Define a raw pointer member variable to 1..N objects
     //@param name variable name, used as a key in output formats
     //@param v pointer to variable to read/write to
     //@param streamed false if variable should not be streamed, just a part of meta description
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool member_ptr(const token& name, T*& v, bool streamed)
     {
         typedef typename std::remove_const<T>::type TNC;
 
-        if (streaming())
+        if (streaming()) {
             *this || *(typename resolve_enum<TNC>::type*)v;
+            return true;
+        }
         else
             meta_variable_raw_ptr<TNC>(name, (ints)&v, streamed);
 
-        return true;
+        return false;
     }
 
     ///Define a raw pointer member variable to 1..N objects
@@ -552,11 +558,12 @@ public:
     //@param set void function(T&&) receiving object from stream
     //@param get [const T& | T] function() returning object to stream
     //@param write_default if false, does not write value that equals the defval into output stream
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename D, typename FnIn, typename FnOut>
     bool member_type(const token& name, const D& defval, FnIn set, FnOut get, bool write_default)
     {
-        bool used = true;
+        bool used = false;
+
         if (_binw) {
             const T& val = get();
             used = write_optional(!cache_prepared() && !write_default && val == defval ? 0 : &val);
@@ -571,6 +578,49 @@ public:
         }
         else
             meta_variable_optional<T>(name, (const T*)-1);
+
+        return used;
+    }
+
+    ///Define an optional variable, doesn't get read if it wasn't present in the input stream
+    //@param name variable name, used as a key in output formats
+    //@return true if value was read or written and no default was used, false in meta phase
+    template<typename T>
+    bool member_optional(const token& name, T& v)
+    {
+        bool used = false;
+
+        if (_binw) {
+            *this || v;
+            used = true;
+        }
+        else if (_binr) {
+            used = read_optional(v);
+        }
+        else
+            meta_variable_optional<T>(name, &v);
+
+        return used;
+    }
+
+    ///Define an optional variable, doesn't get read if it wasn't present in the input stream
+    //@param name variable name, used as a key in output formats
+    //@param defval default value for optional writing of values
+    //@return true if value was read or written and no default was used, false in meta phase
+    template<typename T, typename D>
+    bool member_optional(const token& name, T& v, const D& defval)
+    {
+        bool used = false;
+
+        if (_binw) {
+            used = write_optional(v != defval ? &v : 0);
+        }
+        else if (_binr) {
+            used = read_optional(v);
+        }
+        else
+            meta_variable_optional<T>(name, &v);
+
         return used;
     }
 
@@ -578,11 +628,12 @@ public:
     //@param name variable name, used as a key in output formats
     //@param set void function(const T*) receiving streamed object, or nullptr if the object wasn't present in the stream
     //@param get const T* function() called to provide object to be streamed, or nullptr if nothing should go into the stream
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename FnIn, typename FnOut>
     bool member_optional(const token& name, FnIn set, FnOut get)
     {
-        bool used = true;
+        bool used = false;
+
         if (_binw) {
             const T* p = get();
             used = write_optional(p);
@@ -597,6 +648,7 @@ public:
         }
         else
             meta_variable_optional<T>(name, (const T*)-1);
+
         return used;
     }
 
@@ -609,11 +661,12 @@ public:
     //@param write_default if false, does not write value that equals the defval into output stream
     //@note if written value is not present in the list, nothing is written out
     //@note if read string doesn't match any string from the set, defval is set
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool member_enum(const token& name, T& v, const T values[], const char* names[], const T& defval, bool write_default = true)
     {
-        bool used = true;
+        bool used = false;
+
         if (_binw) {
             if (!cache_prepared() && !write_default && v == defval)
                 used = write_optional((const char**)0);
@@ -640,6 +693,7 @@ public:
         }
         else
             meta_variable_optional<charstr>(name, (const charstr*)&v);
+
         return used;
 
     }
@@ -648,7 +702,7 @@ public:
     //@param name variable name, used as a key in output formats
     //@param v optional pointer to the read value
     //@param was_read true if the value was read
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool member_obsolete(const token& name, T* v = nullptr)
     {
@@ -656,7 +710,6 @@ public:
 
         if (!streaming()) {
             meta_variable_obsolete<T>(name);
-            return true;
         }
         else if (stream_reading()) {
             if (cache_prepared()) {
@@ -677,32 +730,11 @@ public:
         return used;
     }
 
-    ///Define a fixed size array member
-    //@param name variable name, used as a key in output formats
-    //@param v pointer to the first array element
-    //@param size element count
-    template<size_t N, typename T>
-    metastream& member_array(const token& name, T* v, bool nonmember = false)
-    {
-        if (_binw) {
-            binstream_container_fixed_array<T, ints> bc(v, N);
-            write_container(bc);
-        }
-        else if (_binr) {
-            binstream_container_fixed_array<T, ints> bc(v, N);
-            read_container(bc);
-        }
-        else
-            meta_variable_fixed_array<N>(name, v, nonmember);
-        return *this;
-    }
 
-
-
-    ///Define a member variable
+    ///Define a non-member variable (no valid offset within the parent struct)
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool nonmember(const token& name, T& v)
     {
@@ -712,21 +744,22 @@ public:
         }
 
         meta_variable<T>(name, &v, true);
-        return true;
+        return false;
     }
 
-    ///Define a member variable with default value to use if missing in stream
+    ///Define a non-member variable with default value to use if missing in stream
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename D>
     bool nonmember(const token& name, T& v, const D& defval)
     {
-        bool used = true;
+        bool used = false;
 
         if (_binw) {
             *this || *(typename resolve_enum<T>::type*)&v;
+            used = true;
         }
         else if (_binr) {
             used = read_optional(v);
@@ -735,19 +768,20 @@ public:
         }
         else
             meta_variable_optional<T>(name, &v, true);
+
         return used;
     }
 
-    ///Define a member variable with default value to use if missing in stream
+    ///Define a non-member variable with default value to use if missing in stream
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
     //@param defval value to use if the variable is missing from the stream, convertible to T
     //@param write_default if false, does not write value that equals the defval into output stream
-    //@return true if value was read or written and no default was used (also true in meta phase)
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, typename D>
     bool nonmember(const token& name, T& v, const D& defval, bool write_default)
     {
-        bool used = true;
+        bool used = false;
 
         if (_binw) {
             used = write_optional(!cache_prepared() && !write_default && v == defval
@@ -760,30 +794,73 @@ public:
         }
         else
             meta_variable_optional<T>(name, &v, true);
+
         return used;
     }
 
-    ///Define a fixed size array member variable
+    ///Define a fixed size array non-member variable (no valid offset within the parent struct)
     //@param name variable name, used as a key in output formats
     //@param v variable to read/write to
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T, size_t N>
-    bool nonmember(const token& name, T(&v)[N])
+    bool nonmember(const token& name, T(&v)[N], bool optional = false)
     {
-        member_array<N>(name, v, true);
-        return true;
+        return member_array<N>(name, v, optional, true);
     }
 
-    ///Define a non-member variable referenced by a pointer (non-streamable) except const char*
+    ///Define a non-member variable referenced by a pointer (non-streamable), except const char*
     //@param name variable name, used as a key in output formats
     //@param v pointer to variable to read/write to
     //@param streamed false variable should not be streamed, just a part of meta description, can point to 1..N items (default)
     //@param          true variable is indirectly referenced to by a pointer
+    //@return true if value was read or written and no default was used, false in meta phase
     //@note use member_optional or member_type for special handling when the pointer has to be allocated etc.
     template<typename T, typename = std::enable_if_t<!std::is_same<const char*, T*>::value>>
     bool nonmember(const token& name, T*& v, bool streamed = false)
     {
-        nonmember_ptr(name, v, streamed);
-        return true;
+        return nonmember_ptr(name, v, streamed);
+    }
+
+    ///Define an optional non-member variable, doesn't get read if it wasn't present in the input stream
+    //@param name variable name, used as a key in output formats
+    //@return true if value was read or written and no default was used, false in meta phase
+    template<typename T>
+    bool nonmember_optional(const token& name, T& v)
+    {
+        bool used = false;
+
+        if (_binw) {
+            *this || v;
+            used = true;
+        }
+        else if (_binr) {
+            used = read_optional(v);
+        }
+        else
+            meta_variable_optional<T>(name, &v, true);
+
+        return used;
+    }
+
+    ///Define an optional non-member variable, doesn't get read if it wasn't present in the input stream
+    //@param name variable name, used as a key in output formats
+    //@param defval default value for optional writing of values
+    //@return true if value was read or written and no default was used, false in meta phase
+    template<typename T, typename D>
+    bool nonmember_optional(const token& name, T& v, const D& defval)
+    {
+        bool used = false;
+
+        if (_binw) {
+            used = write_optional(v != defval ? &v : 0);
+        }
+        else if (_binr) {
+            used = read_optional(v);
+        }
+        else
+            meta_variable_optional<T>(name, &v, true);
+
+        return used;
     }
 
     ///Define a non-member variable referenced by a pointer, assumed to be already allocated when streaming to/from
@@ -809,17 +886,20 @@ public:
     //@param name variable name, used as a key in output formats
     //@param v pointer to variable to read/write to
     //@param streamed false if variable should not be streamed, just a part of meta description
+    //@return true if value was read or written and no default was used, false in meta phase
     template<typename T>
     bool nonmember_ptr(const token& name, T*& v, bool streamed)
     {
         typedef typename std::remove_const<T>::type TNC;
 
-        if (streaming())
+        if (streaming()) {
             *this || *(typename resolve_enum<TNC>::type*)v;
+            return true;
+        }
         else
             meta_variable_raw_ptr<TNC>(name, -1, streamed);
 
-        return true;
+        return false;
     }
 
     ///Define a non-member variable, with default value constructed by streaming the value object from nullstream
@@ -839,6 +919,31 @@ public:
     }
 
 
+    ///Define a fixed size array member
+    //@param name variable name, used as a key in output formats
+    //@param v pointer to the first array element
+    //@param size element count
+    //@param optional true if optional on input
+    //@param nonmember non-member variable (no valid offset within the parent struct)
+    //@return true if value was read or written and no default was used, false in meta phase
+    template<size_t N, typename T>
+    bool member_array(const token& name, T* v, bool optional, bool nonmember = false)
+    {
+        if (_binw) {
+            binstream_container_fixed_array<T, ints> bc(v, N);
+            write_container(bc);
+            return true;
+        }
+        else if (_binr) {
+            binstream_container_fixed_array<T, ints> bc(v, N);
+            return read_container(bc, optional);
+        }
+        else
+            meta_variable_fixed_array<N>(name, v, optional, nonmember);
+        return false;
+    }
+
+
     ///Write value in stream_writing mode of metastream operator
     //@param p pointer to value, nullptr if the value should not be written
     template<class T>
@@ -846,11 +951,11 @@ public:
     {
         if (!p) {
             moveto_expected_target(WRITE_MODE);
-            return true;
+            return false;
         }
 
         *this || *const_cast<T*>(p);
-        return false;
+        return true;
     }
 
     ///Read value in stream_reading mode of metastream operator
@@ -890,34 +995,6 @@ public:
         return 0;
     }
 
-
-    void init()
-    {
-        _binw = _binr = false;
-        _root.desc = 0;
-
-        //_current = _cachestack.realloc(1);
-        //_current->buf = &_cache;
-        _cachestack.reset();
-        _current = 0;
-
-        _cacheroot = 0;
-        _cachequit = 0;
-        _cachedefval = 0;
-        _cachevar = 0;
-        _cacheskip = 0;
-
-        _sesopen = 0;
-        _beseparator = false;
-        _current_var = 0;
-        _curvar.var = 0;
-        _cur_variable_name.set_empty();
-        _cur_variable_offset = 0;
-
-        _dometa = false;
-        _fmtstreamwr = _fmtstreamrd = 0;
-        _smap = 0;
-    }
 
     ///Bind the same stream to both input and output
     void bind_formatting_stream(fmtstream& bin)
@@ -1002,12 +1079,22 @@ public:
         }
     };
 
-    metastream& read_container(binstream_container_base& c)
+    bool read_container(binstream_container_base& c, bool optional = false)
     {
-        _xthrow(movein_process_key(READ_MODE));
+        opcd e = movein_process_key(READ_MODE);
+        if (e == ersNO_MORE) {
+            if (!optional)
+                _xthrow(e);
+
+            if (cache_prepared())
+                _current->offs += sizeof(uints);
+            moveto_expected_target(READ_MODE);
+            return false;
+        }
         _rvarname.reset();
 
-        return read_container_body(c);
+        read_container_body(c);
+        return true;
     }
 
     metastream& read_container_body(binstream_container_base& c)
@@ -1142,7 +1229,8 @@ protected:
 
         if (!prepare_type_common(read))  return 0;
 
-        *this || *(typename resolve_enum<T>::type*)0;     // build description
+        typename resolve_enum<T>::type* p = 0;
+        *this || *p;     // build description
 
         return prepare_type_final(name, cache, read);
     }
@@ -1359,7 +1447,8 @@ public:
     template<class T>
     void xcache_in(const token& name = token())
     {
-        _xthrow(prepare_type(*(T*)0, name, true, READ_MODE));
+        T* t = 0;
+        _xthrow(prepare_type(*t, name, true, READ_MODE));
     }
 
 
@@ -1639,7 +1728,8 @@ public:
             //_cur_variable_offset was set by a member method, but since this is using a temporary,
             // indicate that it should not be used
             _cur_variable_offset = -1;
-            *this || *(S*)0;
+            S* s = 0;
+            *this || *s;
         }
         return *this;
     }
@@ -1716,7 +1806,8 @@ public:
         _cur_variable_offset = nonmember ? -1 : down_cast<int>((ints)v);
         _cur_stream_fn = &type_streamer<T>::fn;
 
-        *this || *(B*)0;
+        B* b = 0;
+        *this || *b;
     }
 
     template<class T>
@@ -1728,7 +1819,8 @@ public:
         _cur_variable_offset = down_cast<int>(offs);
         _cur_stream_fn = &type_streamer<T>::fn;
 
-        *this || *(B*)0;
+        B* b = 0;
+        *this || *b;
 
         _last_var->singleref = true;
     }
@@ -1795,7 +1887,7 @@ public:
 
     ///Define member array variable
     template<size_t N, class T>
-    void meta_variable_fixed_array(const token& varname, T* v, bool nonmember = false)
+    void meta_variable_fixed_array(const token& varname, T* v, bool optional, bool nonmember = false)
     {
         typedef typename resolve_enum<T>::type B;
 
@@ -1813,8 +1905,15 @@ public:
             [](void* a, uints& i) -> void* { return static_cast<T*>(a) + i++; },
             [](const void* a, uints& i) -> const void* { return static_cast<T const*>(a) + i++; },
             N
-        ))
-            *this || *(B*)0;
+        )) {
+            _current_var->optional = optional;
+
+            B* b = 0;
+            *this || *b;
+        }
+        else {
+            _current_var->optional = optional;
+        }
     }
 
 
@@ -2107,19 +2206,19 @@ private:
 
     // description parsing:
     MetaDesc::Var _root;
-    MetaDesc::Var* _current_var;
-    MetaDesc::Var* _last_var;
+    MetaDesc::Var* _current_var = 0;
+    MetaDesc::Var* _last_var = 0;
 
     token _cur_variable_name;
     MetaDesc::stream_func _cur_stream_fn;
     int _cur_variable_offset;
 
-    int _sesopen;                       //< flush(>0) or ack(<0) session currently open
+    int _sesopen = 0;                   //< flush(>0) or ack(<0) session currently open
 
     ///Entry for variable stack
     struct VarEntry {
-        MetaDesc::Var* var;             //< currently processed variable
-        int kth;                        //< its position within parent
+        MetaDesc::Var* var = 0;         //< currently processed variable
+        int kth = 0;                    //< its position within parent
     };
 
     dynarray<VarEntry> _stack;          //< stack for current variable
@@ -2130,13 +2229,13 @@ private:
     charstr _struct_name;               //< used during the template name building step
     charstr _convbuf;
 
-    bool _binw;
-    bool _binr;
-    bool _dometa;                       //< true if shoud stream metadata, false if only the values
-    bool _beseparator;                  //< true if separator between members should be read or written
+    bool _binw = false;
+    bool _binr = false;
+    bool _dometa = false;               //< true if shoud stream metadata, false if only the values
+    bool _beseparator = false;          //< true if separator between members should be read or written
 
-    fmtstream* _fmtstreamrd;            //< bound formatting front-end binstream
-    fmtstream* _fmtstreamwr;            //< bound formatting front-end binstream
+    fmtstream* _fmtstreamrd = 0;        //< bound formatting front-end binstream
+    fmtstream* _fmtstreamwr = 0;        //< bound formatting front-end binstream
 
     dynarray<uchar> _cache;             //< cache for unordered input data or written data in the write-to-cache mode
 
@@ -2326,15 +2425,15 @@ private:
 
     dynarray<CacheEntry>
         _cachestack;                    //< cache table stack
-    CacheEntry* _current;               //< currently processed cache entry
+    CacheEntry* _current = 0;           //< currently processed cache entry
 
-    MetaDesc::Var* _cacheroot;          //< root of the cache, whose members are going to be cached
-    MetaDesc::Var* _cachequit;          //< member variable being read from cache
-    MetaDesc::Var* _cachedefval;        //< variable whose default value is currently being read
-    MetaDesc::Var* _cachevar;           //< variable being currently cached from input
-    MetaDesc::Var* _cacheskip;          //< set if the variable was not present in input (can be filled with default) or has been already cached
+    MetaDesc::Var* _cacheroot = 0;      //< root of the cache, whose members are going to be cached
+    MetaDesc::Var* _cachequit = 0;      //< member variable being read from cache
+    MetaDesc::Var* _cachedefval = 0;    //< variable whose default value is currently being read
+    MetaDesc::Var* _cachevar = 0;       //< variable being currently cached from input
+    MetaDesc::Var* _cacheskip = 0;      //< set if the variable was not present in input (can be filled with default) or has been already cached
 
-    structure_map* _smap;
+    structure_map* _smap = 0;
 
 private:
 
@@ -3510,8 +3609,10 @@ metastream& operator || (metastream& m, dynarray<T, COUNT, A>& a)
             [](const void* p) -> uints { return static_cast<const dynarray<T, COUNT, A>*>(p)->size(); },
             [](void* p, uints&) -> void* { return static_cast<dynarray<T, COUNT, A>*>(p)->add(); },
             [](const void* p, uints& i) -> const void* { return static_cast<const dynarray<T, COUNT, A>*>(p)->ptr() + i++; }
-        ))
-            m || *(T*)0;
+        )) {
+            T* v = 0;
+            m || *v;
+        }
     }
     return m;
 }
@@ -3531,7 +3632,7 @@ metastream& operator || (metastream& m, range<T>& a)
     else {
         if (m.meta_decl_array(
             typeid(a).name(),
-            (ints)&a._ptr,
+            -1,
             sizeof(a),
             false,
             [](const void* a) -> const void* { return static_cast<const range<T>*>(a)->ptr(); },
@@ -3600,22 +3701,22 @@ COID_NAMESPACE_END
 
 #define COID_METABIN_OP1A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound_type(v, [&]() { m.member_array<1>("col", &v[0]); });\
+        m.compound_type(v, [&]() { m.member_array<1>("col", &v[0], false); });\
         return m; }}
 
 #define COID_METABIN_OP2A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound_type(v, [&]() { m.member_array<2>("col", &v[0]); });\
+        m.compound_type(v, [&]() { m.member_array<2>("col", &v[0], false); });\
         return m; }}
 
 #define COID_METABIN_OP3A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound_type(v, [&]() { m.member_array<3>("col", &v[0]); });\
+        m.compound_type(v, [&]() { m.member_array<3>("col", &v[0], false); });\
         return m; }}
 
 #define COID_METABIN_OP4A(TYPE,ELEM) namespace coid {\
     inline metastream& operator || (metastream& m, TYPE& v) {\
-        m.compound_type(v, [&]() { m.member_array<4>("col", &v[0]); });\
+        m.compound_type(v, [&]() { m.member_array<4>("col", &v[0], false); });\
         return m; }}
 
 

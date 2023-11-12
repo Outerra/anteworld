@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <utime.h>
 #include <dlfcn.h>
+#include <unistd.h>
 
 #define xstat64 stat64
 
@@ -151,6 +152,20 @@ bool directory::is_valid_dir(const char* arg)
 {
     directory::xstat st;
     return xstat64(arg, &st) == 0 && directory::is_directory(st.st_mode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool directory::subpath(token root, token& path)
+{
+    while (root && path) {
+        token r = root.cut_left_group(DIR_SEPARATORS);
+        token p = path.cut_left_group(DIR_SEPARATORS);
+
+        if (r != p)
+            break;
+    }
+
+    return root.is_empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -427,7 +427,7 @@ protected:
             }
 
             uints ids;
-            T* p = base::add_uninit(0, &ids);
+            base::add_uninit(0, &ids);
 
             seqtable()[ids] = *fid;
             *fid = uint(ids);

@@ -34,16 +34,25 @@ public:
 
     // --- interface methods ---
 
-    iref<ns::other> some_get( ifc_out coid::charstr& a );
+#pragma warning(push)
+#pragma warning(disable : 4191)
 
-    int get_a();
+    iref<ns::other> some_get( ifc_out coid::charstr& a )
+    { return VT_CALL(iref<ns::other>,(coid::charstr&),0)(a); }
 
-    void set_a( int a );
+    int get_a()
+    { return VT_CALL(int,(),1)(); }
 
-    void fun1( int a, const ns1::dummy& b, float* c, ifc_out ns1::dummy& d, ifc_out int* e, ifc_out iref<ns::other>& f, const coid::charstr& g );
+    void set_a( int a )
+    { return VT_CALL(void,(int),2)(a); }
 
-    coid::charstr fun2( int a, iref<ns::other> b, ifc_out int& c, ifc_out iref<ns::other>& d );
+    void fun1( int a, const ns1::dummy& b, float* c, ifc_out ns1::dummy& d, ifc_out int* e, ifc_out iref<ns::other>& f, const coid::charstr& g )
+    { return VT_CALL(void,(int,const ns1::dummy&,float*,ns1::dummy&,int*,iref<ns::other>&,const coid::charstr&),3)(a,b,c,d,e,f,g); }
 
+    coid::charstr fun2( int a, iref<ns::other> b, ifc_out int& c, ifc_out iref<ns::other>& d )
+    { return VT_CALL(coid::charstr,(int,iref<ns::other>,int&,iref<ns::other>&),4)(a,b,c,d); }
+
+#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -139,7 +148,12 @@ public:
     //@note host side helper
     static iref<main> intergen_active_interface(::ns1::main_cls* host);
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -266,26 +280,6 @@ inline iref<T> main::create_wp( T* _subclass_, int a, int& b, int& c, int d )
 
     return create(_subclass_, a, b, c, d);
 }
-
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-inline iref<ns::other> main::some_get( coid::charstr& a )
-{ return VT_CALL(iref<ns::other>,(coid::charstr&),0)(a); }
-
-inline int main::get_a()
-{ return VT_CALL(int,(),1)(); }
-
-inline void main::set_a( int a )
-{ return VT_CALL(void,(int),2)(a); }
-
-inline void main::fun1( int a, const ns1::dummy& b, float* c, ns1::dummy& d, int* e, iref<ns::other>& f, const coid::charstr& g )
-{ return VT_CALL(void,(int,const ns1::dummy&,float*,ns1::dummy&,int*,iref<ns::other>&,const coid::charstr&),3)(a,b,c,d,e,f,g); }
-
-inline coid::charstr main::fun2( int a, iref<ns::other> b, int& c, iref<ns::other>& d )
-{ return VT_CALL(coid::charstr,(int,iref<ns::other>,int&,iref<ns::other>&),4)(a,b,c,d); }
-
-#pragma warning(pop)
 
 } //namespace
 

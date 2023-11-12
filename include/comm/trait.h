@@ -41,7 +41,7 @@
 #include "alloc/memtrack.h"
 
 #include <type_traits>
-
+#include <utility>
 
 #ifdef SYSTYPE_MSVC
 #if _MSC_VER < 1700
@@ -54,6 +54,14 @@ template<class T> struct is_trivially_destructible { static const bool value = f
 
 
 COID_NAMESPACE_BEGIN
+
+/// @brief helper for sorting and comparisons
+/// @tparam T
+template <class T>
+inline bool greater_than_zero(T v) { return v > 0; }
+
+template <>
+inline bool greater_than_zero<bool>(bool v) { return v; }
 
 ////////////////////////////////////////////////////////////////////////////////
 

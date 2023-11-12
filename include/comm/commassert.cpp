@@ -78,7 +78,7 @@ bool __rassert(const opt_string& txt, const char* file, int line, const char* fu
 
     coidlog_error("", "Assertion failed in " << fname << '(' << line
         << "), function " << function << ":\n\""
-        << expr << (z ? "\": " : "\"") << (z ? z->get_token() : token())
+        << (expr ? expr : "") << (z && expr ? "\": " : "\"") << (z ? z->get_token() : token())
         << char(flush ? '\r' : '\0') // \r forces log flush
     );
 

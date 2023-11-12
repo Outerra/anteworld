@@ -29,25 +29,25 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -101,7 +101,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2019/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2022/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>c4e.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -120,7 +120,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2019/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2022/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>c5e_lib.dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -142,7 +142,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2019/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/20122/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>c4e.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -164,7 +164,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2019/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../include/comm/_build/msvc/2022/bin/$(Platform)/$(Configuration);../../lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>c5e_lib.dll.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -184,7 +184,7 @@
     <ClInclude Include="ifc\plugin_interface.js.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\include\comm\_build\msvc\2019\comm_static.vcxproj">
+    <ProjectReference Include="..\..\include\comm\_build\msvc\2022\comm_static.vcxproj">
       <Project>{d2f47060-00c0-4a3c-9888-cf663f14d44d}</Project>
     </ProjectReference>
   </ItemGroup>

@@ -179,6 +179,20 @@ bool directory::is_valid_dir(const char* arg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool directory::subpath(token root, token& path)
+{
+    while (root && path) {
+        token r = root.cut_left_group(DIR_SEPARATORS);
+        token p = path.cut_left_group(DIR_SEPARATORS);
+
+        if (!r.cmpeqi(p))
+            break;
+    }
+
+    return root.is_empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 opcd directory::mkdir( zstring name, uint mode )
 {
     const char* p = no_trail_sep(name);

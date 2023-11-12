@@ -48,15 +48,16 @@ namespace collision {
         cg_dynamic = 2,                 //< dynamic objects
         cg_ext_dynamic = 4,             //< dynamic objects driven by external sim
         cg_raycast = 8,
+        cg_camera_collider = 16,
         cg_terrain = 64,                //< terrain & terrain point colliders
         cg_terrain_occluder = 512,		//< object which occlude terrain(create holes)
 
         cgm_static = ~(cg_static | cg_terrain),
         cgm_dynamic = ~cg_ext_dynamic,
         cgm_ext_dynamic = ~(cg_dynamic | cg_ext_dynamic | cg_terrain),
-        cgm_raycast = -1,
+        cgm_raycast = -1 & (~ cg_camera_collider),
         cgm_terrain = 0,
-        cgm_terrain_occluder = ~(cg_static | cg_raycast | cg_terrain | cg_terrain_occluder)
+        cgm_terrain_occluder = ~(cg_static | cg_raycast | cg_terrain | cg_terrain_occluder),
     };
 
 } //namespace collision
@@ -67,7 +68,7 @@ enum ECameraMode {
     CamFPS,                             //< enter default FPS camera
     CamTPS,
     CamTPSFollow,
-    CamTPSFollowAligned,
+    //CamTPSFollowAligned,
 
     ///count of base camera controller modes above
     CamBaseModeCount,

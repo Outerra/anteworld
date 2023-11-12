@@ -33,54 +33,73 @@ public:
 
     // --- interface methods ---
 
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
     ///Load sound files from object or package directory
     //@param filename relative path to the sound file
     //@note in case of an independent sound group, filename refers to the relative path in data or program directory
-    uint load_sound( const coid::token& filename );
+    uint load_sound( const coid::token& filename )
+    { return VT_CALL(uint,(const coid::token&),0)(filename); }
 
     ///
     //@param bone bone id
     //@param type sound type
-    uint create_source( uint bone, ot::sound_type type = ot::sound_type::universal );
+    uint create_source( uint bone, ot::sound_type type = ot::sound_type::universal )
+    { return VT_CALL(uint,(uint,ot::sound_type),1)(bone,type); }
 
-    uint create_source_wo_bone( ot::sound_type type = ot::sound_type::universal );
+    uint create_source_wo_bone( ot::sound_type type = ot::sound_type::universal )
+    { return VT_CALL(uint,(ot::sound_type),2)(type); }
 
     /// set source ECEF position once it's used source always be using ECEF
-    void set_source_ecef( uint source_id, const double3& pos );
+    void set_source_ecef( uint source_id, const double3& pos )
+    { return VT_CALL(void,(uint,const double3&),3)(source_id,pos); }
 
     ///
-    void play( uint id, uint snd, bool looping, bool enqueue, bool break_prev_loops = true );
+    void play( uint id, uint snd, bool looping, bool enqueue, bool break_prev_loops = true )
+    { return VT_CALL(void,(uint,uint,bool,bool,bool),4)(id,snd,looping,enqueue,break_prev_loops); }
 
     /// Play sound once, discarding older sounds
-    void play_sound( uint id, uint snd );
+    void play_sound( uint id, uint snd )
+    { return VT_CALL(void,(uint,uint),5)(id,snd); }
 
     /// Play looped sound, breaking other sounds
-    void play_loop( uint id, uint snd );
+    void play_loop( uint id, uint snd )
+    { return VT_CALL(void,(uint,uint),6)(id,snd); }
 
     /// Enqueue sound once, previous loops are finished and then discarded
-    void enqueue_sound( uint id, uint snd );
+    void enqueue_sound( uint id, uint snd )
+    { return VT_CALL(void,(uint,uint),7)(id,snd); }
 
     /// Enqueue looped sound. If @break_prev_loops is true, previous loops are removed after completion,
     /// and only this sound remains looped. Otherwise the new sound is added to the loop chain.
-    void enqueue_loop( uint id, uint snd, bool break_prev_loops = true );
+    void enqueue_loop( uint id, uint snd, bool break_prev_loops = true )
+    { return VT_CALL(void,(uint,uint,bool),8)(id,snd,break_prev_loops); }
 
     ///
-    bool is_playing( uint id );
+    bool is_playing( uint id )
+    { return VT_CALL(bool,(uint),9)(id); }
 
-    bool is_looping( uint id );
+    bool is_looping( uint id )
+    { return VT_CALL(bool,(uint),10)(id); }
 
-    void stop( uint id );
+    void stop( uint id )
+    { return VT_CALL(void,(uint),11)(id); }
 
     ///
-    void set_pitch( uint id, float pitch );
+    void set_pitch( uint id, float pitch )
+    { return VT_CALL(void,(uint,float),12)(id,pitch); }
 
     /// Open AL distance attenuation model
     /// https://www.desmos.com/calculator/f20nyvlupa
-    void set_ref_distance( uint id, float ref_dist );
+    void set_ref_distance( uint id, float ref_dist )
+    { return VT_CALL(void,(uint,float),13)(id,ref_dist); }
 
     ///
-    void set_gain( uint id, float gain );
+    void set_gain( uint id, float gain )
+    { return VT_CALL(void,(uint,float),14)(id,gain); }
 
+#pragma warning(pop)
     // --- creators ---
 
     ///Internal constructor
@@ -137,7 +156,12 @@ public:
         }
     }
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -228,56 +252,6 @@ inline iref<T> sndgrp::create( T* _subclass_ )
 
     return create(_subclass_);
 }
-
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-inline uint sndgrp::load_sound( const coid::token& filename )
-{ return VT_CALL(uint,(const coid::token&),0)(filename); }
-
-inline uint sndgrp::create_source( uint bone, ot::sound_type type )
-{ return VT_CALL(uint,(uint,ot::sound_type),1)(bone,type); }
-
-inline uint sndgrp::create_source_wo_bone( ot::sound_type type )
-{ return VT_CALL(uint,(ot::sound_type),2)(type); }
-
-inline void sndgrp::set_source_ecef( uint source_id, const double3& pos )
-{ return VT_CALL(void,(uint,const double3&),3)(source_id,pos); }
-
-inline void sndgrp::play( uint id, uint snd, bool looping, bool enqueue, bool break_prev_loops )
-{ return VT_CALL(void,(uint,uint,bool,bool,bool),4)(id,snd,looping,enqueue,break_prev_loops); }
-
-inline void sndgrp::play_sound( uint id, uint snd )
-{ return VT_CALL(void,(uint,uint),5)(id,snd); }
-
-inline void sndgrp::play_loop( uint id, uint snd )
-{ return VT_CALL(void,(uint,uint),6)(id,snd); }
-
-inline void sndgrp::enqueue_sound( uint id, uint snd )
-{ return VT_CALL(void,(uint,uint),7)(id,snd); }
-
-inline void sndgrp::enqueue_loop( uint id, uint snd, bool break_prev_loops )
-{ return VT_CALL(void,(uint,uint,bool),8)(id,snd,break_prev_loops); }
-
-inline bool sndgrp::is_playing( uint id )
-{ return VT_CALL(bool,(uint),9)(id); }
-
-inline bool sndgrp::is_looping( uint id )
-{ return VT_CALL(bool,(uint),10)(id); }
-
-inline void sndgrp::stop( uint id )
-{ return VT_CALL(void,(uint),11)(id); }
-
-inline void sndgrp::set_pitch( uint id, float pitch )
-{ return VT_CALL(void,(uint,float),12)(id,pitch); }
-
-inline void sndgrp::set_ref_distance( uint id, float ref_dist )
-{ return VT_CALL(void,(uint,float),13)(id,ref_dist); }
-
-inline void sndgrp::set_gain( uint id, float gain )
-{ return VT_CALL(void,(uint,float),14)(id,gain); }
-
-#pragma warning(pop)
 
 } //namespace
 

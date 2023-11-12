@@ -69,7 +69,7 @@ struct thread_manager
 public:
 
     thread_manager()
-        : _pkey(), _cbk_begin(0), _cbk_end(0), _mutex(100, false)
+        : _pkey(), _mutex(100, false), _cbk_begin(0), _cbk_end(0)
     {
         //_mutex.set_name( "comm/thread::manager" );
     }
@@ -159,17 +159,17 @@ public:
         return  pti && (*pti)->cancel;
     }
 
-	const info * tls_info()
-	{
-		return reinterpret_cast<info*>(_pkey.get());
-	}
+    const info * tls_info()
+    {
+        return reinterpret_cast<info*>(_pkey.get());
+    }
 
-	bool self_test_cancellation()
-	{
-		const info * const ti = tls_info();
+    bool self_test_cancellation()
+    {
+        const info * const ti = tls_info();
 
-		return ti != 0 && ti->cancel;
-	}
+        return ti != 0 && ti->cancel;
+    }
 
 
 protected:
@@ -191,7 +191,7 @@ protected:
     {
         GUARDME;
         _hash.insert_value(i);
-		_pkey.set(i);
+        _pkey.set(i);
     }
 
     void thread_unregister( thread_t tid )

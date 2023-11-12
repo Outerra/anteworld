@@ -278,7 +278,7 @@ struct versionid
         uint64 value;
     };
 
-    versionid() : id(max_id), version(0xffffull)
+    versionid() : value(UMAX64)
     {}
 
     versionid(uint64 id, uint16 version) : id(id), version(version)
@@ -344,6 +344,11 @@ inline void* ptr_advance( void* p, ints i ) { return (uint8*)p + i; }
 template<>
 inline const void* ptr_advance( const void* p, ints i ) { return (const uint8*)p + i; }
 
+///Helper for taking address of a temporary for passing optional arguments
+template <class T>
+const T* const_addr(T&& tmp) {
+    return &tmp;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void *_xmemcpy( void *dest, const void *src, size_t count );

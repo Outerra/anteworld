@@ -80,7 +80,7 @@ public:
     bool timed_rd_lock( uint msec )     { return timed_lock(msec); }
     bool timed_wr_lock( uint msec )     { return timed_lock(msec); }
 
-    static void get_abstime( uint delaymsec, timespec* out )
+    static void get_abstime( int delaymsec, timespec* out )
     {
 #ifdef SYSTYPE_MSVC
         struct ::__timeb64 tb;
@@ -90,7 +90,7 @@ public:
         ftime(&tb);
 #endif
 
-        out->tv_sec = delaymsec/1000 + (uint)tb.time;
+        out->tv_sec = uint(delaymsec/1000 + tb.time);
         out->tv_nsec = (delaymsec%1000 + tb.millitm) * 1000000;
     }
 };
@@ -111,7 +111,7 @@ public:
 
         uint8   _tmp[CS_SIZE];
     };
-#endif    
+#endif
 
 private:
 #ifdef SYSTYPE_WIN
@@ -162,7 +162,7 @@ public:
         struct ::timeb tb;
         ftime(&tb);
 #endif
-        out->tv_sec = delaymsec/1000 + (uint)tb.time;
+        out->tv_sec = uint(delaymsec/1000 + tb.time);
         out->tv_nsec = (delaymsec%1000 + tb.millitm) * 1000000;
     }
 

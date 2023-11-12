@@ -272,7 +272,7 @@ struct water_state_params
         return m.compound("water_state_params", [&]()
         {
             m.member("sea_dominant_wave_length", ws.sea_dominant_wave_length, 10.0f);
-            m.member("sea_wave_amplitude_multiplier", ws.sea_wave_amplitude_multiplier, 1.0f);
+            m.member("sea_wave_amplitude_multiplier", ws.sea_wave_amplitude_multiplier, 0.5f);
             m.member("sea_foam_multiplier", ws.sea_foam_multiplier, 1.0f);
             m.member("sea_current_heading", ws.sea_current_heading, 0.0f);
             m.member("sea_current_speed", ws.sea_current_speed, 0.0f);

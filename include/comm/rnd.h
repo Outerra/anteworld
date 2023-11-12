@@ -93,19 +93,19 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 class rnd_int2
 {
-	uint _mult;
-	uint _val;
+    uint _mult;
+    uint _val;
 
 public:
-	rnd_int2() : _mult(3141592653UL), _val(1) {}
+    rnd_int2() : _mult(3141592653UL), _val(1) {}
 
-	uint rand(uint a, uint b) const {
-		return (a+b)*_mult + 1;
-	}
+    uint rand(uint a, uint b) const {
+        return (a+b)*_mult + 1;
+    }
 
-	uint rand(uint a) const {
-		return a*_mult + 1;
-	}
+    uint rand(uint a) const {
+        return a*_mult + 1;
+    }
 
     uint rand() {
         _val= _mult*_val + 1;
@@ -121,13 +121,13 @@ public:
         _val= utv;
     }
 
-	void seed(uint seed) {
-		_val = seed;
-	}
+    void seed(uint seed) {
+        _val = seed;
+    }
 
-	void set_mul(uint mul) {
-		_mult = mul;
-	}
+    void set_mul(uint mul) {
+        _mult = mul;
+    }
 };
 
 
@@ -153,14 +153,14 @@ private:
 class rnd_strong {
     enum : uint {
         // Period parameters
-        N= 624,
-        M= 397,
-        MATRIX_A= 0x9908b0dfU,   // constant vector a
-        UPPER_MASK= 0x80000000, // most significant w-r bits
-        LOWER_MASK= 0x7fffffff, // least significant r bits
+        N = 624,
+        M = 397,
+        MATRIX_A = 0x9908b0dfU,   // constant vector a
+        UPPER_MASK = 0x80000000, // most significant w-r bits
+        LOWER_MASK = 0x7fffffff, // least significant r bits
         // Tempering parameters
-        TEMPERING_MASK_B= 0x9d2c5680U,
-        TEMPERING_MASK_C= 0xefc60000U,
+        TEMPERING_MASK_B = 0x9d2c5680U,
+        TEMPERING_MASK_C = 0xefc60000U,
     };
 
     uint _mt[N];    // the array for the state vector
@@ -174,7 +174,7 @@ public:
     void seed(uint seed)
     {
         _mt[0] = seed;
-        for(_mti=1; _mti<N; ++_mti) {
+        for (_mti = 1; _mti<N; ++_mti) {
             _mt[_mti] =
                 (1812433253UL * (_mt[_mti-1] ^ (_mt[_mti-1] >> 30)) + _mti);
             /* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
@@ -191,29 +191,29 @@ public:
         // the generator Line 25 of Table 1 in
         // [KNUTH 1981, The Art of Computer Programming
         //    Vol. 2 (2nd Ed.), pp102]
-        _mt[0]= seed;
-        for(_mti=1; _mti<N; ++_mti)
+        _mt[0] = seed;
+        for (_mti = 1; _mti<N; ++_mti)
             _mt[_mti] = 69069 * _mt[_mti-1];
     }
 
     uint rand()
     {
         uint y;
-        static unsigned long mag01[2]={0x0UL, ulong(MATRIX_A)};
+        static unsigned long mag01[2] = {0x0UL, ulong(MATRIX_A)};
 
-        if(_mti >= N) { // generate N words at one time */
+        if (_mti >= N) { // generate N words at one time */
             uint kk;
 
-            if(_mti == N+1)   // if seed() has not been called
+            if (_mti == N+1)   // if seed() has not been called
                 seed(4357); // a default initial seed is used
 
-            for(kk=0; kk<N-M; kk++) {
+            for (kk = 0; kk<N-M; kk++) {
                 y = (_mt[kk]&UPPER_MASK) | (_mt[kk+1]&LOWER_MASK);
                 _mt[kk] = _mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1];
             }
-            for(; kk<N-1; kk++) {
+            for (; kk<N-1; kk++) {
                 y = (_mt[kk]&UPPER_MASK) | (_mt[kk+1]&LOWER_MASK);
-                _mt[kk] = _mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1];
+                _mt[kk] = _mt[kk+int(M-N)] ^ (y >> 1) ^ mag01[y & 0x1];
             }
             y = (_mt[N-1]&UPPER_MASK) | (_mt[0]&LOWER_MASK);
             _mt[N-1] = _mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1];
@@ -230,25 +230,25 @@ public:
         return y;
     }
 
-    void nrand(uint n, uint *puout)
+    void nrand(uint n, uint* puout)
     {
         uint i, y;
-        static unsigned long mag01[2]={0x0UL, ulong(MATRIX_A)};
+        static unsigned long mag01[2] = {0x0UL, ulong(MATRIX_A)};
 
-        for(i=0; i<n; ++i) {
-            if(_mti >= N) { // generate N words at one time
+        for (i = 0; i<n; ++i) {
+            if (_mti >= N) { // generate N words at one time
                 uint kk;
 
-                if(_mti == N+1)   // if seed() has not been called,
+                if (_mti == N+1)   // if seed() has not been called,
                     seed(4357); // a default initial seed is used
 
-                for(kk=0; kk<N-M; kk++) {
+                for (kk = 0; kk<N-M; kk++) {
                     y = (_mt[kk]&UPPER_MASK) | (_mt[kk+1]&LOWER_MASK);
                     _mt[kk] = _mt[kk+M] ^ (y >> 1) ^ mag01[y & 0x1];
                 }
-                for(; kk<N-1; kk++) {
+                for (; kk<N-1; kk++) {
                     y = (_mt[kk]&UPPER_MASK) | (_mt[kk+1]&LOWER_MASK);
-                    _mt[kk] = _mt[kk+(M-N)] ^ (y >> 1) ^ mag01[y & 0x1];
+                    _mt[kk] = _mt[kk+int(M-N)] ^ (y >> 1) ^ mag01[y & 0x1];
                 }
                 y = (_mt[N-1]&UPPER_MASK) | (_mt[0]&LOWER_MASK);
                 _mt[N-1] = _mt[M-1] ^ (y >> 1) ^ mag01[y & 0x1];
@@ -265,7 +265,7 @@ public:
         }
     }
 
-    rnd_strong( uint seedi=1 )
+    rnd_strong(uint seedi = 1)
     {
         seed(seedi);
     };

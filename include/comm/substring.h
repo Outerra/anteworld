@@ -36,7 +36,7 @@
 #define __COID_COMM_SUBSTRING__HEADER_FILE__
 
 #include "namespace.h"
-#include "commassert.h"
+#include "commtypes.h"
 
 #include <cctype>
 #include <cstring>

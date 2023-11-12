@@ -32,6 +32,9 @@ public:
 
     // --- interface methods ---
 
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
     ///Register input action sending events on button press (value > 0)
     //@param name hierarchic action name
     //@param handler optional handler for changed value
@@ -39,7 +42,8 @@ public:
     //@param channels number of extra channels that are handled (multiple engines etc)
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_event( const coid::token& name, const ot::fn_event_handler& handler, int handler_id, uint channels, uint group );
+    int register_event( const coid::token& name, const ot::fn_event_handler& handler, int handler_id, uint channels, uint group )
+    { return VT_CALL(int,(const coid::token&,const ot::fn_event_handler&,int,uint,uint),0)(name,handler,handler_id,channels,group); }
 
     ///Register input action sending events on value change (full state button and axis)
     //@param name hierarchic action name
@@ -50,44 +54,56 @@ public:
     //@param handler_id optinal extra data for the handler
     //@return slot id or -1 on fail
     //@note value range -1..1
-    int register_axis( const coid::token& name, const ot::fn_axis_handler& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group );
+    int register_axis( const coid::token& name, const ot::fn_axis_handler& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group )
+    { return VT_CALL(int,(const coid::token&,const ot::fn_axis_handler&,int,float,const ot::ramp_params&,uint),1)(name,handler,handler_id,defval,ramp,group); }
 
     //@return action slot or -1
-    int find_action( const coid::token& name ) const;
+    int find_action( const coid::token& name ) const
+    { return VT_CALL(int,(const coid::token&) const,2)(name); }
 
     ///Activate event groups
-    void activate();
+    void activate()
+    { return VT_CALL(void,(),3)(); }
 
     ///De/activate given action group
-    void activate_group( uint group, bool activate );
+    void activate_group( uint group, bool activate )
+    { return VT_CALL(void,(uint,bool),4)(group,activate); }
 
     ///Discard action bindings from given group
-    void clear_group( uint group );
+    void clear_group( uint group )
+    { return VT_CALL(void,(uint),5)(group); }
 
     ///Clear all groups and their action bindings
-    void clear_all_groups();
+    void clear_all_groups()
+    { return VT_CALL(void,(),6)(); }
 
     ///Inject registered action
     //@param slot action slot returned from register_axis or register_event
     //@param value target action value
-    void inject_axis( uint slot, float value, uint channel = 0 );
+    void inject_axis( uint slot, float value, uint channel = 0 )
+    { return VT_CALL(void,(uint,float,uint),7)(slot,value,channel); }
 
     ///Inject registered event
     //@param slot action slot returned from register_axis or register_event
     //@param value optional event value
-    void inject_event( uint slot, int16 value, uint channel = 0 );
+    void inject_event( uint slot, int16 value, uint channel = 0 )
+    { return VT_CALL(void,(uint,int16,uint),8)(slot,value,channel); }
 
     ///Programmatically invoke axis value toggle
-    float toggle_axis( uint slot, uint channel = 0 );
+    float toggle_axis( uint slot, uint channel = 0 )
+    { return VT_CALL(float,(uint,uint),9)(slot,channel); }
 
     //@return true if given registered slot is an event
-    bool is_event( uint slot ) const;
+    bool is_event( uint slot ) const
+    { return VT_CALL(bool,(uint) const,10)(slot); }
 
     ///Invoke event processing
     //@param dt elapsed frame time
     //@param ext_coef 0..1 modulator for ramp_params vel and center velocity
-    void update( float dt, const float2& ext_coef = float2(1) );
+    void update( float dt, const float2& ext_coef = float2(1) )
+    { return VT_CALL(void,(float,const float2&),11)(dt,ext_coef); }
 
+#pragma warning(pop)
     // --- creators ---
 
     static iref<controls_handler> get() {
@@ -134,7 +150,12 @@ public:
         }
     }
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -204,47 +225,6 @@ inline iref<T> controls_handler::get( T* _subclass_ )
 
     return create(_subclass_);
 }
-
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-inline int controls_handler::register_event( const coid::token& name, const ot::fn_event_handler& handler, int handler_id, uint channels, uint group )
-{ return VT_CALL(int,(const coid::token&,const ot::fn_event_handler&,int,uint,uint),0)(name,handler,handler_id,channels,group); }
-
-inline int controls_handler::register_axis( const coid::token& name, const ot::fn_axis_handler& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group )
-{ return VT_CALL(int,(const coid::token&,const ot::fn_axis_handler&,int,float,const ot::ramp_params&,uint),1)(name,handler,handler_id,defval,ramp,group); }
-
-inline int controls_handler::find_action( const coid::token& name ) const
-{ return VT_CALL(int,(const coid::token&) const,2)(name); }
-
-inline void controls_handler::activate()
-{ return VT_CALL(void,(),3)(); }
-
-inline void controls_handler::activate_group( uint group, bool activate )
-{ return VT_CALL(void,(uint,bool),4)(group,activate); }
-
-inline void controls_handler::clear_group( uint group )
-{ return VT_CALL(void,(uint),5)(group); }
-
-inline void controls_handler::clear_all_groups()
-{ return VT_CALL(void,(),6)(); }
-
-inline void controls_handler::inject_axis( uint slot, float value, uint channel )
-{ return VT_CALL(void,(uint,float,uint),7)(slot,value,channel); }
-
-inline void controls_handler::inject_event( uint slot, int16 value, uint channel )
-{ return VT_CALL(void,(uint,int16,uint),8)(slot,value,channel); }
-
-inline float controls_handler::toggle_axis( uint slot, uint channel )
-{ return VT_CALL(float,(uint,uint),9)(slot,channel); }
-
-inline bool controls_handler::is_event( uint slot ) const
-{ return VT_CALL(bool,(uint) const,10)(slot); }
-
-inline void controls_handler::update( float dt, const float2& ext_coef )
-{ return VT_CALL(void,(float,const float2&),11)(dt,ext_coef); }
-
-#pragma warning(pop)
 
 } //namespace
 

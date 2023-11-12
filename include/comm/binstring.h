@@ -15,7 +15,7 @@
  *
  * The Initial Developer of the Original Code is
  * Outerra.
- * Portions created by the Initial Developer are Copyright (C) 2013
+ * Portions created by the Initial Developer are Copyright (C) 2013-2021
  * the Initial Developer. All Rights Reserved.
  *
  * Contributor(s):
@@ -52,7 +52,7 @@
 COID_NAMESPACE_BEGIN
 
 ////////////////////////////////////////////////////////////////////////////////
-///Binary string class. Written values are properly aligned.
+///Binary string class. Written values are aligned by their size and specified packing value.
 ///Read values are returned via fetch() as references into the stream.
 class binstring
 {
@@ -61,10 +61,9 @@ public:
     COIDNEWDELETE(binstring);
 
     binstring()
-        : _offset(0), _packing(UMAX32)
     {}
 
-    binstring( binstring&& other )
+    binstring(binstring&& other) noexcept
         : _tstr(std::move(other._tstr))
         , _offset(other._offset)
         , _packing(other._packing)
@@ -74,7 +73,7 @@ public:
 
     ///Set the maximum packing alignment
     //@note resulting alignment is the minimum of this value and __alignof(type)
-    void set_packing( uint pack ) {
+    void set_packing(uint pack) {
         _packing = pack;
     }
 
@@ -96,6 +95,14 @@ public:
     binstring& operator << (const charstr& str) {
         *this << str.len();
         _tstr.add_bin_from((const uint8*)str.ptr(), str.len());
+        return *this;
+    }
+
+    binstring& write_varstring(const token& tok) {
+        uints len = tok.len();
+        write_varint(len);
+        if (len)
+            ::memcpy(_tstr.add(len), tok.ptr(), len);
         return *this;
     }
 
@@ -128,14 +135,14 @@ public:
     }
 
     template<class T>
-    void write_to_offset( uints offset, const T& v ) {
-        DASSERTN( offset + sizeof(T) <= _tstr.size() );
+    void write_to_offset(uints offset, const T& v) {
+        DASSERTN(offset + sizeof(T) <= _tstr.size());
         *(T*)(_tstr.ptr() + offset) = v;
     }
 
     ///Append string with optionally specified size type (uint8, uint16, uint32 ...)
     template<class SIZE COID_DEFAULT_OPT(uint)>
-    binstring& append_string( const token& tok ) {
+    binstring& append_string(const token& tok) {
         uints size = write_size<SIZE>(tok.len());
         _tstr.add_bin_from((const uint8*)tok.ptr(), size);
         return *this;
@@ -143,7 +150,7 @@ public:
 
     ///Append string with optionally specified size type (uint8, uint16, uint32 ...)
     template<class SIZE COID_DEFAULT_OPT(uint)>
-    binstring& append_string( const char* czstr ) {
+    binstring& append_string(const char* czstr) {
         token tok(czstr);
         uints size = write_size<SIZE>(tok.len());
         _tstr.add_bin_from((const uint8*)tok.ptr(), size);
@@ -152,14 +159,14 @@ public:
 
     ///Append string with optionally specified size type (uint8, uint16, uint32 ...)
     template<class SIZE COID_DEFAULT_OPT(uint)>
-    binstring& append_string( const charstr& str ) {
+    binstring& append_string(const charstr& str) {
         uints size = write_size<SIZE>(str.len());
         _tstr.add_bin_from((const uint8*)str.ptr(), size);
         return *this;
     }
 
     ///Add buffer with specified leading alignment
-    binstring& append_buffer( const void* p, uints len, uint alignment=1 ) {
+    binstring& append_buffer(const void* p, uints len, uint alignment = 1) {
         uints size = _tstr.size();
         uints align = align_value_up(size, alignment) - size;
 
@@ -167,9 +174,31 @@ public:
         return *this;
     }
 
+    ///Write number as a varint
+    template<class T>
+    binstring& write_varint(T num) {
+        uint8 buf[(8*sizeof(T))/7 + 1];
+        uint8* pb = buf;
+
+        while (num & ~0x7f) {
+            uint8 b = num & 0xff;
+            *pb++ = b | 0x80;
+            num >>= 7;
+        }
+        *pb++ = uint8(num);
+        uints len = pb - buf;
+        DASSERT(len <= sizeof(buf));
+
+        uints size = _tstr.size();
+        uints align = align_value_up(size, _packing<__alignof(T) ? _packing : __alignof(T)) - size;
+
+        ::memcpy(_tstr.add(align + len) + align, buf, len);
+        return *this;
+    }
+
     ///Align the reader offset to the specified alignment
     //@return true if data are available
-    bool align( uint alignment ) {
+    bool align(uint alignment) {
         _offset = align_value_up(_offset, alignment);
         return has_data();
     }
@@ -182,12 +211,12 @@ public:
 
     ///Read (copy) data into target variable
     template<class T>
-    T& read( T& dst ) {
+    T& read(T& dst) {
         return dst = fetch<T>();
     }
 
     ///Read a block of data
-    const void* read_buffer( uints size, uint alignment=1 ) {
+    const void* read_buffer(uints size, uint alignment = 1) {
         uints offset = align_value_up(_offset, alignment);
         _offset += size;
         return ptr() + offset;
@@ -207,7 +236,8 @@ public:
             b = buffer[count];
             result |= uint64(b & 0x7F) << (7 * count);
             ++count;
-        } while((b & 0x80) && (count < (sizeof(T) * 8 + 6) / 7));
+        }
+        while ((b & 0x80) && (count < (sizeof(T) * 8 + 6) / 7));
 
         _offset += count;
 
@@ -218,7 +248,7 @@ public:
 
     ///Return position of data given a starting offset in buffer
     template<class T>
-    T* data( uints offset ) {
+    T* data(uints offset) {
         return seek<T>(offset);
     }
 
@@ -226,8 +256,19 @@ public:
     template<class SIZE COID_DEFAULT_OPT(uint)>
     token string() {
         const SIZE& size = fetch<SIZE>();
-        if(_tstr.size()-_offset < size)
+        if (_tstr.size()-_offset < size)
             throw exception("buffer overflow");
+        const uint8* p = _tstr.ptr() + _offset;
+        _offset += size;
+        return token((const char*)p, size);
+    }
+
+    ///Fetch string that's preceded by varint size info
+    token varstring() {
+        uints size = varint<uints>();
+        if (_tstr.size() - _offset < size)
+            throw exception("buffer overflow");
+
         const uint8* p = _tstr.ptr() + _offset;
         _offset += size;
         return token((const char*)p, size);
@@ -235,25 +276,25 @@ public:
 
     ///Read/append data from binstream
     //@return size read
-    uints load_from_binstream( binstream& bin, uints datasize=UMAXS )
+    uints load_from_binstream(binstream& bin, uints datasize = UMAXS)
     {
         uints old = _tstr.size();
-        uints n=0;
+        uints n = 0;
 
-        while(1)
+        while (1)
         {
             static const uints packet = 4096;
-			const uints len = datasize<packet ? datasize : packet;
+            const uints len = datasize<packet ? datasize : packet;
             uint8* ptr = _tstr.add(len);
-            
+
             uints toread = len;
             opcd e = bin.read_raw_full(ptr, toread);
 
             uints d = len - toread;
-			datasize -= d;
+            datasize -= d;
             n += d;
 
-            if(e || toread>0 || datasize==0)
+            if (e || toread>0 || datasize==0)
                 break;
         }
 
@@ -262,17 +303,17 @@ public:
     }
 
 
-    friend void swap( binstring& a, binstring& b ) {
+    friend void swap(binstring& a, binstring& b) {
         a._tstr.swap(b._tstr);
     }
 
     ///Swap strings
-    void swap( binstring& ref ) {
-        _tstr.swap( ref._tstr );
+    void swap(binstring& ref) {
+        _tstr.swap(ref._tstr);
     }
 
     template<class COUNT>
-    binstring& swap( dynarray<char,COUNT>& ref )
+    binstring& swap(dynarray<char, COUNT>& ref)
     {
         _tstr.swap(ref);
         _offset = 0;
@@ -280,14 +321,14 @@ public:
     }
 
     template<class COUNT>
-    binstring& swap( dynarray<uchar,COUNT>& ref )
+    binstring& swap(dynarray<uchar, COUNT>& ref)
     {
         _tstr.swap(ref);
         _offset = 0;
         return *this;
     }
 
-    binstring& swap_pointer(uchar *& dest)
+    binstring& swap_pointer(uchar*& dest)
     {
         _tstr.swap_pointer(dest);
 
@@ -300,51 +341,51 @@ public:
 
 
     ///Cut to specified length, negative numbers cut abs(len) from the end
-    binstring& resize( ints len ) {
+    binstring& resize(ints len) {
         _tstr.resize(len);
         return *this;
     }
 
 
     ///Allocate buffer and reset the reading offset
-    uint8* alloc( uints len ) {
+    uint8* alloc(uints len) {
         uint8* p = _tstr.alloc(len);
         _offset = 0;
         return p;
     }
-    
+
     //@return pointer to the string beginning
-    const uint8* ptr() const            { return _tstr.ptr(); }
+    const uint8* ptr() const { return _tstr.ptr(); }
 
     //@return pointer past the string end
-    const uint8* ptre() const           { return _tstr.ptre(); }
+    const uint8* ptre() const { return _tstr.ptre(); }
 
 
     //@return total binstring length
-    uints len() const                   { return _tstr.size(); }
+    uints len() const { return _tstr.size(); }
 
     //@return the remaining (unread) length
-    uints remaining_len() const         { return _tstr.size() - _offset; }
+    uints remaining_len() const { return _tstr.size() - _offset; }
 
     //@return true if binstring still has data available for reading
-    bool has_data() const               { return _offset < _tstr.size(); }
+    bool has_data() const { return _offset < _tstr.size(); }
 
     //@return current reading offset
-    uints offset() const                { return _offset; }
+    uints offset() const { return _offset; }
 
     ///Set the reading offset
-    uints set_offset( uints offs ) {
-        if(offs >= _tstr.size())
+    uints set_offset(uints offs) {
+        if (offs >= _tstr.size())
             offs = _tstr.size();
 
         return _offset = offs;
     }
 
     ///Set string to empty and discard the memory
-    void free()                         { _tstr.discard(); }
+    void free() { _tstr.discard(); }
 
     ///Reserve memory for string
-    uint8* reserve( uints len )         { return _tstr.reserve(len, true); }
+    uint8* reserve(uints len) { return _tstr.reserve(len, true); }
 
     ///Reset string to empty but keep the memory
     void reset() {
@@ -357,9 +398,9 @@ public:
 protected:
 
     template<class S>
-    uints write_size( uints size ) {
-        static_assert( std::is_unsigned<S>::value, "unsigned type expected" );
-        DASSERTN( size <= std::numeric_limits<S>::max() );
+    uints write_size(uints size) {
+        static_assert(std::is_unsigned<S>::value, "unsigned type expected");
+        DASSERTN(size <= std::numeric_limits<S>::max());
         size = std::min(size, (uints)std::numeric_limits<S>::max());
         *pad_alloc<S>() = S(size);
         return size;
@@ -374,9 +415,9 @@ protected:
     }
 
     template<class T>
-    T* seek( uints& offset ) {
+    T* seek(uints& offset) {
         uints off = align_value_up(offset, _packing<__alignof(T) ? _packing : __alignof(T));
-        if(off+sizeof(T) > _tstr.size())
+        if (off+sizeof(T) > _tstr.size())
             throw exception("error reading buffer");
 
         T* p = reinterpret_cast<T*>(_tstr.ptr() + off);
@@ -387,8 +428,8 @@ protected:
 protected:
 
     dynarray<uint8> _tstr;
-    uints _offset;
-    uint _packing;
+    uints _offset = 0;
+    uint _packing = 1;
 };
 
 

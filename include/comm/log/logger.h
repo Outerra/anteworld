@@ -45,22 +45,9 @@ COID_NAMESPACE_BEGIN
 
 namespace log {
 
-enum type {
-    none = -1,
-    exception = 0,
-    error,
-    warning,
-    highlight,
-    info,
-    debug,
-    perf,
-    last,
-};
-
-static const type* values() {
-    static type _values[] = {
-        none,
-        exception,
+    enum type {
+        none = -1,
+        exception = 0,
         error,
         warning,
         highlight,
@@ -69,30 +56,43 @@ static const type* values() {
         perf,
         last,
     };
-    return _values;
-}
 
-static const char** names() {
-    static const char* _names[] = {
-        "none",
-        "exception",
-        "error",
-        "warning",
-        "highlight",
-        "info",
-        "debug",
-        "perf",
-        "last",
-        0
-    };
-    return _names;
-}
+    inline const type* values() {
+        static type _values[] = {
+            none,
+            exception,
+            error,
+            warning,
+            highlight,
+            info,
+            debug,
+            perf,
+            last,
+        };
+        return _values;
+    }
 
-static const char* name(type t) {
-    return t >= none && t <= last
-        ? names()[t + 1]
-        : 0;
-}
+    inline const char** names() {
+        static const char* _names[] = {
+            "none",
+            "exception",
+            "error",
+            "warning",
+            "highlight",
+            "info",
+            "debug",
+            "perf",
+            "last",
+            0
+        };
+        return _names;
+    }
+
+    inline const char* name(type t) {
+        return t >= none && t <= last
+            ? names()[t + 1]
+            : 0;
+    }
 
 } //namespace log
 
@@ -102,7 +102,7 @@ class logmsg;
 class policy_msg;
 
 //@return logmsg object if given log type and source is currently allowed to log
-ref<logmsg> canlog( log::type type, const tokenhash& hash = tokenhash(), const void* inst = 0 );
+ref<logmsg> canlog(log::type type, const tokenhash& hash = tokenhash(), const void* inst = 0);
 
 
 #ifdef COID_VARIADIC_TEMPLATES
@@ -112,7 +112,7 @@ ref<logmsg> canlog( log::type type, const tokenhash& hash = tokenhash(), const v
 //@param hash source identifier (used for filtering)
 //@param fmt @see charstr.print
 template<class ...Vs>
-void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs);
+void printlog(log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs);
 
 #endif //COID_VARIADIC_TEMPLATES
 
@@ -178,7 +178,7 @@ public:
 
     logmsg();
 
-    logmsg( logmsg&& other )
+    logmsg(logmsg&& other) noexcept
         : _type(other._type)
     {
         _logger = other._logger;
@@ -188,7 +188,7 @@ public:
         _str.takeover(other._str);
     }
 
-    void set_logger( logger* l ) { _logger = l; }
+    void set_logger(logger* l) { _logger = l; }
 
     void reset() {
         _str.reset();
@@ -199,29 +199,31 @@ public:
     void write();
 
     ///Consume type prefix from the message
-    static log::type consume_type( token& msg )
+    static log::type consume_type(token& msg)
     {
         log::type t = log::info;
-        if(msg.consume_icase("error:"))
+        if (msg.consume_icase("err:"_T) || msg.consume_icase("error:"_T))
             t = log::error;
-        else if(msg.consume_icase("warn:") || msg.consume_icase("warning:"))
+        else if (msg.consume_icase("warn:"_T) || msg.consume_icase("warning:"_T))
             t = log::warning;
-        else if(msg.consume_icase("info:"))
+        else if (msg.consume_icase("info:"_T))
             t = log::info;
-        else if(msg.consume_icase("msg:"))
+        else if (msg.consume_icase("msg:"_T))
             t = log::highlight;
-        else if(msg.consume_icase("dbg:") || msg.consume_icase("debug:"))
+        else if (msg.consume_icase("dbg:"_T) || msg.consume_icase("debug:"_T))
             t = log::debug;
-        else if(msg.consume_icase("perf:"))
+        else if (msg.consume_icase("perf:"_T))
             t = log::perf;
+        else if (msg.consume_icase("fatal: "_T))
+            t = log::exception;
 
         msg.skip_whitespace();
         return t;
     }
 
-    static const token& type2tok( log::type t )
+    static const token& type2tok(log::type t)
     {
-        static token st[1 + int(log::last)]={
+        static token st[1 + int(log::last)] = {
             "",
             "FATAL: ",
             "ERROR: ",
@@ -260,7 +262,7 @@ public:
 protected:
 
     //@return true if looger should be flushed (msg ended with \r)
-    bool finalize( policy_msg* p );
+    bool finalize(policy_msg* p);
 };
 
 typedef ref<logmsg> logmsg_ptr;
@@ -274,7 +276,7 @@ typedef ref<logmsg> logmsg_ptr;
 //@param hash source identifier (used for filtering)
 //@param fmt @see charstr.print
 template<class ...Vs>
-inline void printlog( log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs)
+inline void printlog(log::type type, const tokenhash& hash, const token& fmt, Vs&&... vs)
 {
     ref<logmsg> msgr = canlog(type, hash);
     if (!msgr)
@@ -293,9 +295,9 @@ struct log_filter {
     uint _log_level;
 
     log_filter(const filter_fun& fn, const token& module, uint level)
-    : _filter_fun(fn)
-    , _module(module)
-    , _log_level(level)
+        : _filter_fun(fn)
+        , _module(module)
+        , _log_level(level)
     {}
 };
 
@@ -326,26 +328,27 @@ protected:
     bool _stdout = false;
     bool _allow_perf = false;
 
+    coid::comm_mutex _mutex;
 public:
 
     //@param std_out true if messages should be printed to stdout as well
     //@param cache_msgs true if messages should be cached until the log file is specified with open()
-    logger( bool std_out, bool cache_msgs );
+    logger(bool std_out, bool cache_msgs);
     virtual ~logger() {}
 
     static void terminate();
 
-    void open( const token& filename );
+    void open(const token& filename);
 
-    void post( const token& msg, const token& prefix = token() );
+    void post(const token& msg, const token& prefix = token());
 
 #ifdef COID_VARIADIC_TEMPLATES
 
     ///Formatted log message
     template<class ...Vs>
-    void print( const token& fmt, Vs&&... vs ) {
+    void print(const token& fmt, Vs&&... vs) {
         ref<logmsg> msgr = create_msg(log::none, tokenhash());
-        if(!msgr)
+        if (!msgr)
             return;
 
         charstr& str = msgr->str();
@@ -354,10 +357,10 @@ public:
 
     ///Formatted log message
     template<class ...Vs>
-    void print( log::type type, const tokenhash& hash, const void* inst, const token& fmt, Vs&&... vs )
+    void print(log::type type, const tokenhash& hash, const void* inst, const token& fmt, Vs&&... vs)
     {
         ref<logmsg> msgr = create_msg(type, hash, inst);
-        if(!msgr)
+        if (!msgr)
             return;
 
         charstr& str = msgr->str();
@@ -367,30 +370,30 @@ public:
 #endif
 
     //@return logmsg, filling the prefix by the log type (e.g. ERROR: )
-    ref<logmsg> operator()( log::type type = log::info, const tokenhash& hash = "", const int64* time_ms = 0 );
+    ref<logmsg> operator()(log::type type = log::info, const tokenhash& hash = "", const int64* time_ms = 0);
 
     //@return an empty logmsg object
-    ref<logmsg> create_msg( log::type type, const tokenhash& hash );
+    ref<logmsg> create_msg(log::type type, const tokenhash& hash);
 
     ///Creates logmsg object if given log message type is enabled
     //@param type log level
     //@param hash tokenhash identifying the client (interface) name
     //@param inst optional instance id
     //@return logmsg reference or null if not enabled
-    ref<logmsg> create_msg( log::type type, const tokenhash& hash, const void* inst, const int64* mstime = 0 );
+    ref<logmsg> create_msg(log::type type, const tokenhash& hash, const void* inst, const int64* mstime = 0);
 
     const ref<logger_file>& file() const { return _logfile; }
 
-    virtual void enqueue( ref<logmsg>&& msg );
+    virtual void enqueue(ref<logmsg>&& msg);
 
     void flush();
 
-    void set_log_level( log::type minlevel = log::last, bool allow_perf = false );
+    void set_log_level(log::type minlevel = log::last, bool allow_perf = false);
 
     static void enable_debug_out(bool en);
 
-    uints register_filter(const log_filter& filter) { _filters.push(filter); return _filters.count() - 1; }
-    void unregister_filter(uint pos) { _filters.del_item(pos); }
+    uints register_filter(const log_filter& filter);
+    void unregister_filter(uints pos);
 };
 
 

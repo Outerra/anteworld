@@ -148,7 +148,7 @@ namespace coid {
     charstr& dynamic_library::module_name(charstr& dst, bool append)
     {
         uint pos = append ? uint(dst.len()) : 0;
-        
+
         module_path(dst, append);
         token dir = token(dst.ptr()+pos, dst.ptre()).cut_left_group_back("\\/", token::cut_trait_return_with_sep_default_empty());
 
@@ -359,7 +359,7 @@ namespace coid {
 
             token namehost = hostx.cut_left('/');
             token nameport = namehost.cut_right('@');
-            token name = nameport.cut_left(':', token::cut_trait_keep_sep_with_source());
+            token name = nameport.cut_left(':', token::cut_trait_keep_sep_with_source_default_full());
 
 
             int p = 0;

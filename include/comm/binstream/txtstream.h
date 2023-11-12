@@ -93,7 +93,7 @@ public:
         {
         case type::T_BINARY:
             {
-				uint bytes = t.get_size();
+                uint bytes = t.get_size();
                 const char* src = (const char*)p;
 
                 while( bytes > 0 )
@@ -102,7 +102,7 @@ public:
                     uint n = int_min(uint(256/2), bytes);
 
                     charstrconv::bin2hex( src, dst, 1, n, 0 );
-                    uints nd = n*2;
+                    uints nd = uints(n)*2;
                     opcd e = _binw->write_raw(buf, nd);
                     if(e)
                         return e;

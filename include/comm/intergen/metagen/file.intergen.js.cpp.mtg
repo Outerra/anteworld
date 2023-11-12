@@ -137,7 +137,7 @@ $-[event]$
 $-[/event]$
 
 $-[event]$
-    virtual bool is_bound_$name$() override { return is_event_bound($@index$); }
+    virtual bool is_bound_$intname$() override { return is_event_bound($@index$); }
 $-[/event]$
 
     virtual void force_bind_script_events() {
@@ -623,8 +623,8 @@ $-[method !static? !destroy? !internal? !operator?]$
         ot->Set(v8::symbol("$name$", iso), v8::FunctionTemplate::New(iso, &v8_$name$$@index$));
 $-[/method]$
 
-        ot->Set(v8::symbol("$$log", iso), v8::FunctionTemplate::New(iso, &::js::script_handle::js_log));
-        ot->Set(v8::symbol("$$query_interface", iso), v8::FunctionTemplate::New(iso, &::js::script_handle::js_query_interface));
+        ot->Set(v8::symbol("$$log", iso), v8::FunctionTemplate::New(iso, &::js::script_handle::log));
+        ot->Set(v8::symbol("$$query_interface", iso), v8::FunctionTemplate::New(iso, &::js::script_handle::query_interface));
         ot->Set(v8::symbol("$$rebind_events", iso), v8::FunctionTemplate::New(iso, &v8rebind_events));
         ot->Set(v8::symbol("$$ctx", iso), v8::FunctionTemplate::New(iso, &v8current_global));
 $-(if hasprops?)$

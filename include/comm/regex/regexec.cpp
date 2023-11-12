@@ -302,6 +302,8 @@ token regex_program::regexec(
                         tlp->sub[0]._pte = s.ptr();
                     _updatematch(result, sub, nsub, tlp);
                     break;
+                default:
+                    break;
                 }
                 break;
             }

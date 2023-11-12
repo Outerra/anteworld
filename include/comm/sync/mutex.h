@@ -94,7 +94,7 @@ public:
         struct ::timeb tb;
         ftime(&tb);
 #endif
-        out->tv_sec = delaymsec/1000 + (uint)tb.time;
+        out->tv_sec = uint(delaymsec/1000 + tb.time);
         out->tv_nsec = (delaymsec%1000 + tb.millitm) * 1000000;
     }
 };

@@ -14,6 +14,13 @@
     <DisplayString>size = {_pte-_ptr} {_ptr,[_pte-_ptr]s8}</DisplayString>
 </Type>
 
+<Type Name="coid::zstring">
+    <DisplayString Condition="_buf != 0">{((size_t*)_buf->_tstr._ptr)[-1] - 1} {_buf->_tstr._ptr,s8}</DisplayString>
+    <DisplayString Condition="_zptr == 0">0 "" (null)</DisplayString>
+    <DisplayString Condition="_zptr == _zend">0 ""</DisplayString>
+    <DisplayString>size = {_zend-_zptr} {_zptr,[_zend-_zptr]s8}</DisplayString>
+</Type>
+
 <Type Name="coid::opcd">
     <DisplayString>code={_ptr->_code} {_ptr->_desc,s}</DisplayString>
 </Type>
@@ -27,12 +34,12 @@
     <DisplayString Condition="_ptr == 0">size = 0</DisplayString>
     <DisplayString>size = {((size_t*)_ptr)[-1]}</DisplayString>
     <Expand>
-        <Item Name="[size]" ExcludeView="simple" >((size_t*)_ptr)[-1]</Item>
-        <Item Name="[capacity]" ExcludeView="simple">((size_t*)_ptr)[-2]/sizeof(*_ptr)</Item>
-        <ArrayItems> 
-            <Size>((size_t*)_ptr)[-1]</Size> 
-            <ValuePointer>_ptr</ValuePointer> 
-        </ArrayItems> 
+        <Item Name="[size]" ExcludeView="simple">_ptr ? ((size_t*)_ptr)[-1] : 0</Item>
+        <Item Name="[capacity]" ExcludeView="simple">_ptr ? ((size_t*)_ptr)[-2] : 0/sizeof(*_ptr)</Item>
+        <ArrayItems>
+            <Size>_ptr ? ((size_t*)_ptr)[-1] : 0</Size>
+            <ValuePointer>_ptr</ValuePointer>
+        </ArrayItems>
     </Expand>
 </Type>
 
@@ -57,6 +64,7 @@
 </Type>
 
 <Type Name="vref&lt;*&gt;">
+    <SmartPointer Usage="Minimal">($T1*)(_vptr &amp; vref&lt;$T1&gt;::ptr_mask)</SmartPointer>
     <DisplayString Condition="_vptr == 0">{{empty}}</DisplayString>
     <DisplayString>version = {_vptr &gt;&gt; vref&lt;$T1&gt;::vshift}, pointer = {(_vptr &amp; vref&lt;$T1&gt;::ptr_mask),x}</DisplayString>
     <Expand>
@@ -70,5 +78,5 @@
     <DisplayString Condition="_p == 0">{{empty}}</DisplayString>
     <DisplayString>{_p,x}</DisplayString>
 </Type>
-    
+
 </AutoVisualizer>

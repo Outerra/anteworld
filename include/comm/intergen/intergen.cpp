@@ -193,7 +193,8 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
     //find the date of the oldest mtg file
     timet mtime = file.mtime;
 
-    directory::list_file_paths(tdir, "mtg", false, [&](const charstr& name, int dir) {
+    directory::list_file_paths(tdir, "mtg", directory::recursion_mode::file,
+        [&](const charstr& name, directory::recursion_mode) {
         directory::xstat st;
         if (directory::stat(name, &st))
             if (st.st_mtime > mtime)
@@ -244,7 +245,7 @@ void generate_ig(File& file, charstr& tdir, charstr& fdir)
             ifc.relpathlua.ins(-(int)end.len(), ".lua");
 
             ifc.basepath = ifc.relpath;
-            ifc.hdrfile = ifc.basepath.cut_right_back('/', token::cut_trait_keep_sep_with_source());
+            ifc.hdrfile = ifc.basepath.cut_right_back('/', token::cut_trait_keep_sep_with_source_default_full());
 
             ifc.srcfile = &file.fnameext;
             ifc.srcclass = &cls.classname;
@@ -361,8 +362,8 @@ int generate_index(const charstr& path)
     const substring ssbeg = "/**interface metadata begin**/"_T;
     const substring ssend = "/**interface metadata end**/"_T;
 
-    directory::list_file_paths(path, "html", 0,
-        [&](const charstr& name, int dir) {
+    directory::list_file_paths(path, "html", directory::recursion_mode::file,
+        [&](const charstr& name, directory::recursion_mode) {
             if (name.ends_with("index.html"_T))
                 return;
 
@@ -484,9 +485,11 @@ bool File::find_class(iglexer& lex, dynarray<charstr>& namespc, charstr& templar
 
             token t = tok;
             t.skip_space().trim_whitespace();
-            pb->condx = t.get_line();
+            token cond = t.get_line();
             pb->block = t;
             pb->namespc = namespc;
+            pb->pos = cond.consume_end_char('+') ? paste_block::position::after_class : paste_block::position::before_class;
+            pb->condx = cond;
 
             continue;
         }

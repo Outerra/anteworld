@@ -121,6 +121,8 @@ struct memtrack_registrar
         ready = true;
     }
 
+    virtual ~memtrack_registrar() {}
+
     //@note virtual methods to avoid breaking dlls when exe implementation changes
 
     ///Track allocation

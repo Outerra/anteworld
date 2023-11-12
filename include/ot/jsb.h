@@ -36,11 +36,17 @@ public:
 
     // --- interface methods ---
 
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
     ///
-    double operator()( const char* key ) const;
+    double operator()( const char* key ) const
+    { return VT_CALL(double,(const char*) const,0)(key); }
 
-    void operator()( const char* key, double value );
+    void operator()( const char* key, double value )
+    { return VT_CALL(void,(const char*,double),1)(key,value); }
 
+#pragma warning(pop)
     // --- creators ---
 
     ///Internal constructor
@@ -88,7 +94,12 @@ public:
         }
     }
 
+
+#if _MSC_VER == 0 || _MSC_VER >= 1920
+    template<enum backend B>
+#else
     template<enum class backend B>
+#endif
     static void* intergen_wrapper_cache() {
         static void* _cached_wrapper=0;
         if (!_cached_wrapper) {
@@ -158,17 +169,6 @@ inline iref<T> jsb::_get_jsb( T* _subclass_, jsbsim_plane* p )
 
     return create(_subclass_, p);
 }
-
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-inline double jsb::operator()( const char* key ) const
-{ return VT_CALL(double,(const char*) const,0)(key); }
-
-inline void jsb::operator()( const char* key, double value )
-{ return VT_CALL(void,(const char*,double),1)(key,value); }
-
-#pragma warning(pop)
 
 } //namespace
 

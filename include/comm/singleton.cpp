@@ -55,6 +55,7 @@ static void* local_creator()
     return _t_creator_key.get();
 }
 
+///Temporarily store the creator parameter in a thread local variable
 fn_singleton_creator singleton_local_creator( void* p )
 {
     _t_creator_key.set(p);
@@ -153,31 +154,31 @@ public:
     {
         uint n = count;
 
-		if(last) {
+        if(last) {
 #ifdef _DEBUG
             memtrack_shutdown();
 
-			bofstream bof("singleton.log");
-			txtstream tof(bof);
+            bofstream bof("singleton.log");
+            txtstream tof(bof);
 #endif
 
             shutting_down = true;
 
-			while(last) {
-				killer* tmp = last->next;
+            while(last) {
+                killer* tmp = last->next;
 
 #ifdef _DEBUG
-				tof << (n--) << " destroying '" << last->type << "' singleton created at "
-					<< last->file << ":" << last->line << "\r\n";
-				tof.flush();
+                tof << (n--) << " destroying '" << last->type << "' singleton created at "
+                    << last->file << ":" << last->line << "\r\n";
+                tof.flush();
 #endif
 
-				last->destroy();
-				delete last;
+                last->destroy();
+                delete last;
 
-				last = tmp;
-			}
-		}
+                last = tmp;
+            }
+        }
     }
 
     ~global_singleton_manager() {

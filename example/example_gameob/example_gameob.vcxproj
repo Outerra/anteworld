@@ -157,7 +157,7 @@
     <ClCompile Include="wind_turbine.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\include\comm\_build\msvc\2019\comm_static.vcxproj">
+    <ProjectReference Include="..\..\include\comm\_build\msvc\2022\comm_static.vcxproj">
       <Project>{d2f47060-00c0-4a3c-9888-cf663f14d44d}</Project>
     </ProjectReference>
   </ItemGroup>

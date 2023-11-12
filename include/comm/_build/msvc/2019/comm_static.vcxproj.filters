@@ -354,6 +354,9 @@
     <ClInclude Include="..\..\..\binstream\packstreamzstd.h">
       <Filter>binstream</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\coder\bufpack_lz4.h">
+      <Filter>coder</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\crypt\sha1.cpp">
@@ -451,9 +454,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\alloc\slotalloc_bmp.cpp">
       <Filter>alloc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\coder\bufpack_lz4.h">
-      <Filter>coder</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\commassert.cpp">
       <Filter>cxx</Filter>

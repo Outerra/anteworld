@@ -83,7 +83,7 @@ struct script_handle
         const coid::token& url = coid::token(),
         v8::Handle<v8::Context> context = v8::Handle<v8::Context>()
     )
-        : _str(path_or_script), _is_path(is_path), _context(context), _url(url)
+        : _str(path_or_script), _is_path(is_path), _url(url), _context(context)
     {}
 
     script_handle(v8::Handle<v8::Context> context)
@@ -154,7 +154,7 @@ struct script_handle
 
         v8::String::Utf8Value uber(iso, trace->GetFrame(iso, frame)->GetScriptName());
         coid::token curpath = coid::token(*uber, uber.length());
-        curpath.cut_right_group_back("\\/", coid::token::cut_trait_keep_sep_with_source());
+        curpath.cut_right_group_back("\\/", coid::token::cut_trait_keep_sep_with_source_default_full());
 
         if (path.consume("file:///"))
             --path;
@@ -254,7 +254,7 @@ struct script_handle
         if (js_trycatch.HasCaught())
             throw_exception_from_js_error(js_trycatch);
 
-        compiled_script->Run(iso->GetCurrentContext());
+        v8::MaybeLocal<v8::Value> rv = compiled_script->Run(iso->GetCurrentContext());
 
         if (js_trycatch.HasCaught())
             throw_exception_from_js_error(js_trycatch);
@@ -290,7 +290,7 @@ public:
     }
 
     ///Function called from scripts to include a script
-    static void js_include(const v8::ARGUMENTS& args)
+    static void include(const v8::ARGUMENTS& args)
     {
         coid::charstr dst;
         coid::token relpath;
@@ -302,11 +302,11 @@ public:
         {
             //return current path of the 0th stack frame when called without arguments
 
-            if (!script_handle::get_target_path("", 0, dst, &relpath))
+            if (0 != script_handle::get_target_path("", 0, dst, &relpath))
                 return (void)v8::Undefined(iso);
 
             coid::charstr urlenc = "file:///";
-            urlenc.append_encode_url(relpath, false);
+            urlenc.append_encode_url(relpath.is_null() ? coid::token(dst) : relpath, false);
 
             v8::Handle<v8::String> source = v8::string_utf8(urlenc, iso);
 
@@ -342,40 +342,23 @@ public:
 
 
         v8::TryCatch js_trycatch(iso);
-        v8::Handle<v8::String> result = v8::string_utf8("$result", iso);
-        ctx->Global()->Set(ctx, result, v8::Undefined(iso)) V8_CHECK;
+        v8::Handle<v8::String> result_token = v8::string_utf8("$result", iso);
+        v8::Local<v8::Object> glob = ctx->Global();
+        glob->Set(ctx, result_token, v8::Undefined(iso)) V8_CHECK;
 
-        coid::zstring filepath;
-        filepath.get_str() << "file:///" << relpath;
+        coid::zstring urlenc;
+        (urlenc.get_str() = "file:///"_T).append_encode_url(relpath, false);
 
-        v8::Handle<v8::String> source = v8::string_utf8(js, iso);
-        v8::Handle<v8::String> spath = v8::string_utf8(filepath, iso);
+        v8::Handle<v8::Script> script = load_script(js, urlenc, js::rethrow_in_js);
 
-        v8::ScriptOrigin so(spath);
-
-        v8::Handle<v8::Script> script =
-            v8::Script::Compile(ctx, source, &so).ToLocalChecked();
-
-        if (js_trycatch.HasCaught()) {
-            js_trycatch.ReThrow();
-            return;
-        }
-
-        script->Run(ctx);
-
-        if (js_trycatch.HasCaught()) {
-            js_trycatch.ReThrow();
-            return;
-        }
-
-        v8::Handle<v8::Value> rval = ctx->Global()->Get(ctx, result).ToLocalChecked();
-        ctx->Global()->Set(ctx, result, v8::Undefined(iso)) V8_CHECK;
+        v8::Handle<v8::Value> rval = glob->Get(ctx, result_token).ToLocalChecked();
+        glob->Set(ctx, result_token, v8::Undefined(iso)) V8_CHECK;
 
         args.GetReturnValue().Set(rval);
     }
 
     ///Log msg from JS
-    static void js_log(const v8::ARGUMENTS& args)
+    static void log(const v8::ARGUMENTS& args)
     {
         v8::Isolate* iso = args.GetIsolate();
 
@@ -400,14 +383,14 @@ public:
 
         intergen_interface::ifclog_ext(
             coid::log::none,
-            inst ? inst->intergen_interface_name() : coid::tokenhash("js"_T),
+            inst ? coid::token(inst->intergen_interface_name()) : "js"_T,
             inst, tokey);
 
         args.GetReturnValue().Set(v8::Undefined(iso));
     }
 
     ///Query interface from JS
-    static  void js_query_interface(const v8::ARGUMENTS& args)
+    static  void query_interface(const v8::ARGUMENTS& args)
     {
         v8::Isolate* iso = args.GetIsolate();
 
@@ -434,9 +417,9 @@ public:
     static void register_global_context_methods(v8::Handle<v8::Object> gobj, v8::Isolate* iso) {
         v8::Local<v8::Context> ctx = iso->GetCurrentContext();
 
-        gobj->Set(ctx, v8::symbol("$include", iso), v8::FunctionTemplate::New(iso, &js_include)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
-        gobj->Set(ctx, v8::symbol("$query_interface", iso), v8::FunctionTemplate::New(iso, &js_query_interface)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
-        gobj->Set(ctx, v8::symbol("$log", iso), v8::FunctionTemplate::New(iso, &js_log)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
+        gobj->Set(ctx, v8::symbol("$include", iso), v8::FunctionTemplate::New(iso, &include)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
+        gobj->Set(ctx, v8::symbol("$query_interface", iso), v8::FunctionTemplate::New(iso, &query_interface)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
+        gobj->Set(ctx, v8::symbol("$log", iso), v8::FunctionTemplate::New(iso, &log)->GetFunction(ctx).ToLocalChecked()) V8_CHECK;
     }
 
 private:

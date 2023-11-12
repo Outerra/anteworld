@@ -296,6 +296,54 @@ namespace coal
         result_normal = glm::normalize(u * triangle_an + v * triangle_bn + w * triangle_cn);
     }
 
+    inline float wedge_product(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c)
+    {
+        return (a.x - c.x) * (b.y - c.y) - (a.y - c.y) * (b.x - c.x);
+    }
+
+    //Christer Ericson’s Real-time Collision Detection
+    //Page 151, 5.1.9.1 2D Segment Intersection
+    inline bool intersects_segment_segment_2d(
+        const glm::vec2& a,
+        const glm::vec2& b,
+        const glm::vec2& c,
+        const glm::vec2& d,
+        float* out_t = nullptr,
+        glm::vec2* point = nullptr)
+    {
+        // Sign of areas correspond to which side of ab points c and d are
+        float a1 = wedge_product(a, b, d); // Compute winding of abd (+ or -)
+        float a2 = wedge_product(a, b, c); // To intersect, must have sign opposite of a1
+        // If c and d are on different sides of ab, areas have different signs
+        if (a1 * a2 < 0.0f) {
+            // Compute signs for a and b with respect to segment cd
+            float a3 = wedge_product(c, d, a); // Compute winding of cda (+ or -)
+            // Since area is constant a1 - a2 = a3 - a4, or a4 = a3 + a2 - a1
+            // float a4 = wedge_product(c, d, b); // Must have opposite sign of a3
+            float a4 = a3 + a2 - a1;
+            // Points a and b on different sides of cd if areas have different signs
+            if (a3 * a4 < 0.0f) {
+                // Segments intersect. Find intersection point along L(t) = a + t * (b - a).
+                // Given height h1 of an over cd and height h2 of b over cd,
+                // t = h1 / (h1 - h2) = (b*h1/2) / (b*h1/2 - b*h2/2) = a3 / (a3 - a4),
+                // where b (the base of the triangles cda and cdb, i.e., the length
+                // of cd) cancels out.
+                if (out_t) {
+                    *out_t = a3 / (a3 - a4);
+                    if (point)
+                        *point = a + *out_t * (b - a);
+                }
+                else {
+                    if (point)
+                        *point = a + a3 / (a3 - a4) * (b - a);
+                }
+                return true;
+            }
+        }
+        // Segments not intersecting
+        return 0;
+    }
+
     template <class T>
     inline bool intersects_segment_cylinder(const glm::vec<3, T> sa,
         const glm::vec<3, T> sb,
@@ -593,9 +641,10 @@ namespace coal
         const float d4 = glm::dot(ac, bp);
         const float d5 = glm::dot(ab, cp);
         const float d6 = glm::dot(ac, cp); // === -tdenom
-        const float unom = d4 - d3;
-        const float udenom = d5 - d6;
+        //const float unom = d4 - d3;
+        //const float udenom = d5 - d6;
 
+        // Check if P in vertex region outside A
         if (d1 <= 0.0f && d2 <= 0.0f) {
             u = 1.0f;
             v = 0.0f;
@@ -604,6 +653,7 @@ namespace coal
             return glm::dot(ap,ap);
         }
 
+        // Check if P in vertex region outside B
         if (d3 >= 0.0f && d4 <= d3) {
             u = 0.0f;
             v = 1.0f;
@@ -612,7 +662,8 @@ namespace coal
             return glm::dot(bp, bp);
         }
 
-        if (d6 >= 0.0f && d5 <= d5) {
+        // Check if P in vertex region outside C
+        if (d6 >= 0.0f && d5 <= d6) {
             u = 0.0f;
             v = 0.0f;
             w = 1.0f;
@@ -620,36 +671,36 @@ namespace coal
             return glm::dot(cp, cp);
         }
 
+        // Check if P in edge region of AB, if so return projection of P onto AB
         const float vc = d1*d4 - d3*d2;
-
-        if (vc <= 0.0f && d1 >= 0.0f && d3 < 0.0f) {
+        if (vc <= 0.0f && d1 >= 0.0f && d3 <= 0.0f) {
             v = d1 / (d1 - d3);
             u = 1.0f - v;
             w = 0.0f;
             contact_point = triangle_a + v*ab;
-            const glm::vec3 pcp = point_p - cp;
+            const glm::vec3 pcp = point_p - contact_point;
             return glm::dot(pcp, pcp);
         }
 
+        // Check if P in edge region of AC, if so return projection of P onto AC
         const float vb = d5*d2 - d1*d6;
-
-        if (vb < 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
+        if (vb <= 0.0f && d2 >= 0.0f && d6 <= 0.0f) {
             w = d2 / (d2 - d6);
             u = 1.0f - w;
             v = 0.0f;
-            contact_point = triangle_b + w*ac;
-            const glm::vec3 pcp = point_p - cp;
+            contact_point = triangle_a + w*ac;
+            const glm::vec3 pcp = point_p - contact_point;
             return glm::dot(pcp, pcp);
         }
 
+        // Check if P in edge region of BC, if so return projection of P onto BC
         const float va = d3*d6 - d5*d4;
-
         if (va <= 0.0f && d4 >= d3 && d5 >= d6) {
             w = (d4 - d3) / (d4 - d3 + d5 - d6);
             v = 1.0f - w;
             u = 0.0f;
             contact_point = triangle_b + w*bc;
-            const glm::vec3 pcp = point_p - cp;
+            const glm::vec3 pcp = point_p - contact_point;
             return glm::dot(pcp, pcp);
         }
 

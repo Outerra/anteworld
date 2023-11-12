@@ -520,11 +520,13 @@ inline metastream& operator || (metastream& m, hash_keyset<VAL, EXTRACTKEY, HASH
     if (m.stream_reading()) {
         a.clear();
         typename _HT::hashtable_binstream_container bc(a);
-        return m.read_container(bc);
+        m.read_container(bc);
+        return m;
     }
     else if (m.stream_writing()) {
         typename _HT::hashtable_binstream_container bc(a);
-        return m.write_container(bc);
+        m.write_container(bc);
+        return m;
     }
     else {
         if (m.meta_decl_array(

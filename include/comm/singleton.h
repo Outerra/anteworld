@@ -134,10 +134,10 @@ struct has_singleton_initialize_module_method
         //return std::true_type();
     }
 
-    // SFINAE game over 
+    // SFINAE game over
     template<typename A>
     static std::false_type test(...) {
-        return std::false_type(); 
+        return std::false_type();
     }
 
     // This will be either `std::true_type` or `std::false_type`
@@ -173,12 +173,12 @@ public:
 
     //@return global singleton, registering the place of birth
     //@param module_local create a singleton that's local to the current module
-	static T& instance( bool module_local, const char* file=0, int line=0 )
-	{
-		T*& node = ptr();
+    static T& instance( bool module_local, const char* file=0, int line=0 )
+    {
+        T*& node = ptr();
 
-		if(node)
-			return *node;
+        if(node)
+            return *node;
 
 #if !defined(SYSTYPE_MSVC) || SYSTYPE_MSVC >= 1700
         static_assert(std::is_default_constructible<T>::value, "type is not default constructible");
@@ -189,7 +189,7 @@ public:
             typeid(T).name(), file, line, module_local);
 
         return *node;
-	}
+    }
 
     //@return global singleton reference
     static T*& ptr() {
@@ -234,7 +234,7 @@ public:
 
 private:
 
-    T* _p;
+    T* _p = 0;
 
     static void destroy(void* p) {
         delete (T*)p;
@@ -267,6 +267,7 @@ public:
 
     ///Local thread singleton constructor, use through LOCAL_THREAD_SINGLETON macro
     thread_singleton(T* obj) {
+        DASSERT(!obj);  //can't have global initialization
         thread_instance(_tkey, true);
     }
 
@@ -292,8 +293,8 @@ private:
 
     //@return global thread key
     static thread_key& get_key() {
-        static thread_key _tkey;
-        return _tkey;
+        static thread_key _gtkey;
+        return _gtkey;
     }
 
     thread_key _tkey;                   //< local thread key
@@ -304,6 +305,8 @@ private:
     static void* create() {
         return new T;
     }
+
+
 };
 
 

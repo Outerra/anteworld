@@ -136,7 +136,7 @@ public:
     ///Reserve memory in the buffer
     void reserve( uints size )
     {
-        _buf.reserve(size,true);
+        _buf.reserve(size, true);
     }
 
     ///resize memory in the buffer
