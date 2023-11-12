@@ -89,7 +89,7 @@ public:
 
     friend binstream& operator << TEMPLFRIEND(binstream &out, const str_ptr<T> &obj);
 
-    bool is_set() const         { return _p != 0; }
+    bool is_set() const		    { return _p != 0; }
 };
 
 template <class T>

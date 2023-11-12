@@ -140,7 +140,7 @@ $-[event]$
 $-[/event]$
 
 $-[event]$
-    virtual bool is_bound_$intname$() override { return is_event_bound($@index$); }
+    virtual bool is_bound_$name$() override { return is_event_bound($@index$); }
 $-[/event]$
 
 virtual void force_bind_script_events() {

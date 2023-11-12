@@ -485,11 +485,9 @@ bool File::find_class(iglexer& lex, dynarray<charstr>& namespc, charstr& templar
 
             token t = tok;
             t.skip_space().trim_whitespace();
-            token cond = t.get_line();
+            pb->condx = t.get_line();
             pb->block = t;
             pb->namespc = namespc;
-            pb->pos = cond.consume_end_char('+') ? paste_block::position::after_class : paste_block::position::before_class;
-            pb->condx = cond;
 
             continue;
         }

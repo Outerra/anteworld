@@ -8,23 +8,27 @@
 namespace ot {
 
 ///Action encoding
+//intval: events: hi 8bits are modifiers (ctrl/shift/alt), low 8bits are msec/10 from mouse down (max value 250 == 2500ms)(value == 0 means down event)
+//intval: axis: not mouse: 4bits whole number part, 12bits fractional part -> value in interval (-8, 8), decimal granularity is 1/4096 ~= 0.000244
+//intval: axis: mouse: 9bits whole number part, 7bits fractional part -> value in interval (-512, 512), decimal granularity is 1/128 = 0.0078125
 struct action
 {
     union {
         struct {
-            uint16 code : 10;       //< action code (registered slot #) or a custom handler id
-            uint16 event : 1;       //< 1 for events
-            uint16 channel : 3;     //< optional channel #id, default 0, max 7
-            uint16 level : 2;       //< interactor level
+            uint16 code :  9;       //< registered slot id
+            uint16 event : 1;       //< 1 for events, 0 for axes
+            uint16 mouse : 1;       //< mouse move actions use different value precision
+            uint16 channel : 3;     //< channel id, default 0, max 7
+            uint16 level : 2;       //< interactor level (used in server<->client)
 
             int16 intval;           //< action value (normalized) or action flags and EKbdModifiers in case of events
         };
 
-        int32 data;
+        int32 data = 0;
     };
 
     //@return normalized value
-    float value() const { return event ? float(intval) : float(intval) * (1.0f/0x1000); }
+    float value() const { return (event) ? float(intval) : (mouse) ? float(intval) / 0x80 : float(intval) / 0x1000; }
 
     //@return true if it was a key press (events only)
     bool pressed() const { return (intval & 0xff) == 0; }
@@ -57,7 +61,7 @@ struct ramp_params
     float minval;                   //< minimum value to clamp to, should be >= -1 for compatibility with joystick
     float maxval;                   //< maximum value to clamp to, should be <= +1 for compatibility with joystick
     float center;                   //< centering speed per second (speed after releasing the button), 0 for freeze on button release, <0 use -(1 - ext_coef) multiplier (for things like vehicle speed-dependent centering velocity)
-    uint8 steps;                    //< value granularity, number of steps from 0..1 for inc/dec modes
+    uint8 steps;                    //< value granularity, number of steps between 0 and 1 for inc/dec modes
     uint8 channels;                 //< optional number of extra channels (multiple engines etc)
     uint8 event : 1;                //< 1 if this is bound as an event (button)
     uint8 release_event : 1;        //< 1 if release event should be produced for button

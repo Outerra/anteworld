@@ -108,7 +108,7 @@ namespace glm
 
 		genType Perpendicular = cross(dir, edge2);
 
-		typename genType::value_type det = dot(edge1, Perpendicular);
+		float det = dot(edge1, Perpendicular);
 
 		if (det > -Epsilon && det < Epsilon)
 			return false;
@@ -135,7 +135,7 @@ namespace glm
 	GLM_FUNC_QUALIFIER bool intersectRaySphere
 	(
 		genType const& rayStarting, genType const& rayNormalizedDirection,
-		genType const& sphereCenter, const typename genType::value_type sphereRadiusSquared,
+		genType const& sphereCenter, const typename genType::value_type sphereRadiusSquered,
 		typename genType::value_type & intersectionDistance
 	)
 	{
@@ -143,11 +143,11 @@ namespace glm
 		genType diff = sphereCenter - rayStarting;
 		typename genType::value_type t0 = dot(diff, rayNormalizedDirection);
 		typename genType::value_type dSquared = dot(diff, diff) - t0 * t0;
-		if( dSquared > sphereRadiusSquared )
+		if( dSquared > sphereRadiusSquered )
 		{
 			return false;
 		}
-		typename genType::value_type t1 = sqrt( sphereRadiusSquared - dSquared );
+		typename genType::value_type t1 = sqrt( sphereRadiusSquered - dSquared );
 		intersectionDistance = t0 > t1 + Epsilon ? t0 - t1 : t0 + t1;
 		return intersectionDistance > Epsilon;
 	}

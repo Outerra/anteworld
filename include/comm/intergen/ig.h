@@ -13,31 +13,6 @@ using namespace coid;
 
 extern stdoutstream out;
 
-struct Class;
-
-////////////////////////////////////////////////////////////////////////////////
-struct paste_block {
-    charstr block;
-    charstr condx;
-    dynarray<charstr> namespc;
-
-    enum class position {
-        before_class,
-        inside_class,
-        after_class,
-    };
-    position pos = position::before_class;
-
-    void fill(charstr& dst) const {
-        for (const charstr& ns : namespc)
-            dst << "namespace "_T << ns << " {\r\n"_T;
-        dst << block;
-        for (uints n = namespc.size(); n > 0; --n)
-            dst << "\r\n}"_T;
-    }
-};
-
-
 ////////////////////////////////////////////////////////////////////////////////
 class iglexer : public lexer
 {
@@ -84,7 +59,7 @@ public:
 
 
     ///Find method mark within current class declaration
-    int find_method( const token& classname, dynarray<paste_block>& classpasters, dynarray<charstr>& commlist );
+    int find_method( const token& classname, dynarray<charstr>& commlist );
 
     charstr& syntax_err() {
         prepare_exception(true) << "syntax error: ";
@@ -97,6 +72,22 @@ public:
 
 private:
     charstr infile;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+struct paste_block {
+    charstr block;
+    charstr condx;
+    dynarray<charstr> namespc;
+
+    void fill(charstr& dst) const {
+        for (const charstr& ns : namespc)
+            dst << "namespace "_T << ns << " {\r\n"_T;
+        dst << block;
+        for (uints n = namespc.size(); n > 0; --n)
+            dst << "\r\n}"_T;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +385,6 @@ struct Interface
 
     dynarray<charstr> pasters;
     dynarray<charstr> pasteafters;
-    dynarray<charstr> pasteinners;
     charstr* srcfile = 0;
     charstr* srcclass = 0;
     dynarray<charstr>* srcnamespc = 0;
@@ -477,7 +467,6 @@ struct Interface
         nifc_methods = o.nifc_methods;
         pasters = o.pasters;
         pasteafters = o.pasteafters;
-        pasteinners = o.pasteinners;
 
         srcfile = o.srcfile;
         srcclass = o.srcclass;
@@ -492,13 +481,13 @@ struct Interface
 
     void parse_docs();
 
-    bool full_name_equals(token name) const {
+    int full_name_equals(token name) const {
         bool hasns = nss.find_if([&name](const charstr& v) {
             return !(name.consume(v) && name.consume("::"));
             }) == 0;
         if (hasns && name.consume(this->name))
-            return name.is_empty();
-        return false;
+            return name == '+' ? 1 : name.is_empty() ? -1 : 0;
+        return 0;
     }
 
     static bool has_mismatched_method( const MethodIG& m, const dynarray<MethodIG>& methods ) {
@@ -514,7 +503,7 @@ struct Interface
         return nmatch > 0 && nmiss == nmatch;
     }
 
-    int check_interface(iglexer& lex, const dynarray<paste_block>& classpasters);
+    int check_interface( iglexer& lex );
 
     friend metastream& operator || (metastream& m, Interface& p)
     {
@@ -546,7 +535,6 @@ struct Interface
                 m.member("docs", p.docs);
                 m.member("pasters", p.pasters);
                 m.member("pasteafters", p.pasteafters);
-                m.member("pasteinners", p.pasteinners);
                 m.member_indirect("srcfile", p.srcfile);
                 m.member_indirect("class", p.srcclass);
                 m.member_indirect("classnsx", p.srcnamespc);
@@ -573,8 +561,6 @@ struct Class
     dynarray<charstr> namespaces;
     dynarray<Method> method;
     dynarray<Interface> iface;
-
-    dynarray<paste_block> classpasters;
 
 
     bool parse( iglexer& lex, charstr& templarg_, const dynarray<charstr>& namespcs, dynarray<paste_block>* pasters, dynarray<MethodIG::Arg>& irefargs );

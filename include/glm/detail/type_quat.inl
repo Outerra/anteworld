@@ -1,6 +1,5 @@
 #include "../trigonometric.hpp"
 #include "../exponential.hpp"
-#include "../ext/quaternion_common.hpp"
 #include "../ext/quaternion_geometric.hpp"
 #include <limits>
 
@@ -75,10 +74,10 @@ namespace detail
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR T & qua<T, Q>::operator[](typename qua<T, Q>::length_type i)
 	{
 		assert(i >= 0 && i < this->length());
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			return (&x)[i];
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			return (&w)[i];
+#		else
+			return (&x)[i];
 #		endif
 	}
 
@@ -86,35 +85,33 @@ namespace detail
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR T const& qua<T, Q>::operator[](typename qua<T, Q>::length_type i) const
 	{
 		assert(i >= 0 && i < this->length());
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			return (&x)[i];
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			return (&w)[i];
+#		else
+			return (&x)[i];
 #		endif
 	}
 
 	// -- Implicit basic constructors --
 
-#	if GLM_CONFIG_DEFAULTED_DEFAULT_CTOR == GLM_DISABLE
+#	if GLM_CONFIG_DEFAULTED_FUNCTIONS == GLM_DISABLE
 		template<typename T, qualifier Q>
 		GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua()
 #			if GLM_CONFIG_CTOR_INIT != GLM_CTOR_INIT_DISABLE
-#				ifdef GLM_FORCE_QUAT_DATA_XYZW
-					: x(0), y(0), z(0), w(1)
-#				else
+#				ifdef GLM_FORCE_QUAT_DATA_WXYZ
 					: w(1), x(0), y(0), z(0)
+#				else
+					: x(0), y(0), z(0), w(1)
 #				endif
 #			endif
 		{}
-#	endif
 
-#	if GLM_CONFIG_DEFAULTED_FUNCTIONS == GLM_DISABLE
 		template<typename T, qualifier Q>
 		GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua(qua<T, Q> const& q)
-#			ifdef GLM_FORCE_QUAT_DATA_XYZW
-				: x(q.x), y(q.y), z(q.z), w(q.w)
-#			else
+#			ifdef GLM_FORCE_QUAT_DATA_WXYZ
 				: w(q.w), x(q.x), y(q.y), z(q.z)
+#			else
+				: x(q.x), y(q.y), z(q.z), w(q.w)
 #			endif
 		{}
 #	endif
@@ -122,10 +119,10 @@ namespace detail
 	template<typename T, qualifier Q>
 	template<qualifier P>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua(qua<T, P> const& q)
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			: x(q.x), y(q.y), z(q.z), w(q.w)
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			: w(q.w), x(q.x), y(q.y), z(q.z)
+#		else
+			: x(q.x), y(q.y), z(q.z), w(q.w)
 #		endif
 	{}
 
@@ -133,19 +130,19 @@ namespace detail
 
 	template<typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua(T s, vec<3, T, Q> const& v)
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			: x(v.x), y(v.y), z(v.z), w(s)
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			: w(s), x(v.x), y(v.y), z(v.z)
+#		else
+			: x(v.x), y(v.y), z(v.z), w(s)
 #		endif
 	{}
 
 	template <typename T, qualifier Q>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua(T _w, T _x, T _y, T _z)
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			: x(_x), y(_y), z(_z), w(_w)
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			: w(_w), x(_x), y(_y), z(_z)
+#		else
+			: x(_x), y(_y), z(_z), w(_w)
 #		endif
 	{}
 
@@ -154,10 +151,10 @@ namespace detail
 	template<typename T, qualifier Q>
 	template<typename U, qualifier P>
 	GLM_FUNC_QUALIFIER GLM_CONSTEXPR qua<T, Q>::qua(qua<U, P> const& q)
-#		ifdef GLM_FORCE_QUAT_DATA_XYZW
-			: x(static_cast<T>(q.x)), y(static_cast<T>(q.y)), z(static_cast<T>(q.z)), w(static_cast<T>(q.w))
-#		else
+#		ifdef GLM_FORCE_QUAT_DATA_WXYZ
 			: w(static_cast<T>(q.w)), x(static_cast<T>(q.x)), y(static_cast<T>(q.y)), z(static_cast<T>(q.z))
+#		else
+			: x(static_cast<T>(q.x)), y(static_cast<T>(q.y)), z(static_cast<T>(q.z)), w(static_cast<T>(q.w))
 #		endif
 	{}
 

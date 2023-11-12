@@ -28,40 +28,28 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
+    uint get_root_bone_id() const;
 
-    uint get_root_bone_id() const
-    { return VT_CALL(uint,() const,0)(); }
+    const coid::dynarray<coid::token>& get_bones() const;
 
-    const coid::dynarray<coid::token>& get_bones() const
-    { return VT_CALL(const coid::dynarray<coid::token>&,() const,1)(); }
+    const pkg::animation_header* get_header() const;
 
-    const pkg::animation_header* get_header() const
-    { return VT_CALL(const pkg::animation_header*,() const,2)(); }
+    const pkg::animation_key_frame* get_frames() const;
 
-    const pkg::animation_key_frame* get_frames() const
-    { return VT_CALL(const pkg::animation_key_frame*,() const,3)(); }
+    bool is_ready() const;
 
-    bool is_ready() const
-    { return VT_CALL(bool,() const,4)(); }
+    bool is_failed() const;
 
-    bool is_failed() const
-    { return VT_CALL(bool,() const,5)(); }
+    int get_state() const;
 
-    int get_state() const
-    { return VT_CALL(int,() const,6)(); }
+    uint get_frame_count() const;
 
-    uint get_frame_count() const
-    { return VT_CALL(uint,() const,7)(); }
+    uint get_fps() const;
 
-    uint get_fps() const
-    { return VT_CALL(uint,() const,8)(); }
+    int get_frame_offset() const;
 
-    const coid::charstr& get_filename() const
-    { return VT_CALL(const coid::charstr&,() const,9)(); }
+    const coid::charstr& get_filename() const;
 
-#pragma warning(pop)
     // --- creators ---
 
     static iref<animation> get( const coid::token& filename, const coid::token& root, unsigned int frame_offset ) {
@@ -79,7 +67,7 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 1597146426u;
+    static const int HASHID = 3177134733u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
@@ -161,7 +149,7 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::animation"_T;
-        tmp << "@client-1597146426"_T << '.' << type;
+        tmp << "@client-3177134733"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -194,19 +182,57 @@ inline iref<T> animation::get( T* _subclass_, const coid::token& filename, const
     typedef iref<T> (*fn_creator)(animation*, const coid::token&, const coid::token&, unsigned int);
 
     static fn_creator create = 0;
-    static constexpr coid::token ifckey = "ot::animation.get@1597146426"_T;
+    static constexpr coid::token ifckey = "ot::animation.get@3177134733"_T;
 
     if (!create)
         create = reinterpret_cast<fn_creator>(
             coid::interface_register::get_interface_creator(ifckey));
 
     if (!create) {
-        log_mismatch("get"_T, "ot::animation.get"_T, "@1597146426"_T);
+        log_mismatch("get"_T, "ot::animation.get"_T, "@3177134733"_T);
         return 0;
     }
 
     return create(_subclass_, filename, root, frame_offset);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline uint animation::get_root_bone_id() const
+{ return VT_CALL(uint,() const,0)(); }
+
+inline const coid::dynarray<coid::token>& animation::get_bones() const
+{ return VT_CALL(const coid::dynarray<coid::token>&,() const,1)(); }
+
+inline const pkg::animation_header* animation::get_header() const
+{ return VT_CALL(const pkg::animation_header*,() const,2)(); }
+
+inline const pkg::animation_key_frame* animation::get_frames() const
+{ return VT_CALL(const pkg::animation_key_frame*,() const,3)(); }
+
+inline bool animation::is_ready() const
+{ return VT_CALL(bool,() const,4)(); }
+
+inline bool animation::is_failed() const
+{ return VT_CALL(bool,() const,5)(); }
+
+inline int animation::get_state() const
+{ return VT_CALL(int,() const,6)(); }
+
+inline uint animation::get_frame_count() const
+{ return VT_CALL(uint,() const,7)(); }
+
+inline uint animation::get_fps() const
+{ return VT_CALL(uint,() const,8)(); }
+
+inline int animation::get_frame_offset() const
+{ return VT_CALL(int,() const,9)(); }
+
+inline const coid::charstr& animation::get_filename() const
+{ return VT_CALL(const coid::charstr&,() const,10)(); }
+
+#pragma warning(pop)
 
 } //namespace
 

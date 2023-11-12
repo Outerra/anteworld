@@ -28,15 +28,10 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
     ///Turn the recording on/off
     //@return previous recording state. Also returns true if the built-in recording is active
-    bool record( bool on )
-    { return VT_CALL(bool,(bool),0)(on); }
+    bool record( bool on );
 
-#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -90,10 +85,10 @@ protected:
 public:
     // --- host helpers to check presence of handlers in scripts ---
 
-    virtual bool is_bound_initialize_video_recorder() { return true; }
+    virtual bool is_bound_initialize() { return true; }
     virtual bool is_bound_on_user_key() { return true; }
     virtual bool is_bound_process_frame() { return true; }
-    virtual bool is_bound_capture_screen_obsolete() { return true; }
+    virtual bool is_bound_capture_screen() { return true; }
 
 public:
     // --- creators ---
@@ -241,6 +236,14 @@ inline iref<T> video_recorder::create( T* _subclass_ )
 
     return create(_subclass_);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline bool video_recorder::record( bool on )
+{ return VT_CALL(bool,(bool),0)(on); }
+
+#pragma warning(pop)
 
 } //namespace
 

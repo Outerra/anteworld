@@ -34,19 +34,12 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
+    const coid::charstr& get_str();
 
-    const coid::charstr& get_str()
-    { return VT_CALL(const coid::charstr&,(),0)(); }
+    void set_str( const coid::token& new_str );
 
-    void set_str( const coid::token& new_str )
-    { return VT_CALL(void,(const coid::token&),1)(new_str); }
+    void some_fun1( ifc_inout int& a, ifc_inout iref<ns::other>& b, ifc_out int* c );
 
-    void some_fun1( ifc_inout int& a, ifc_inout iref<ns::other>& b, ifc_out int* c )
-    { return VT_CALL(void,(int&,iref<ns::other>&,int*),2)(a,b,c); }
-
-#pragma warning(pop)
     // --- creators ---
 
     static iref<other> create( const coid::charstr& str ) {
@@ -168,6 +161,20 @@ inline iref<T> other::create( T* _subclass_, const coid::charstr& str )
 
     return create(_subclass_, str);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline const coid::charstr& other::get_str()
+{ return VT_CALL(const coid::charstr&,(),0)(); }
+
+inline void other::set_str( const coid::token& new_str )
+{ return VT_CALL(void,(const coid::token&),1)(new_str); }
+
+inline void other::some_fun1( int& a, iref<ns::other>& b, int* c )
+{ return VT_CALL(void,(int&,iref<ns::other>&,int*),2)(a,b,c); }
+
+#pragma warning(pop)
 
 } //namespace
 

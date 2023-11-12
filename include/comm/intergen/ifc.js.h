@@ -383,7 +383,7 @@ public:
 
         intergen_interface::ifclog_ext(
             coid::log::none,
-            inst ? coid::token(inst->intergen_interface_name()) : "js"_T,
+            inst ? inst->intergen_interface_name() : coid::tokenhash("js"_T),
             inst, tokey);
 
         args.GetReturnValue().Set(v8::Undefined(iso));

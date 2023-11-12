@@ -217,7 +217,7 @@ GLM relies on C++ templates heavily, and may significantly increase compilation 
 #include <glm/mat4x4.hpp>             // mat4, dmat4
 #include <glm/common.hpp>             // all the GLSL common functions: abs, min, mix, isnan, fma, etc.
 #include <glm/exponential.hpp>        // all the GLSL exponential functions: pow, log, exp2, sqrt, etc.
-#include <glm/geometric.hpp>          // all the GLSL geometry functions: dot, cross, reflect, etc.
+#include <glm/geometry.hpp>           // all the GLSL geometry functions: dot, cross, reflect, etc.
 #include <glm/integer.hpp>            // all the GLSL integer functions: findMSB, bitfieldExtract, etc.
 #include <glm/matrix.hpp>             // all the GLSL matrix functions: transpose, inverse, etc.
 #include <glm/packing.hpp>            // all the GLSL packing functions: packUnorm4x8, unpackHalf2x16, etc.
@@ -277,26 +277,7 @@ GLM does not depend on external libraries or headers such as `<GL/gl.h>`, [`<GL/
 
 ### <a name="section1_5"></a> 1.5. Finding GLM with CMake
 
-When installed, GLM provides the CMake package configuration files `glmConfig.cmake` and `glmConfigVersion.cmake`.
-
-To use these configurations files, you may need to set the `glm_DIR` variable to the directory containing the configuration files `<installation prefix>/lib/cmake/glm/`.
-
-Use the `find_package` CMake command to load the configurations into your project. Lastly, either link your executable against the `glm::glm` target or add `${GLM_INCLUDE_DIRS}` to your target's include directories:
-
-```cmake
-set(glm_DIR <installation prefix>/lib/cmake/glm) # if necessary
-find_package(glm REQUIRED)
-target_link_libraries(<your executable> glm::glm)
-```
-
-To use GLM as a submodule in a project instead, use `add_subdirectory` to expose the same target, or add the directory to your target's 
-
-```cmake
-add_subdirectory(glm)
-target_link_libraries(<your executable> glm::glm)
-# or
-target_include_directories(<your executable> glm)
-```
+GLM packages a `glmConfig.cmake` and `glmConfig-version.cmake` in the root of the repository and the release archives. To find GLM with CMake you can pass `-Dglm_DIR=<path to glm root>/cmake/glm/` when running CMake. You can then either add `${GLM_INCLUDE_DIRS}` to your target's include directories, or link against the imported `glm::glm` target.
 
 ---
 <div style="page-break-after: always;"> </div>
@@ -2360,7 +2341,7 @@ Cinder is production-proven, powerful enough to be the primary tool for professi
 
 ![](/doc/manual/references-cinder.png)
 
-[***opencloth***](https://github.com/mmmovania/opencloth/)
+[***opencloth***](http://code.google.com/p/opencloth/)
 
 A collection of source codes implementing cloth simulation algorithms in OpenGL.
 

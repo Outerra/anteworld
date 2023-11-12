@@ -217,7 +217,7 @@ struct closure_traits_base
             return *this;
         }
 
-        function& operator = (function&& other) noexcept {
+        function& operator = (function&& other) {
             if (c) delete c;
             c = other.c;
             other.c = 0;
@@ -441,7 +441,7 @@ public:
 
     callback(const callback& fn) {
         _caller = fn._caller;
-        if (fn._fn.ptr) {
+        if (_fn.ptr) {
             if (_caller == &call_flambda)
                 _fn.flambda = fn._fn.flambda->clone();
             else if (_caller == &call_mlambda)
@@ -451,7 +451,7 @@ public:
         }
     }
 
-    callback(callback&& fn) noexcept {
+    callback(callback&& fn) {
         _fn.ptr = fn._fn.ptr;
         fn._fn.ptr = 0;
         _caller = fn._caller;

@@ -267,7 +267,7 @@ struct packer_zstd
 
     void reset_read() {
         if (_dstream)
-            ZSTD_DCtx_reset(_dstream, ZSTD_reset_session_only);
+            ZSTD_resetDStream(_dstream);
 
         _offset = 0;
         _buf.reset();
@@ -275,10 +275,8 @@ struct packer_zstd
     }
 
     void reset_write(uints size = 0) {
-        if (_cstream) {
-            ZSTD_CCtx_reset(_cstream, ZSTD_reset_session_only);
-            ZSTD_CCtx_setPledgedSrcSize(_cstream, size);
-        }
+        if (_cstream)
+            ZSTD_resetCStream(_cstream, size);
 
         _offset = 0;
         _buf.reset();

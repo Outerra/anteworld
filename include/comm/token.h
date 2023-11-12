@@ -260,7 +260,7 @@ struct token
     }
 
     friend bool operator == (const char* sz, const token& tok) {
-        return tok.cmpeqz(sz);
+        return tok == sz;
     }
 
     bool operator == (char c) const {
@@ -276,7 +276,7 @@ struct token
     }
 
     friend bool operator != (const char* sz, const token& tok) {
-        return !tok.cmpeqz(sz);
+        return tok == sz;
     }
 
     bool operator != (char c) const {
@@ -337,14 +337,6 @@ struct token
     bool cmpeqc(const token& str, bool casecmp) const
     {
         return casecmp ? cmpeq(str) : cmpeqi(str);
-    }
-
-    bool cmpeqz(const char* sz) const
-    {
-        uints n = lens();
-        if (strncmp(ptr(), sz, n) == 0 && sz[n] == 0)
-            return true;
-        return false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -2047,7 +2039,7 @@ struct token
     struct tonum
     {
         uint BaseN;
-        bool success = false;
+        bool success;
 
 
         tonum(uint BaseN = 10) : BaseN(BaseN) {}

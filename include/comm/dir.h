@@ -108,18 +108,14 @@ public:
     static const token& separators() { static token sep = "/"_T; return sep; }
 #endif
 
-    //@param shouldbe true or one of / or \ characters if path should end with the separator, false if path separator should not be there
-    static charstr& treat_trailing_separator(charstr& path, char shouldbe)
+    static charstr& treat_trailing_separator(charstr& path, bool shouldbe)
     {
-        if (shouldbe && shouldbe != '/' && shouldbe != '\\')
-            shouldbe = separator();
-
         char c = path.last_char();
         if (is_separator(c)) {
             if (!shouldbe)  path.resize(-1);
         }
         else if (shouldbe && c != 0)   //don't add separator to an empty path, that would make it absolute
-            path.append(shouldbe);
+            path.append(separator());
         return path;
     }
 
@@ -192,7 +188,7 @@ public:
         return copymove_directory(src, dst, false);
     }
 
-    static opcd copy_file(zstring src, zstring dst, bool preserve_dates);
+    static opcd copy_file(zstring src, zstring dst);
 
     static opcd move_file(zstring src, zstring dst);
 
@@ -201,15 +197,11 @@ public:
     ///delete multiple files using a pattern for file
     static opcd delete_files(token path_and_pattern);
 
-    ///Copy file to the open directory
-    opcd copy_file_from(const token& src, bool preserve_dates, const token& name = token());
+    ///copy file to open directory
+    opcd copy_file_from(const token& src, const token& name = token());
 
-    ///Copy current file to dst dir path
-    //@param dst destination directory path
-    //@param preserve_dates use access and modification times of the source file
-    //@param name optional file name, if it's different than the current one
-    opcd copy_file_to(const token& dst, bool preserve_dates, const token& name = token());
-    opcd copy_current_file_to(const token& dst, bool preserve_dates);
+    opcd copy_file_to(const token& dst, const token& name = token());
+    opcd copy_current_file_to(const token& dst);
 
 
     ///move file to open directory

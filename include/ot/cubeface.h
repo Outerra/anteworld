@@ -483,7 +483,7 @@ struct ellipsoid
     int lonlat_radians_to_utm(const double lon, const double lat,
         double& UTMNorthing, double& UTMEasting, int UTMZone = 0)
     {
-        //converts lat/long to UTM coords.  Equations from USGS Bulletin 1532 
+        //converts lat/long to UTM coords.  Equations from USGS Bulletin 1532
         static const double k0 = 0.9996;
 
         //Make sure the longitude is between -180.00 .. 179.9
@@ -891,7 +891,7 @@ struct spherecoord
     uint64 manhattan_distance( const spherecoord& sc ) const {
         if(sc._face == _face)
             return abs(int(fchorz() - sc.fchorz())) + abs(int(fcvert() - sc.fcvert()));
-        
+
         if((_face^1) == sc._face) {
             DASSERT(0);
             return UMAX64;  //TODO

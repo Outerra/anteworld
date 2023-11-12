@@ -15,7 +15,6 @@
 #include <comm/commassert.h>
 
 #include "glm_types.h"
-#include <pmmintrin.h>
 
 #define simd_align __declspec(align(16))
 
@@ -465,45 +464,6 @@ inline qua<T> make_quat_z(const T angle)
 {
     typename qua<T>::value_type hsin = sin(angle * T(0.5));
     return qua<T>(cos(angle * T(0.5)), 0, 0, hsin);
-}
-
-//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-/// creates quaternion rotation around X axis from cos/sin of the angle
-template<typename T>
-inline qua<T> make_quat_x(const T cos_angle, const T sin_angle)
-{
-    const T hcos = sqrtc((T(1.0) + cos_angle) * T(0.5));
-    const T hsin = (sin_angle < T(0.02) && sin_angle > T(-0.02)) && (cos_angle > T(0.0))
-        ? T(0.5) * sin_angle    //precision loss compensation
-        : (sin_angle > T(0.0) ? T(1) : T(-1)) * sqrtc((T(1.0) - cos_angle) * T(0.5));
-    return qua<T>(hcos, hsin, 0, 0);
-}
-
-//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-/// creates quaternion rotation around Y axis from cos/sin of the angle
-template<typename T>
-inline qua<T> make_quat_y(const T cos_angle, const T sin_angle)
-{
-    const T hcos = sqrtc((T(1.0) + cos_angle) * T(0.5));
-    const T hsin = (sin_angle < T(0.02) && sin_angle > T(-0.02)) && (cos_angle > T(0.0))
-        ? T(0.5) * sin_angle    //precision loss compensation
-        : (sin_angle > T(0.0) ? T(1) : T(-1)) * sqrtc((T(1.0) - cos_angle) * T(0.5));
-    return qua<T>(hcos, 0, hsin, 0);
-}
-
-//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-/// creates quaternion rotation around Z axis from cos/sin of the angle
-template<typename T>
-inline qua<T> make_quat_z(const T cos_angle, const T sin_angle)
-{
-    const T hcos = sqrtc((T(1.0) + cos_angle) * T(0.5));
-    const T hsin = (sin_angle < T(0.02) && sin_angle > T(-0.02)) && (cos_angle > T(0.0))
-        ? T(0.5) * sin_angle    //precision loss compensation
-        : (sin_angle > T(0.0) ? T(1) : T(-1)) * sqrtc((T(1.0) - cos_angle) * T(0.5));
-    return qua<T>(hcos, 0, 0, hsin);
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -959,6 +919,17 @@ inline __m128 _mm_rsqrt(__m128 r0)
     r0 = _mm_mul_ps(_mm_mul_ps(r0, r1), r1);
     r0 = _mm_mul_ps(_mm_sub_ps(r0, __three), _mm_mul_ps(r1, __half));
     return r0;
+}
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+/// standard _mm_rcp_ps instruction + one round of Newton-Raphson refinement
+inline __m128 _mm_rcp_precize(__m128 x)
+{
+    __m128 xr = _mm_rcp_ps(x);
+
+    // one round of Newton-Raphson refinement
+    xr = _mm_mul_ps(xr, _mm_sub_ps(__two, _mm_mul_ps(x, xr)));
 }
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

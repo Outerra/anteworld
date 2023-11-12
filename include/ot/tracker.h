@@ -28,10 +28,6 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
-#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -58,9 +54,9 @@ protected:
 public:
     // --- host helpers to check presence of handlers in scripts ---
 
-    virtual bool is_bound_plugin_tracker_data() { return true; }
-    virtual bool is_bound_plugin_tracker_position() { return true; }
-    virtual bool is_bound_plugin_set_reference() { return true; }
+    virtual bool is_bound_data() { return true; }
+    virtual bool is_bound_position() { return true; }
+    virtual bool is_bound_set_reference() { return true; }
 
 public:
     // --- creators ---
@@ -209,6 +205,11 @@ inline iref<T> tracker::create( T* _subclass_, const char* name )
 
     return create(_subclass_, name);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+#pragma warning(pop)
 
 } //namespace
 

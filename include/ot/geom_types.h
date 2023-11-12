@@ -14,10 +14,31 @@ using geom_instance_data_handle = coid::versionid;
 
 namespace pkg {
 
+
+extern uint MaxInstanceCount;
+extern uint MaxMeshCount;
+extern uint MaxBoneCount;
+extern uint StreamPageVertexCount;
+extern uint MaxMatlibs;
+extern uint MaxPackages;
+extern uint MeshTemplateLimit;
+extern uint MaxObjdefs;
+    
+enum class mesh_type_enum {
+    baked_mesh = 0,
+    baked_mesh_w_skin= 2,
+    instanced_mesh_w_single_bone = 1,
+    instanced_mesh = 7,
+    tree_mesh = 6,
+    raw_instances = 3,
+    proc_road = 4,
+    proc_road_2 = 5,
+};
+
 enum ELodGroupsFlags {
-    LG_HAS_TERRAIN_OCCLUDER_GROUP = 0x4000,
-    LG_HAS_COLLISION_GROUP = 0x8000,
-    LG_LOD_GROUPS_COUNT_MASK = 0x3fff
+	LG_HAS_TERRAIN_OCCLUDER_GROUP = 0x4000,
+	LG_HAS_COLLISION_GROUP = 0x8000,
+	LG_LOD_GROUPS_COUNT_MASK = 0x3fff
 };
 
 enum EEntityModifyFlags
@@ -35,19 +56,18 @@ enum EEntityModifyFlags
         /*| EntityHierarchyChanged*/,
 };
 
-constexpr uint MaxBoneCountDefault = 0x40000;
-constexpr uint MaxInstanceCountDefault = 0x40000;
-constexpr uint MaxMeshCountDefault = 0x80000;
-constexpr uint DefaultStreamPageVertexCount = 1 << 23;
-constexpr uint MaxMatlibsDefault = 8192 * 4;
-constexpr uint MaxPackagesDefault = 16384;
-constexpr uint MeshTemplateLimitDefault = 32768;
-constexpr uint InvalidEntityId = -1;
-constexpr uint InvalidBoneId = InvalidEntityId;
-constexpr uint InvalidMeshId = InvalidEntityId;
-constexpr uint InvalidPackageId = InvalidEntityId;
-constexpr uint InvalidMatlibId = InvalidEntityId;
-constexpr uint InvalidMaterialId = InvalidEntityId;
+enum EPkgConstants {
+    MaxBoneCountDefault = 0x40000,
+    MaxInstanceCountDefault = 0x40000,
+    MaxMeshCountDefault = 0x80000,
+    DefaultStreamPageVertexCount = 1 << 23,
+    MaxMatlibsDefault = 8192 * 4,
+    MaxPackagesDefault = 16384,
+    MeshTemplateLimitDefault = 32768,
+    InvalidEntityId = -1,
+    InvalidBoneId = InvalidEntityId,
+    InvalidMeshId = InvalidEntityId,
+};
 
 enum EGeomAnimateMode {
     AnimImplicit = 0,
@@ -353,17 +373,55 @@ struct lod_meshes {
     }
 };
 
-enum class geom_instance_flags : uint8
+struct lod_meshes_v10
 {
-    HAS_INTERIOR_MESHES = 0x1,
-    HAS_DISPLAY_MESHES = 0x2
+    uint _start;            //< first mesh in LOD group
+    uint _start_instanced;  //< first instanced mesh
+    uint _mesh_count;       //< num meshes in LOD group
+
+    lod_meshes_v10()
+        : _start()
+        , _start_instanced()
+        , _mesh_count()
+    {}
+
+    lod_meshes_v10(
+        const uint start,
+        const uint start_instanced,
+        const uint mesh_count)
+        : _start(start)
+        , _start_instanced(start_instanced)
+        , _mesh_count(mesh_count)
+    {}
+
+/*    lod_meshes_2() : _start(0), _num_meshes(0), _first_static_mesh(0), _static_mesh_count(0){}
+
+    lod_meshes_2(const uint start, const uint num)
+        : _start(start)
+        , _num_meshes(num)
+    {}
+
+    void operator = (const lod_meshes &lod) {
+        _start = lod._start;
+        _num_meshes = lod._num_meshes;
+    }
+*/
+   /* friend coid::metastream& operator || (coid::metastream& m, lod_meshes_v10& md)
+    {
+        return m.compound("lod_meshes_v10", [&]() {
+            m.member("start", md._start);
+            m.member("start_instanced", md._start_instanced);
+            m.member("num_meshes", md._mesh_count);
+        });
+    }*/
 };
+
 
 struct geom_instance_data;
 struct obj_template;
 
 /// callback called when geom_instance_data is ready
-typedef coid::FastDelegate2<geom_instance_data* const, const obj_template* const, void> geom_ready_state_changed_cb;
+typedef coid::FastDelegate2<geom_instance_data* const,const obj_template* const, void> geom_ready_state_changed_cb;
 
 struct geom_instance_data
 {
@@ -372,27 +430,48 @@ struct geom_instance_data
     friend class geom_manager;
 
 public:
-    int32 _state = 0;                       //<
-    const uint _obj_template_id = -1;       //< obj_template ID in pkg_desc_cache (also objdef id because obj_templates are 1:1 to objdefs)
-    uint _lod_groups_id = -1;               //< first LOD group ID (mesh_lod_group)
+    int32 _state;					//<
+    const uint _obj_template_id;    //< obj_template ID in pkg_desc_cache (also objdef id because obj_templates are 1:1 to objdefs)
+    uint _lod_groups_id;			//< first LOD group ID (mesh_lod_group)
 protected:
-    ushort _num_lod_groups = 0;	            //< number of LOD groups with flags?
+    ushort _num_lod_groups;			//< number of LOD groups with flags?
 public:
-    const coid::versionid _entity_id;       //< weak reference to entity
-    uint _first_static_mesh_data = -1;      //<
-    uint _first_dynamic_mesh_data = -1;     //<
-    uint _pkg_obj_id = -1;                  //< id of package object template
-    uint _first_bone = -1;
-    uint _bone_count = 0;                   //<
-    uint _root_bone_count = 0;              //<
-    uint _first_collision_shape = -1;       //< first BtCollisionShape* ID in pkg_collision_manager
-    uint _geomob_id = InvalidEntityId;      //<
-    uint _mesh_count = 0;
-    i8vec4 _internal_temperatures = i8vec4(0);
+    const coid::versionid _entity_id;			//< weak reference to entity
+    uint _first_static_mesh_data;	//<
+    uint _first_dynamic_mesh_data;	//<
+    uint _pkg_obj_id;				//< id of package object template
+    uint _first_bone;
+    uint _bone_count;				//<
+    uint _root_bone_count;			//<
+    uint _first_collision_shape;    //< first BtCollisionShape* ID in pkg_collision_manager
+    uint _geomob_id;                //<
+    uint _mesh_count; 
+    i8vec4 _internal_temperatures; 
     geom_ready_state_changed_cb _ready_state_changed_cb;            //< geom ready callback. we must keep this in case of reinitialization.
-    uint8 _flags = 0;                        //< flags
 
     geom_instance_data()
+        : _state(0)
+        , _obj_template_id(-1)
+
+        , _lod_groups_id(-1)
+        , _num_lod_groups(0)
+
+        , _entity_id()
+
+        , _first_static_mesh_data(-1)
+        , _first_dynamic_mesh_data(-1)
+
+        , _pkg_obj_id(-1)
+
+        , _first_bone(-1)
+        , _bone_count(0)
+        , _root_bone_count(0)
+        , _first_collision_shape(-1)
+
+        , _geomob_id(-1)
+
+        , _mesh_count(0)
+        , _internal_temperatures(0)
     {}
 
     geom_instance_data(
@@ -402,12 +481,30 @@ public:
         const uint pkg_obj_id,
         const uint first_dynamic_mesh_data,
         const geom_ready_state_changed_cb& ready_state_changed_cb)
-        : _obj_template_id(obj_template_id)
+        : _state(0)
+        , _obj_template_id(obj_template_id)
+
+        , _lod_groups_id(-1)
+        , _num_lod_groups(0)
+
         , _entity_id(entity_id)
+
+        , _first_static_mesh_data(-1)
         , _first_dynamic_mesh_data(first_dynamic_mesh_data)
+
         , _pkg_obj_id(pkg_obj_id)
+
+        , _first_bone(-1)
+        , _bone_count(0)
+        , _root_bone_count(0)
+        , _first_collision_shape(-1)
+
+        , _mesh_count(0)
+
         , _geomob_id(InvalidEntityId)
+
         , _ready_state_changed_cb(ready_state_changed_cb)
+        , _internal_temperatures(0)
     {}
 
     ~geom_instance_data() {}
@@ -430,7 +527,7 @@ public:
         _pkg_obj_id = pkg_obj_id;
         _first_bone = first_bone;
         _bone_count = bone_count;
-        _root_bone_count = root_bone_count;
+        _root_bone_count = root_bone_count;        
         _mesh_count = mesh_count;
     }
 
@@ -469,9 +566,6 @@ public:
         return has_collision != 0 ? (_num_lod_groups & LG_LOD_GROUPS_COUNT_MASK) - has_collision : -1;
     }
 
-    bool has_interior_meshes() const { return _flags & (static_cast<uint>(geom_instance_flags::HAS_INTERIOR_MESHES)); };
-    bool has_display_meshes() const { return _flags & (static_cast<uint>(geom_instance_flags::HAS_DISPLAY_MESHES)); };
-
 protected:
 
     void set_ready()
@@ -489,8 +583,6 @@ protected:
         //	//DASSERT(false && "Something wrong!");
         //}
     }
-
-    void set_flag(geom_instance_flags flag) { _flags |= static_cast<uint>(flag); }
 };
 
 /*
@@ -521,9 +613,9 @@ struct mesh_obb_data
 ///
 struct mesh_lod_group
 {
-    uint _first;                //< relative index to first mesh in LOD group
-    uint _count_static;         //< meshes with unique geometry data
-    uint _count_instanced;      //< meshes with shared geometry data
+    uint _first;				//< relative index to first mesh in LOD group
+    uint _count_static;		    //< meshes with unique geometry data
+    uint _count_instanced;	    //< meshes with shared geometry data
 
     mesh_lod_group()
         : _first(-1)
@@ -550,20 +642,8 @@ struct mesh_lod_group
     }
 };
 
-struct mesh_data_cpu
-{
-    uint _material_id;          //< mesh material id
-    uint _bone_id;              //<
-    uchar _interior_coef;
-
-    mesh_data_cpu(
-        const uint material_id,
-        const uint bone_id)
-        : _material_id(material_id)
-        , _bone_id(bone_id)
-    {}
-};
-
+class vertex_stream;
+struct vertex_stream_block;
 
 /// mesh GPU data
 /// contains data only for visible meshes
@@ -572,27 +652,44 @@ struct mesh_data_static_cpu
     float4x3 _tm;           //< mesh model space transformation
 
     float3 _center;         //< axis aligned bounding box center (min + max) * 0.5
-    uint _unused0 = 0;
+    uint _unused0;
 
     float3 _hvec;           //< axis aligned bounding box half vector (max - min) * 0.5
-    uint _unused1 = 0;
+    uint _unused1;
 
-    uint _vertex_count = 0; //<
-    uint _first_bone = 0;   //< index in package bone array
-    float _pak_pos_exp = 0; //< position scale exponent
-    uint _first_index = 0;  //< first index in global
+    uint _vertex_count;     //<
+    uint _first_bone;       //< index in package bone array
+    float _pak_pos_exp;     //< position scale exponent
+    uint _first_index;      //< first index in global
     uint4 _base_vertex;     //< vertex offset in global array vertex page
-
+    uint _index_count;
     uint _vertex_format;    //<
-    uint _index_count = 0;
 
-    ushort _geom_first_bone = 0;
-    uchar _page_id = 0;
-    uchar _unused2 = 0;
+    ushort _geom_first_bone;
+    uchar _page_id;
+    uchar _unused2;
 
-    //uint _aligment[1];      //< structure has to be aligned to 16bytes
+    uint _aligment[1];      //< structure have to be aligned to 16bytes
 
-    mesh_data_static_cpu() = default;
+    mesh_data_static_cpu()
+        : _tm()
+        , _center()
+        , _unused0()
+        , _hvec()
+        , _unused1()
+        , _vertex_count()
+
+        , _first_bone()
+        , _pak_pos_exp()
+        , _first_index()
+        , _base_vertex()
+        , _index_count()
+        , _vertex_format()
+
+        , _geom_first_bone()
+        , _page_id()
+        , _unused2()
+    {}
 
     mesh_data_static_cpu(
         float4x3 tm,
@@ -609,24 +706,47 @@ struct mesh_data_static_cpu
         uchar page_id)
         : _tm(tm)
         , _center(center)
+        , _unused0(0)
         , _hvec(hvec)
+        , _unused1(0)
         , _vertex_count(vertex_count)
 
         , _first_bone(first_bone)
         , _pak_pos_exp(pak_pos_exp)
         , _first_index(first_index)
         , _base_vertex(base_vertex)
-
-        , _vertex_format(vertex_format)
-
         , _index_count(index_count)
+        , _vertex_format(vertex_format)
 
         , _geom_first_bone(geom_first_bone)
         , _page_id(page_id)
+        , _unused2(0)
     {}
 
     const uint get_base_vertex_pos() const { return _base_vertex.x & 0xffffff; }
 };
+
+struct mesh_data_cpu
+{
+    uint _material_id;         //< mesh material id
+    uint _bone_id;          //<
+
+    mesh_data_cpu(
+        const uint material_id,
+        const uint bone_id)
+        : _material_id(material_id)
+        , _bone_id(bone_id)
+    {}
+};
+
+//struct mesh_pass_shader
+//{
+//    const uint _shader_id;
+//
+//    mesh_pass_shader(const uint shader_id)
+//        : _shader_id(shader_id)
+//    {}
+//};
 
 } // end of namespace pkg
 

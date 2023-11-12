@@ -261,13 +261,13 @@ public:
 
 #endif //COID_VARIADIC_TEMPLATES
 
-    static void ifclog_ext(coid::log::type type, const coid::token& from, const void* inst, const coid::token& txt) {
+    static void ifclog_ext(coid::log::type type, const coid::tokenhash& hash, const void* inst, const coid::token& txt) {
         //deduce type if none set
         coid::token rest = txt;
         if (type == coid::log::none)
             type = coid::logmsg::consume_type(rest);
 
-        ref<coid::logmsg> msgr = coid::interface_register::canlog(type, from, inst);
+        ref<coid::logmsg> msgr = coid::interface_register::canlog(type, hash, inst);
         if (!msgr)
             return;
 

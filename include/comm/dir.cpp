@@ -45,13 +45,14 @@
 #include "str.h"
 #include "pthreadx.h"
 
+//#include <sys/utime.h>
+
 COID_NAMESPACE_BEGIN
 
 #if defined(SYSTYPE_MSVC)
 #define xstat64 _stat64
 #else
 #define xstat64 stat64
-#include <unistd.h>
 #endif
 
 
@@ -141,6 +142,20 @@ bool directory::is_subpath(token root, token path)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool directory::subpath(token root, token& path)
+{
+    while (root && path) {
+        token r = root.cut_left_group(DIR_SEPARATORS);
+        token p = path.cut_left_group(DIR_SEPARATORS);
+
+        if (r != p)
+            break;
+    }
+
+    return root.is_empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int directory::append_path(charstr& dst, token path, bool keep_below)
 {
     if (is_absolute_path(path))
@@ -218,7 +233,7 @@ int directory::append_path(charstr& dst, token path, bool keep_below)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file_from(const token& src, bool preserve_dates, const token& name)
+opcd directory::copy_file_from(const token& src, const token& name)
 {
     _curpath.resize(_baselen);
 
@@ -232,11 +247,11 @@ opcd directory::copy_file_from(const token& src, bool preserve_dates, const toke
     else
         _curpath << name;
 
-    return copy_file(src, _curpath, preserve_dates);
+    return copy_file(src, _curpath);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file_to(const token& dst, bool preserve_dates, const token& name)
+opcd directory::copy_file_to(const token& dst, const token& name)
 {
     _curpath.resize(_baselen);
 
@@ -250,17 +265,17 @@ opcd directory::copy_file_to(const token& dst, bool preserve_dates, const token&
     else
         _curpath << name;
 
-    return copy_file(_curpath, dst, preserve_dates);
+    return copy_file(_curpath, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_current_file_to(const token& dst, bool preserve_dates)
+opcd directory::copy_current_file_to(const token& dst)
 {
-    return copy_file(_curpath, dst, preserve_dates);
+    return copy_file(_curpath, dst);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-opcd directory::copy_file(zstring src, zstring dst, bool preserve_dates)
+opcd directory::copy_file(zstring src, zstring dst)
 {
     if(src.get_token() == dst.get_token())
         return 0;
@@ -291,12 +306,6 @@ opcd directory::copy_file(zstring src, zstring dst, bool preserve_dates)
             break;
         else
             return re;
-    }
-
-    if (preserve_dates) {
-        xstat st;
-        if (stat(src, &st))
-            set_file_times(dst, st.st_atime, st.st_mtime);
     }
 
     return 0;
@@ -373,7 +382,7 @@ opcd directory::delete_directory(zstring src, bool recursive)
             return was_err;
     }
 
-    return 0 == _rmdir(no_trail_sep(src)) ? opcd(0) : ersIO_ERROR;
+    return 0 == ::_rmdir(no_trail_sep(src)) ? opcd(0) : ersIO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,10 +408,10 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
             //copy to dst/
             token file = src.get_token().cut_right_group_back("\\/"_T);
             dsts << file;
-            err = move ? move_file(src, dsts) : copy_file(src, dsts, true);
+            err = move ? move_file(src, dsts) : copy_file(src, dsts);
         }
         else
-            err = move ? move_file(src, dst) : copy_file(src, dst, true);
+            err = move ? move_file(src, dst) : copy_file(src, dst);
 
         return err;
     }
@@ -438,7 +447,7 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
         else if (move)
             err = move_file(path, dsts);
         else
-            err = copy_file(path, dsts, true);
+            err = copy_file(path, dsts);
 
         if (!was_err && err)
             was_err = err;
@@ -453,13 +462,13 @@ opcd directory::copymove_directory(zstring src, zstring dst, bool move)
 ////////////////////////////////////////////////////////////////////////////////
 bool directory::is_writable(zstring fname)
 {
-    return 0 == _access(no_trail_sep(fname), 2);
+    return 0 == ::_access(no_trail_sep(fname), 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 bool directory::set_writable(zstring fname, bool writable)
 {
-    return 0 == _chmod(no_trail_sep(fname), writable ? (S_IREAD | S_IWRITE) : S_IREAD);
+    return 0 == ::_chmod(no_trail_sep(fname), writable ? (S_IREAD | S_IWRITE) : S_IREAD);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

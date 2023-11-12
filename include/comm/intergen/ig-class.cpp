@@ -6,15 +6,8 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-int Interface::check_interface(iglexer& lex, const dynarray<paste_block>& classpasters)
+int Interface::check_interface(iglexer& lex)
 {
-    for (const paste_block& b : classpasters) {
-        if (b.condx.is_empty() || full_name_equals(b.condx)) {
-            b.fill(*pasteinners.add());
-        }
-    }
-
-
     int nerr = 0;
 
     if ((oper_get >= 0) != (oper_set >= 0)) {
@@ -52,7 +45,7 @@ int Interface::check_interface(iglexer& lex, const dynarray<paste_block>& classp
 
 ////////////////////////////////////////////////////////////////////////////////
 ///Parse function declaration after rl_cmd or rl_cmd_p
-bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& namespcs, dynarray<paste_block>* filepasters, dynarray<MethodIG::Arg>& irefargs)
+bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& namespcs, dynarray<paste_block>* pasters, dynarray<MethodIG::Arg>& irefargs)
 {
     templarg.swap(templarg_);
     //namespaces = namespcs;
@@ -63,7 +56,7 @@ bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& nam
 
     namespaces.for_each([this](const charstr& v) { namespc << v << "::"; });
     if (namespc)
-        ns.set_from_range(namespc.ptr(), namespc.ptre() - 2);
+        ns.set_from_range(namespc.ptr(), namespc.ptre()-2);
 
     token t = templarg;
     if (!t.is_empty()) {
@@ -81,214 +74,302 @@ bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& nam
 
     int ncontinuable_errors = 0;
 
-    if (!lex.matches(lex.IDENT, classname)) {
+    if (!lex.matches(lex.IDENT, classname))
         lex.syntax_err() << "expecting class name\n";
-        return false;
-    }
+    else {
+        const lexer::lextoken& tok = lex.last();
 
-    const lexer::lextoken& tok = lex.last();
+        noref = true;
 
-    noref = true;
-
-    while (lex.next() != '{') {
-        if (tok.end()) {
-            lex.syntax_err() << "unexpected end of file\n";
-            return false;
-        }
-        if (tok == ';')
-            return false;
-
-        noref = false;
-    }
-
-    //ignore nested blocks
-    //lex.ignore(lex.CURLY, true);
-
-    dynarray<charstr> commlist;
-
-    int mt;
-    while (0 != (mt = lex.find_method(classname, classpasters, commlist)))
-    {
-        if (mt < 0) {
-            //interface definitions
-            const lexer::lextoken& tok = lex.last();
-
-            int classifc = tok == lex.IFC_CLASS ? 1 : (tok == lex.IFC_CLASSX ? 2 : 0);
-            int classvar = tok == lex.IFC_CLASS_VAR ? 1 : (tok == lex.IFC_CLASSX_VAR ? 2 : 0);
-            bool classvirtual = tok == lex.IFC_CLASS_VIRTUAL;
-            bool classext = classifc > 1 || classvar > 1;
-
-            bool extfn = tok == lex.IFC_FNX;
-            bool extev = tok == lex.IFC_EVENTX;
-            bool bimplicit = false;
-            bool bdestroy = false;
-            bool bpure = false;
-            int8 binternal = 0;
-            int8 bnocapture = 0;
-            int8 bcapture = 0;
-
-            charstr extname;//, implname;
-            if (extev || extfn) {
-                //parse external name
-                lex.match('(');
-
-                if (extfn && lex.matches('~'))
-                    bdestroy = true;
-                else {
-                    while (int k = lex.matches_either('!', '-', '+'))
-                        (&binternal)[k - 1]++;
-
-                    bimplicit = lex.matches('@');
-
-                    lex.matches(lex.IDENT, extname);
-
-                    bpure = extev && lex.matches('=') && lex.matches('0');
-
-                    /*binternal = lex.matches('!');
-                    bimplicit = lex.matches('@');
-                    if(bimplicit) {
-                        lex.match(lex.IDENT, implname);
-                        lex.matches(lex.IDENT, extname);
-                    }
-                    else {
-                        lex.matches(lex.IDENT, extname);
-                        bimplicit = lex.matches('@');
-                        if(bimplicit)
-                            lex.match(lex.IDENT, implname);
-                    }*/
-                }
-                lex.match(')');
+        while (lex.next() != '{') {
+            if (tok.end()) {
+                lex.syntax_err() << "unexpected end of file\n";
+                return false;
             }
+            if (tok == ';')
+                return false;
 
-            if (classifc || classvar || classvirtual)
-            {
-                if (iface.size() > 0)
-                    iface.last()->check_interface(lex, classpasters);
+            noref = false;
+        }
 
-                //parse interface declaration
-                Interface* ifc = iface.add();
-                ifc->nifc_methods = 0;
-                ifc->comments.takeover(commlist);
-                ifc->bvirtual = classvirtual;
+        //ignore nested blocks
+        //lex.ignore(lex.CURLY, true);
 
-                lex.match('(');
-                ifc->bdefaultcapture = lex.matches_either('+', '-') == 1;
-                ifc->name = lex.match(lex.IDENT);
+        dynarray<charstr> commlist;
 
-                while (lex.matches("::"_T)) {
+        int mt;
+        while (0 != (mt = lex.find_method(classname, commlist)))
+        {
+            if (mt<0) {
+                //interface definitions
+                const lexer::lextoken& tok = lex.last();
+
+                int classifc = tok == lex.IFC_CLASS ? 1 : (tok == lex.IFC_CLASSX ? 2 : 0);
+                int classvar = tok == lex.IFC_CLASS_VAR ? 1 : (tok == lex.IFC_CLASSX_VAR ? 2 : 0);
+                bool classvirtual = tok == lex.IFC_CLASS_VIRTUAL;
+                bool classext = classifc > 1 || classvar > 1;
+
+                bool extfn = tok == lex.IFC_FNX;
+                bool extev = tok == lex.IFC_EVENTX;
+                bool bimplicit = false;
+                bool bdestroy = false;
+                bool bpure = false;
+                int8 binternal = 0;
+                int8 bnocapture = 0;
+                int8 bcapture = 0;
+
+                charstr extname;//, implname;
+                if (extev || extfn) {
+                    //parse external name
+                    lex.match('(');
+
+                    if (extfn && lex.matches('~'))
+                        bdestroy = true;
+                    else {
+                        while (int k = lex.matches_either('!', '-', '+'))
+                            (&binternal)[k-1]++;
+
+                        bimplicit = lex.matches('@');
+
+                        lex.matches(lex.IDENT, extname);
+
+                        bpure = extev && lex.matches('=') && lex.matches('0');
+
+                        /*binternal = lex.matches('!');
+                        bimplicit = lex.matches('@');
+                        if(bimplicit) {
+                            lex.match(lex.IDENT, implname);
+                            lex.matches(lex.IDENT, extname);
+                        }
+                        else {
+                            lex.matches(lex.IDENT, extname);
+                            bimplicit = lex.matches('@');
+                            if(bimplicit)
+                                lex.match(lex.IDENT, implname);
+                        }*/
+                    }
+                    lex.match(')');
+                }
+
+                if (classifc || classvar || classvirtual)
+                {
+                    if (iface.size() > 0)
+                        iface.last()->check_interface(lex);
+
+                    //parse interface declaration
+                    Interface* ifc = iface.add();
+                    ifc->nifc_methods = 0;
+                    ifc->comments.takeover(commlist);
+                    ifc->bvirtual = classvirtual;
+
+                    lex.match('(');
+                    ifc->bdefaultcapture = lex.matches_either('+', '-') == 1;
+                    ifc->name = lex.match(lex.IDENT);
+
+                    while (lex.matches("::"_T)) {
+                        if (ifc->nsname)
+                            ifc->nsname << "::"_T;
+                        ifc->nsname << ifc->name;
+
+                        ifc->nss.add()->swap(ifc->name);
+                        ifc->name = lex.match(lex.IDENT);
+                    }
+
                     if (ifc->nsname)
                         ifc->nsname << "::"_T;
                     ifc->nsname << ifc->name;
 
-                    ifc->nss.add()->swap(ifc->name);
-                    ifc->name = lex.match(lex.IDENT);
-                }
-
-                if (ifc->nsname)
-                    ifc->nsname << "::"_T;
-                ifc->nsname << ifc->name;
-
-                if (lex.matches(':')) {
-                    //a base class for the interface
-                    ifc->baseclass = ifc->base = lex.match(lex.IDENT);
-                    while (lex.matches("::"_T)) {
-                        ifc->base << "::"_T;
-                        token bc = lex.match(lex.IDENT);
-                        ifc->base << bc;
-                        ifc->baseclass.set(ifc->base.ptre() - bc.len(), ifc->base.ptre());
-                    }
-                }
-
-                lex.match(',');
-
-                if (classext) {
-                    //get ifc to extend
-                    charstr base = lex.match(lex.IDENT).value();
-                    token baseclass = base;
-
-                    while (lex.matches("::"_T)) {
-                        base << "::"_T;
-                        token bc = lex.match(lex.IDENT);
-                        base << bc;
-                        baseclass.set(base.ptre() - bc.len(), base.ptre());
-                    }
-
-                    //find in previous interfaces
-                    Interface* bifc = 0;
-                    for (Interface& pifc : iface)
-                    {
-                        if (&pifc == ifc)
-                            continue;
-                        if (pifc.nsname == base) {
-                            bifc = &pifc;
-                            break;
+                    if (lex.matches(':')) {
+                        //a base class for the interface
+                        ifc->baseclass = ifc->base = lex.match(lex.IDENT);
+                        while (lex.matches("::"_T)) {
+                            ifc->base << "::"_T;
+                            token bc = lex.match(lex.IDENT);
+                            ifc->base << bc;
+                            ifc->baseclass.set(ifc->base.ptre()-bc.len(), ifc->base.ptre());
                         }
                     }
 
-                    if (!bifc) {
-                        lex.prepare_exception()
-                            << "error: base interface " << base << " not declared in this class\n";
-                        throw lex.exc();
+                    lex.match(',');
+
+                    if (classext) {
+                        //get ifc to extend
+                        charstr base = lex.match(lex.IDENT).value();
+                        token baseclass = base;
+
+                        while (lex.matches("::"_T)) {
+                            base << "::"_T;
+                            token bc = lex.match(lex.IDENT);
+                            base << bc;
+                            baseclass.set(base.ptre() - bc.len(), base.ptre());
+                        }
+
+                        //find in previous interfaces
+                        Interface* bifc = 0;
+                        for (Interface& pifc : iface)
+                        {
+                            if (&pifc == ifc)
+                                continue;
+                            if (pifc.nsname == base) {
+                                bifc = &pifc;
+                                break;
+                            }
+                        }
+
+                        if (!bifc) {
+                            lex.prepare_exception()
+                                << "error: base interface " << base << " not declared in this class\n";
+                            throw lex.exc();
+                        }
+
+                        ifc->copy_methods(*bifc);
+                    }
+                    else {
+                        ifc->relpath = lex.match(lex.DQSTRING);
                     }
 
-                    ifc->copy_methods(*bifc);
-                }
-                else {
-                    ifc->relpath = lex.match(lex.DQSTRING);
-                }
+                    if (!classext && classvar) {
+                        lex.match(',');
+                        ifc->varname = lex.match(lex.IDENT);
+                    }
 
-                if (!classext && classvar) {
-                    lex.match(',');
-                    ifc->varname = lex.match(lex.IDENT);
-                }
+                    lex.match(')');
 
-                lex.match(')');
+                    ifc->parse_docs();
 
-                ifc->parse_docs();
-
-                if (filepasters) {
-                    for (paste_block& b : *filepasters) {
-                        if (b.condx.is_empty() || ifc->full_name_equals(b.condx)) {
-                            if (b.pos == paste_block::position::after_class)
+                    pasters->for_each([ifc](paste_block& b) {
+                        int v = -1;
+                        if (b.condx.is_empty()) {
+                            b.fill(*ifc->pasters.add());
+                        }
+                        else if (b.condx == '+') {
+                            b.fill(*ifc->pasteafters.add());
+                        }
+                        else if ((v = ifc->full_name_equals(b.condx)) != 0) {
+                            if (v > 0)
                                 b.fill(*ifc->pasteafters.add());
                             else
                                 b.fill(*ifc->pasters.add());
                         }
-                    }
+                        });
+                    //ifc->pasters = pasters;
                 }
-            }
-            else if (extev || tok == lex.IFC_EVENT)
-            {
-                //event declaration may be commented out if the method is a duplicate (with multiple interfaces)
-                bool slcom = lex.enable(lex.SLCOM, false);
-                bool mlcom = lex.ignore(lex.MLCOM, false);
-                int duplicate = lex.matches_either("//", "/*");
-                lex.enable(lex.SLCOM, slcom);
-
-                //parse event declaration
-                if (iface.size() == 0) {
-                    lex.prepare_exception()
-                        << "error: no preceding interface declared\n";
-                    throw lex.exc();
-                }
-                else if (iface.last()->varname.is_empty()) {
-                    out << (lex.prepare_exception()
-                        << "error: events can be used only with bidirectional interfaces\n");
-                    lex.clear_err();
-                    ++ncontinuable_errors;
-                }
-
-                Interface* ifc = iface.last();
-                MethodIG* m = ifc->event.add();
-
-                m->comments.takeover(commlist);
-                m->binternal = binternal > 0;
-                m->bimplicit = bimplicit;
-                m->bduplicate = duplicate != 0;
-                m->bpure = bpure;
-
+                else if (extev || tok == lex.IFC_EVENT)
                 {
-                    if (!m->parse(lex, classname, namespc, ifc->nsname, irefargs, true))
+                    //event declaration may be commented out if the method is a duplicate (with multiple interfaces)
+                    bool slcom = lex.enable(lex.SLCOM, false);
+                    bool mlcom = lex.ignore(lex.MLCOM, false);
+                    int duplicate = lex.matches_either("//", "/*");
+                    lex.enable(lex.SLCOM, slcom);
+
+                    //parse event declaration
+                    if (iface.size() == 0) {
+                        lex.prepare_exception()
+                            << "error: no preceding interface declared\n";
+                        throw lex.exc();
+                    }
+                    else if (iface.last()->varname.is_empty()) {
+                        out << (lex.prepare_exception()
+                            << "error: events can be used only with bidirectional interfaces\n");
+                        lex.clear_err();
+                        ++ncontinuable_errors;
+                    }
+
+                    Interface* ifc = iface.last();
+                    MethodIG* m = ifc->event.add();
+
+                    m->comments.takeover(commlist);
+                    m->binternal = binternal>0;
+                    m->bimplicit = bimplicit;
+                    m->bduplicate = duplicate != 0;
+                    m->bpure = bpure;
+
+                    {
+                        if (!m->parse(lex, classname, namespc, ifc->nsname, irefargs, true))
+                            ++ncontinuable_errors;
+
+                        if (duplicate == 2) {
+                            lex.match(';');
+                            lex.match("*/");
+                        }
+                        lex.ignore(lex.MLCOM, mlcom);
+
+
+                        if (extname) {
+                            m->intname.takeover(m->name);
+                            m->name.takeover(extname);
+                        }
+                        else
+                            m->intname = m->name;
+
+                        if (m->bstatic) {
+                            out << (lex.prepare_exception()
+                                << "error: interface event cannot be static\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+                    }
+
+                    if (m->bimplicit) {
+                        //lex.match(';', "error: implicit events must not be declared");
+
+                        if (m->name == "connect") {
+                            //@connect invoked on successfull interface connection
+                            ifc->on_connect_ev = m->name = m->intname;
+
+                            //m->ret.type = m->ret.basetype = m->ret.fulltype = "void";
+                        }
+                        else {
+                            out << (lex.prepare_exception()
+                                << "error: unrecognized implicit event\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+                    }
+
+                    if (m->bduplicate) {
+                        //find original in previous interface
+                        int nmiss = 0;
+
+                        Interface* fi = iface.ptr();
+                        for (; fi < ifc; ++fi) {
+                            if (fi->has_mismatched_method(*m, fi->event))
+                                ++nmiss;
+                        }
+
+                        if (nmiss) {
+                            out << (lex.prepare_exception()
+                                << "warning: a matching duplicate event " << m->name << " not found in previous interfaces\n");
+                            lex.clear_err();
+                        }
+                    }
+
+                    m->parse_docs();
+                }
+                else if (extfn || tok == lex.IFC_FN)
+                {
+                    //method declaration may be commented out if the method is a duplicate (with multiple interfaces)
+                    bool slcom = lex.enable(lex.SLCOM, false);
+                    bool mlcom = lex.ignore(lex.MLCOM, false);
+                    int duplicate = lex.matches_either("//", "/*");
+                    lex.enable(lex.SLCOM, slcom);
+
+
+                    //parse function declaration
+                    if (iface.size() == 0) {
+                        lex.syntax_err() << "no preceding interface declared\n";
+                        throw lex.exc();
+                    }
+
+                    Interface* ifc = iface.last();
+                    MethodIG* m = ifc->method.add();
+
+                    m->comments.takeover(commlist);
+                    m->binternal = binternal>0;
+                    m->bduplicate = duplicate != 0;
+                    m->bimplicit = bimplicit;
+
+                    if (!m->parse(lex, classname, namespc, ifc->nsname, irefargs, false))
                         ++ncontinuable_errors;
 
                     if (duplicate == 2) {
@@ -298,6 +379,20 @@ bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& nam
                     lex.ignore(lex.MLCOM, mlcom);
 
 
+                    m->parse_docs();
+
+                    int capture = ifc->bdefaultcapture ? 1 : 0;
+                    capture -= bnocapture;
+                    capture += bcapture;
+
+                    m->bcapture = capture>0 && !m->bconst && !m->bstatic;
+
+                    if (bcapture>bnocapture && !m->bcapture) {
+                        out << (lex.prepare_exception()
+                            << "warning: const and static methods aren't captured\n");
+                        lex.clear_err();
+                    }
+
                     if (extname) {
                         m->intname.takeover(m->name);
                         m->name.takeover(extname);
@@ -305,240 +400,143 @@ bool Class::parse(iglexer& lex, charstr& templarg_, const dynarray<charstr>& nam
                     else
                         m->intname = m->name;
 
-                    if (m->bstatic) {
-                        out << (lex.prepare_exception()
-                            << "error: interface event cannot be static\n");
+                    if (m->boperator) {
+                        if (m->bconst && ifc->oper_get>=0) {
+                            out << (lex.prepare_exception() << "error: property getter already defined\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+                        if (!m->bconst && ifc->oper_set>=0) {
+                            out << (lex.prepare_exception() << "error: property getter already defined\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+
+                        if (m->bconst)
+                            ifc->oper_get = int(ifc->method.size()-1);
+                        else
+                            ifc->oper_set = int(ifc->method.size()-1);
+                    }
+
+                    if (!m->bstatic)
+                        ++ifc->nifc_methods;
+
+                    if (m->bstatic && bdestroy) {
+                        out << "error: method to call on interface release cannot be static\n";
                         lex.clear_err();
                         ++ncontinuable_errors;
                     }
-                }
 
-                if (m->bimplicit) {
-                    //lex.match(';', "error: implicit events must not be declared");
+                    if (m->bimplicit) {
+                        if (m->name == "connect") {
+                            //@connect called when interface connects successfully
+                            if (m->ret.type != "void" && m->args.size() != 0) {
+                                out << (lex.prepare_exception()
+                                    << "error: invalid format for connect method\n");
+                                lex.clear_err();
+                                ++ncontinuable_errors;
+                            }
+                            ifc->on_connect = m->name = m->intname;
+                        }
+                        else if (m->name == "unload") {
+                            //@unload invoked when client dll/script is unloaded
+                            ifc->on_unload = m->name = m->intname;
 
-                    if (m->name == "connect") {
-                        //@connect invoked on successfull interface connection
-                        ifc->on_connect_ev = m->name = m->intname;
+                            if (!m->bstatic) {
+                                out << (lex.prepare_exception()
+                                    << "error: unload method must be static\n");
+                                lex.clear_err();
+                                ++ncontinuable_errors;
+                            }
 
-                        //m->ret.type = m->ret.basetype = m->ret.fulltype = "void";
+                            m->bcreator = false;
+                        }
+                        else {
+                            out << (lex.prepare_exception()
+                                << "error: unrecognized implicit method\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+
+                        //ifc->method.pop();
                     }
-                    else {
-                        out << (lex.prepare_exception()
-                            << "error: unrecognized implicit event\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
+
+                    m->bdestroy = bdestroy;
+
+                    if (bdestroy) {
+                        //mark and move to the first pos
+                        if (ifc->destroy.name) {
+                            out << (lex.prepare_exception()
+                                << "error: interface release method already specified\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+
+                        ifc->destroy = *m;
+                        ifc->method.move(m - ifc->method.ptr(), 0, 1);
+                        m = ifc->method.ptr();
+                    }
+
+                    if (m->bcreator && m->args.size() == 0 && ifc->default_creator.name.is_empty())
+                        ifc->default_creator = *m;
+
+                    if (!m->bstatic && !binternal && !m->boperator) {
+                        //check if another public method with the same name exists
+                        MethodIG* mdup = ifc->method.find_if([&](const MethodIG& mi) {
+                            return !mi.bstatic && mi.name == m->name;
+                            });
+                        if (mdup != m) {
+                            out << (lex.prepare_exception()
+                                << "error: overloaded methods not supported for scripting interface\n");
+                            lex.clear_err();
+                            ++ncontinuable_errors;
+                        }
+                    }
+
+                    if (m->bduplicate) {
+                        //find original in previous interface
+                        int nmiss = 0;
+
+                        Interface* fi = iface.ptr();
+                        for (; fi < ifc; ++fi) {
+                            if (fi->has_mismatched_method(*m, fi->method))
+                                ++nmiss;
+                        }
+
+                        if (nmiss) {
+                            out << (lex.prepare_exception()
+                                << "warning: a matching duplicate method " << m->name << " not found in previous interfaces\n");
+                            lex.clear_err();
+                        }
                     }
                 }
-
-                if (m->bduplicate) {
-                    //find original in previous interface
-                    int nmiss = 0;
-
-                    Interface* fi = iface.ptr();
-                    for (; fi < ifc; ++fi) {
-                        if (fi->has_mismatched_method(*m, fi->event))
-                            ++nmiss;
-                    }
-
-                    if (nmiss) {
-                        out << (lex.prepare_exception()
-                            << "warning: a matching duplicate event " << m->name << " not found in previous interfaces\n");
-                        lex.clear_err();
-                    }
-                }
-
-                m->parse_docs();
-            }
-            else if (extfn || tok == lex.IFC_FN)
-            {
-                //method declaration may be commented out if the method is a duplicate (with multiple interfaces)
-                bool slcom = lex.enable(lex.SLCOM, false);
-                bool mlcom = lex.ignore(lex.MLCOM, false);
-                int duplicate = lex.matches_either("//", "/*");
-                lex.enable(lex.SLCOM, slcom);
-
-
-                //parse function declaration
-                if (iface.size() == 0) {
-                    lex.syntax_err() << "no preceding interface declared\n";
-                    throw lex.exc();
-                }
-
-                Interface* ifc = iface.last();
-                MethodIG* m = ifc->method.add();
-
-                m->comments.takeover(commlist);
-                m->binternal = binternal > 0;
-                m->bduplicate = duplicate != 0;
-                m->bimplicit = bimplicit;
-
-                if (!m->parse(lex, classname, namespc, ifc->nsname, irefargs, false))
-                    ++ncontinuable_errors;
-
-                if (duplicate == 2) {
-                    lex.match(';');
-                    lex.match("*/");
-                }
-                lex.ignore(lex.MLCOM, mlcom);
-
-
-                m->parse_docs();
-
-                int capture = ifc->bdefaultcapture ? 1 : 0;
-                capture -= bnocapture;
-                capture += bcapture;
-
-                m->bcapture = capture > 0 && !m->bconst && !m->bstatic;
-
-                if (bcapture > bnocapture && !m->bcapture) {
+                else {
+                    //produce a warning for other misplaced keywords
                     out << (lex.prepare_exception()
-                        << "warning: const and static methods aren't captured\n");
+                        << "warning: misplaced keyword\n");
                     lex.clear_err();
-                }
-
-                if (extname) {
-                    m->intname.takeover(m->name);
-                    m->name.takeover(extname);
-                }
-                else
-                    m->intname = m->name;
-
-                if (m->boperator) {
-                    if (m->bconst && ifc->oper_get >= 0) {
-                        out << (lex.prepare_exception() << "error: property getter already defined\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
-                    }
-                    if (!m->bconst && ifc->oper_set >= 0) {
-                        out << (lex.prepare_exception() << "error: property getter already defined\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
-                    }
-
-                    if (m->bconst)
-                        ifc->oper_get = int(ifc->method.size() - 1);
-                    else
-                        ifc->oper_set = int(ifc->method.size() - 1);
-                }
-
-                if (!m->bstatic)
-                    ++ifc->nifc_methods;
-
-                if (m->bstatic && bdestroy) {
-                    out << "error: method to call on interface release cannot be static\n";
-                    lex.clear_err();
-                    ++ncontinuable_errors;
-                }
-
-                if (m->bimplicit) {
-                    if (m->name == "connect") {
-                        //@connect called when interface connects successfully
-                        if (m->ret.type != "void" && m->args.size() != 0) {
-                            out << (lex.prepare_exception()
-                                << "error: invalid format for connect method\n");
-                            lex.clear_err();
-                            ++ncontinuable_errors;
-                        }
-                        ifc->on_connect = m->name = m->intname;
-                    }
-                    else if (m->name == "unload") {
-                        //@unload invoked when client dll/script is unloaded
-                        ifc->on_unload = m->name = m->intname;
-
-                        if (!m->bstatic) {
-                            out << (lex.prepare_exception()
-                                << "error: unload method must be static\n");
-                            lex.clear_err();
-                            ++ncontinuable_errors;
-                        }
-
-                        m->bcreator = false;
-                    }
-                    else {
-                        out << (lex.prepare_exception()
-                            << "error: unrecognized implicit method\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
-                    }
-
-                    //ifc->method.pop();
-                }
-
-                m->bdestroy = bdestroy;
-
-                if (bdestroy) {
-                    //mark and move to the first pos
-                    if (ifc->destroy.name) {
-                        out << (lex.prepare_exception()
-                            << "error: interface release method already specified\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
-                    }
-
-                    ifc->destroy = *m;
-                    ifc->method.move(m - ifc->method.ptr(), 0, 1);
-                    m = ifc->method.ptr();
-                }
-
-                if (m->bcreator && m->args.size() == 0 && ifc->default_creator.name.is_empty())
-                    ifc->default_creator = *m;
-
-                if (!m->bstatic && !binternal && !m->boperator) {
-                    //check if another public method with the same name exists
-                    MethodIG* mdup = ifc->method.find_if([&](const MethodIG& mi) {
-                        return !mi.bstatic && mi.name == m->name;
-                    });
-                    if (mdup != m) {
-                        out << (lex.prepare_exception()
-                            << "error: overloaded methods not supported for scripting interface\n");
-                        lex.clear_err();
-                        ++ncontinuable_errors;
-                    }
-                }
-
-                if (m->bduplicate) {
-                    //find original in previous interface
-                    int nmiss = 0;
-
-                    Interface* fi = iface.ptr();
-                    for (; fi < ifc; ++fi) {
-                        if (fi->has_mismatched_method(*m, fi->method))
-                            ++nmiss;
-                    }
-
-                    if (nmiss) {
-                        out << (lex.prepare_exception()
-                            << "warning: a matching duplicate method " << m->name << " not found in previous interfaces\n");
-                        lex.clear_err();
-                    }
                 }
             }
             else {
-                //produce a warning for other misplaced keywords
-                out << (lex.prepare_exception()
-                    << "warning: misplaced keyword\n");
-                lex.clear_err();
+                //rlcmd
+                Method* m = method.add();
+                m->parse(lex, mt);
+
+                static token renderer = "renderer";
+                if (classname == renderer)
+                    m->bstatic = true;          //special handling for the renderer
+
+                uint* v = const_cast<uint*>(map_overloads.find_value(m->name));
+                if (v)
+                    m->overload << ++*v;
+                else
+                    map_overloads.insert_key_value(m->name, 0);
             }
         }
-        else {
-            //rlcmd
-            Method* m = method.add();
-            m->parse(lex, mt);
 
-            static token renderer = "renderer";
-            if (classname == renderer)
-                m->bstatic = true;          //special handling for the renderer
-
-            uint* v = const_cast<uint*>(map_overloads.find_value(m->name));
-            if (v)
-                m->overload << ++ * v;
-            else
-                map_overloads.insert_key_value(m->name, 0);
-        }
+        if (iface.size() > 0)
+            iface.last()->check_interface(lex);
     }
-
-    if (iface.size() > 0)
-        iface.last()->check_interface(lex, classpasters);
 
     return ncontinuable_errors ? false : lex.no_err();
 }

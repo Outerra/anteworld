@@ -49,7 +49,6 @@ struct value {
     operator token() const { return key; }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 void singleton_test()
 {
@@ -227,6 +226,15 @@ void reftest(callback<int(int, void*)>&& fn) {
 }
 
 
+void constexpr_test()
+{
+    constexpr token name = "salama"_T;
+
+#ifdef COID_CONSTEXPR_FOR
+    constexpr tokenhash hash = "klobasa"_T;
+#endif
+}
+
 void test_slotalloc_virtual()
 {
 #ifdef COID_CONSTEXPR_IF
@@ -247,59 +255,9 @@ void test_slotalloc_virtual()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef COID_CONSTEXPR_IF
-
-template <bool L, class ...Es>
-struct storage
-{
-    struct page {
-        static constexpr int ITEMS = 256;
-        typedef std::tuple<Es...> extarray_t;
-
-        extarray_t* data;
-    };
-
-    page* pages;
-    size_t count;
-};
-
-template <class ...Es>
-struct storage<true, Es...> {
-    typedef std::tuple<Es...> extarray_t;
-    extarray_t* array;
-};
-
-
-template <bool L, class... Es>
-struct slot : storage<L, Es...>
-{
-    using storage_t = storage<L, Es...>;
-    typedef std::tuple<Es...> extarray_t;
-
-    extarray_t* ptr(int id) const {
-        if constexpr (L) {
-            return 0;// this->array + id;
-        }
-        else {
-            //using page = typename storage_t::page;      //<-- fails with this
-            using page = storage<L, Es...>;             //<-- but not with this
-            return this->pages[id / page::ITEMS].data + id % page::ITEMS;
-        }
-    }
-};
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char* argv[] )
 {
     singleton_test();
-
-#ifdef COID_CONSTEXPR_IF
-    slot<true, int> sl;
-    sl.ptr(0);
-#endif
 
     test_malloc();
     test_slotalloc_virtual();
@@ -408,7 +366,6 @@ int main( int argc, char* argv[] )
     uint64 stuff[] = {7000, 45, 2324, 11, 0, 222};
     radixi<uint64, uint, uint64> rx;
     const uint* idx = rx.sort(true, stuff, sizeof(stuff)/sizeof(stuff[0]));
-    DASSERT(stuff[idx[0]] == 0);
 
     //coid::test();
 

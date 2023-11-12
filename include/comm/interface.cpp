@@ -276,7 +276,7 @@ public:
         return (void*)find_wrapper(str);
     }
 
-    virtual dynarray<interface_register::creator>& get_interface_clients(const token& iface, uint hash, dynarray<interface_register::creator>& dst)
+    virtual dynarray<interface_register::creator>& get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
     {
         token ns = iface;
         token classname = ns.cut_right_group_back("::"_T);
@@ -520,15 +520,15 @@ const charstr& interface_register::root_path()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ref<logmsg> interface_register::canlog(log::type type, const token& from, const void* inst)
+ref<logmsg> interface_register::canlog(log::type type, const tokenhash& hash, const void* inst)
 {
     fn_log_t canlogfn = interface_register_impl::get().fn_log();
     ref<logmsg> msg;
 
     if (canlogfn)
-        msg = canlogfn(type, from, inst);
+        msg = canlogfn(type, hash, inst);
     else
-        msg = getlog()->create_msg(type, from, inst);
+        msg = getlog()->create_msg(type, hash, inst);
 
     return msg;
 }
@@ -582,7 +582,7 @@ interface_register::client_fn interface_register::get_interface_client(const tok
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-dynarray<interface_register::creator>& interface_register::get_interface_clients(const token& iface, uint hash, dynarray<interface_register::creator>& dst)
+dynarray<interface_register::creator>& interface_register::get_interface_clients(const tokenhash& iface, uint hash, dynarray<interface_register::creator>& dst)
 {
     interface_register_impl& reg = interface_register_impl::get();
     return reg.get_interface_clients(iface, hash, dst);

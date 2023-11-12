@@ -36,17 +36,11 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
     ///
-    double operator()( const char* key ) const
-    { return VT_CALL(double,(const char*) const,0)(key); }
+    double operator()( const char* key ) const;
 
-    void operator()( const char* key, double value )
-    { return VT_CALL(void,(const char*,double),1)(key,value); }
+    void operator()( const char* key, double value );
 
-#pragma warning(pop)
     // --- creators ---
 
     ///Internal constructor
@@ -169,6 +163,17 @@ inline iref<T> jsb::_get_jsb( T* _subclass_, jsbsim_plane* p )
 
     return create(_subclass_, p);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline double jsb::operator()( const char* key ) const
+{ return VT_CALL(double,(const char*) const,0)(key); }
+
+inline void jsb::operator()( const char* key, double value )
+{ return VT_CALL(void,(const char*,double),1)(key,value); }
+
+#pragma warning(pop)
 
 } //namespace
 

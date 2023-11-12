@@ -32,9 +32,6 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
     ///Register input action sending events on button press (value > 0)
     //@param name hierarchic action name (prefix $ for server event [MP only])
     //@param handler optional handler for changed value
@@ -42,8 +39,7 @@ public:
     //@param channels number of extra channels that are handled (multiple engines etc)
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_event_handler( const coid::token& name, ot::fn_event_action&& handler, int handler_id = 0, uint channels = 0, uint group = 0 )
-    { return VT_CALL(int,(const coid::token&,ot::fn_event_action&&,int,uint,uint),0)(name,std::forward<ot::fn_event_action>(handler),handler_id,channels,group); }
+    int register_event_handler( const coid::token& name, ot::fn_event_action&& handler, int handler_id = 0, uint channels = 0, uint group = 0 );
 
     ///Register input action sending events on value change (full state button and axis)
     //@param name hierarchic action name (prefix $ for server event [MP only])
@@ -53,16 +49,14 @@ public:
     //@param ramp value limiter parameters
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_axis_handler( const coid::token& name, ot::fn_axis_action&& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group = 0 )
-    { return VT_CALL(int,(const coid::token&,ot::fn_axis_action&&,int,float,const ot::ramp_params&,uint),1)(name,std::forward<ot::fn_axis_action>(handler),handler_id,defval,ramp,group); }
+    int register_axis_handler( const coid::token& name, ot::fn_axis_action&& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group = 0 );
 
     ///Register event action handler
     //@param name hierarchic action name, file/group/action
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@param channels number of extra channels that the handler supports
     //@return slot id or -1 on fail
-    int register_event_ext( const coid::token& name, uint group = 0, uint channels = 0 )
-    { return VT_CALL(int,(const coid::token&,uint,uint),2)(name,group,channels); }
+    int register_event_ext( const coid::token& name, uint group = 0, uint channels = 0 );
 
     ///Register axis action handler
     //@param name hierarchic action name, file/group/action
@@ -70,85 +64,61 @@ public:
     //@param defval initial value for the axis
     //@param group activation group where the action is assigned (can be enabled/disabled together)
     //@return slot id or -1 on fail
-    int register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 )
-    { return VT_CALL(int,(const coid::token&,const ot::ramp_params&,float,uint),3)(name,ramp,defval,group); }
+    int register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval = 0, uint group = 0 );
 
     ///Activate or deactivate given action group
     //@params group group id
     //@param activate activate/deactivate the group
-    void action_group( uint group, bool activate )
-    { return VT_CALL(void,(uint,bool),4)(group,activate); }
+    void action_group( uint group, bool activate );
 
     //@param id 0 the main body
-    iref<ot::geomob> get_geomob( int id )
-    { return VT_CALL(iref<ot::geomob>,(int),5)(id); }
+    iref<ot::geomob> get_geomob( int id );
 
     ///Set model space position for FPS camera
-    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable )
-    { return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),6)(pos,joint_id,joint_rotation); }
+    void set_fps_camera_pos( const float3& pos, uint joint_id = UMAX32, ot::EJointRotationMode joint_rotation = ot::JointRotModeEnable );
 
     ///Set model space rotation frame
     //@param rot model space rotation
     //@param mouse rotation mode: 0 freeze, 1 reset&disable, 2 enable, 3 reset & enable
     //@param use bone rotation if true, bone rotation is applied
-    void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
-    { return VT_CALL(void,(const quat&,ot::ERotationMode),7)(rot,mouse_rotation); }
+    void set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation );
 
     ///Set FOV to chassis fps preset and also to current camera if vehicle is entered and fpc camera is active
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
-    void set_fps_camera_fov( float hfov, float vfov = 0 )
-    { return VT_CALL(void,(float,float),8)(hfov,vfov); }
+    void set_fps_camera_fov( float hfov, float vfov = 0 );
 
     //@return current FPS camera position
     //@note same value for given class (chassis) of vehicles
-    float3 get_fps_camera_pos() const
-    { return VT_CALL(float3,() const,9)(); }
+    float3 get_fps_camera_pos() const;
 
     //@return current FPS camera rotation in model space
     //@param base true for the base orientation frame, false for current camera orientation as altered by mouse
     //@note same value for given class (chassis) of vehicles
-    quat get_fps_camera_rot( bool base = false ) const
-    { return VT_CALL(quat,(bool) const,10)(base); }
+    quat get_fps_camera_rot( bool base = false ) const;
 
     ///Get FPS camera preset FOV for this chassis
     //@param hfov horizontal fov in degrees, 0 to reset to the default one
     //@param vfov optional vertical fov in degrees, otherwise computed from aspect ratio
-    float2 get_fps_camera_fov() const
-    { return VT_CALL(float2,() const,11)(); }
+    float2 get_fps_camera_fov() const;
 
     ///Move character relatively in tangent space
     //@param pos relative position in tangent space, x side, y forward, z up
     //@param yawd yaw angle delta [rad]
     //@param pitch angle [rad]
     //@note only dynamic game objects can move
-    void move( const float3& pos, float yawd, float pitch )
-    { return VT_CALL(void,(const float3&,float,float),12)(pos,yawd,pitch); }
+    void move( const float3& pos, float yawd, float pitch );
 
     ///Set rotation
     //@param fwd forward vector to align to
-    void rotate( const float3& fwd )
-    { return VT_CALL(void,(const float3&),13)(fwd); }
+    void rotate( const float3& fwd );
 
     ///Find distance above terrain
     //@param pos offset from object pos (offset is in tangent space)
     //@param maxlen max distance to check (optimization)
     //@return distances to terrain layers (hard, soft, and water), maxlen if not found within the maxlen distance
-    float3 elevation_above_terrain( const float3& pos, float maxlen ) const
-    { return VT_CALL(float3,(const float3&,float) const,14)(pos,maxlen); }
+    float3 elevation_above_terrain( const float3& pos, float maxlen ) const;
 
-    ///Return current solar time and cosine of sun-zenith angle
-    //@param time [out] solar time at object location, in miliseconds
-    //@param sun_coef sun position relative to horizon: 0 sun at horizon, 1 sun at zenith, -1 sun at anti-zenith
-    void solar_time( ifc_out double& time, ifc_out float& sun_coef ) const
-    { return VT_CALL(void,(double&,float&) const,15)(time,sun_coef); }
-
-    ///Return current solar day
-    //@param day [out] solar day at object location <0, 365>
-    void solar_day_of_year( ifc_out double& day ) const
-    { return VT_CALL(void,(double&) const,16)(day); }
-
-#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -198,7 +168,7 @@ public:
     }
 
     ///Interface revision hash
-    static const int HASHID = 2050995500u;
+    static const int HASHID = 4028783800u;
 
     ///Interface name (full ns::class string)
     static const coid::tokenhash& IFCNAME() {
@@ -280,7 +250,7 @@ public:
         type.consume("struct ");
 
         coid::charstr tmp = "ot::gameob"_T;
-        tmp << "@client-2050995500"_T << '.' << type;
+        tmp << "@client-4028783800"_T << '.' << type;
 
         coid::interface_register::register_interface_creator(tmp, cc);
         return 0;
@@ -305,6 +275,56 @@ protected:
 
     bool set_host(policy_intrusive_base*, intergen_interface*, iref<gameob>* pout);
 };
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline int gameob::register_event_handler( const coid::token& name, ot::fn_event_action&& handler, int handler_id, uint channels, uint group )
+{ return VT_CALL(int,(const coid::token&,ot::fn_event_action&&,int,uint,uint),0)(name,std::forward<ot::fn_event_action>(handler),handler_id,channels,group); }
+
+inline int gameob::register_axis_handler( const coid::token& name, ot::fn_axis_action&& handler, int handler_id, float defval, const ot::ramp_params& ramp, uint group )
+{ return VT_CALL(int,(const coid::token&,ot::fn_axis_action&&,int,float,const ot::ramp_params&,uint),1)(name,std::forward<ot::fn_axis_action>(handler),handler_id,defval,ramp,group); }
+
+inline int gameob::register_event_ext( const coid::token& name, uint group, uint channels )
+{ return VT_CALL(int,(const coid::token&,uint,uint),2)(name,group,channels); }
+
+inline int gameob::register_axis_ext( const coid::token& name, const ot::ramp_params& ramp, float defval, uint group )
+{ return VT_CALL(int,(const coid::token&,const ot::ramp_params&,float,uint),3)(name,ramp,defval,group); }
+
+inline void gameob::action_group( uint group, bool activate )
+{ return VT_CALL(void,(uint,bool),4)(group,activate); }
+
+inline iref<ot::geomob> gameob::get_geomob( int id )
+{ return VT_CALL(iref<ot::geomob>,(int),5)(id); }
+
+inline void gameob::set_fps_camera_pos( const float3& pos, uint joint_id, ot::EJointRotationMode joint_rotation )
+{ return VT_CALL(void,(const float3&,uint,ot::EJointRotationMode),6)(pos,joint_id,joint_rotation); }
+
+inline void gameob::set_fps_camera_rot( const quat& rot, ot::ERotationMode mouse_rotation )
+{ return VT_CALL(void,(const quat&,ot::ERotationMode),7)(rot,mouse_rotation); }
+
+inline void gameob::set_fps_camera_fov( float hfov, float vfov )
+{ return VT_CALL(void,(float,float),8)(hfov,vfov); }
+
+inline float3 gameob::get_fps_camera_pos() const
+{ return VT_CALL(float3,() const,9)(); }
+
+inline quat gameob::get_fps_camera_rot( bool base ) const
+{ return VT_CALL(quat,(bool) const,10)(base); }
+
+inline float2 gameob::get_fps_camera_fov() const
+{ return VT_CALL(float2,() const,11)(); }
+
+inline void gameob::move( const float3& pos, float yawd, float pitch )
+{ return VT_CALL(void,(const float3&,float,float),12)(pos,yawd,pitch); }
+
+inline void gameob::rotate( const float3& fwd )
+{ return VT_CALL(void,(const float3&),13)(fwd); }
+
+inline float3 gameob::elevation_above_terrain( const float3& pos, float maxlen ) const
+{ return VT_CALL(float3,(const float3&,float) const,14)(pos,maxlen); }
+
+#pragma warning(pop)
 
 } //namespace
 

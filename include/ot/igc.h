@@ -29,26 +29,19 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
-
     ///Set camera position
     //@param ecef position in ECEF coordinates
     //@param rot camera rotation into OT view space (-z forward, +y up, +x side)
-    void set_pos( const double3& ecef, const quat& rot )
-    { return VT_CALL(void,(const double3&,const quat&),0)(ecef,rot); }
+    void set_pos( const double3& ecef, const quat& rot );
 
     ///Get current camera position in ECEF
-    const double3& pos()
-    { return VT_CALL(const double3&,(),1)(); }
+    const double3& pos();
 
     ///Get current camera rotation in OT view space (-z forward, +y up, +x side)
-    const quat& rot()
-    { return VT_CALL(const quat&,(),2)(); }
+    const quat& rot();
 
     ///Get info about current position & speed
-    void info( ifc_out ot::igc_data& data )
-    { return VT_CALL(void,(ot::igc_data&),3)(data); }
+    void info( ifc_out ot::igc_data& data );
 
     ///Test intesection of ray with terrain
     //@return >= 0 intersection distance, <0 for no intersect
@@ -57,17 +50,14 @@ public:
     //@param pos surface position at the intersecting point
     //@param norm surface normal at the intersection
     //@param dist distance from the starting point to intersection
-    double intersect( const double3& from, const double3& to, ifc_out double3& pos, ifc_out float3& norm )
-    { return VT_CALL(double,(const double3&,const double3&,double3&,float3&),4)(from,to,pos,norm); }
+    double intersect( const double3& from, const double3& to, ifc_out double3& pos, ifc_out float3& norm );
 
     ///Set world time for current location
     //@param dyear day of year
     //@param tday solar time of day
     //@param flowm time flow multiplier, 1.0 normal time flow
-    void set_time( int64 dyear, double tday, float flowm = 1.0f )
-    { return VT_CALL(void,(int64,double,float),5)(dyear,tday,flowm); }
+    void set_time( int64 dyear, double tday, float flowm = 1.0f );
 
-#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -84,7 +74,7 @@ protected:
 public:
     // --- host helpers to check presence of handlers in scripts ---
 
-    virtual bool is_bound_igc_update() { return true; }
+    virtual bool is_bound_update() { return true; }
 
 public:
     // --- creators ---
@@ -232,6 +222,29 @@ inline iref<T> igc::get( T* _subclass_ )
 
     return create(_subclass_);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline void igc::set_pos( const double3& ecef, const quat& rot )
+{ return VT_CALL(void,(const double3&,const quat&),0)(ecef,rot); }
+
+inline const double3& igc::pos()
+{ return VT_CALL(const double3&,(),1)(); }
+
+inline const quat& igc::rot()
+{ return VT_CALL(const quat&,(),2)(); }
+
+inline void igc::info( ot::igc_data& data )
+{ return VT_CALL(void,(ot::igc_data&),3)(data); }
+
+inline double igc::intersect( const double3& from, const double3& to, double3& pos, float3& norm )
+{ return VT_CALL(double,(const double3&,const double3&,double3&,float3&),4)(from,to,pos,norm); }
+
+inline void igc::set_time( int64 dyear, double tday, float flowm )
+{ return VT_CALL(void,(int64,double,float),5)(dyear,tday,flowm); }
+
+#pragma warning(pop)
 
 } //namespace
 

@@ -3,14 +3,14 @@
 #include <cassert>
 #include <cstddef>
 
-#define GLM_VERSION_MAJOR 0
-#define GLM_VERSION_MINOR 9
-#define GLM_VERSION_PATCH 9
-#define GLM_VERSION_REVISION 9
-#define GLM_VERSION 999
-#define GLM_VERSION_MESSAGE "GLM: version 0.9.9.9"
+#define GLM_VERSION_MAJOR			0
+#define GLM_VERSION_MINOR			9
+#define GLM_VERSION_PATCH			9
+#define GLM_VERSION_REVISION		8
+#define GLM_VERSION					998
+#define GLM_VERSION_MESSAGE			"GLM: version 0.9.9.8"
 
-#define GLM_SETUP_INCLUDED GLM_VERSION
+#define GLM_SETUP_INCLUDED			GLM_VERSION
 
 
 
@@ -18,7 +18,6 @@
 
 #define GLM_FORCE_CTOR_INIT 1
 //#define GLM_FORCE_XYZW_ONLY 1
-#define GLM_FORCE_QUAT_DATA_XYZW 1
 
 //// OT ////
 
@@ -131,7 +130,7 @@
 #		define GLM_LANG (GLM_LANG_CXX2A | GLM_LANG_EXT)
 #	elif __cplusplus == 201703L || GLM_LANG_PLATFORM == 201703L
 #		define GLM_LANG (GLM_LANG_CXX17 | GLM_LANG_EXT)
-#	elif __cplusplus == 201402L || __cplusplus == 201406L || __cplusplus == 201500L || GLM_LANG_PLATFORM == 201402L
+#	elif __cplusplus == 201402L || __cplusplus == 201500L || GLM_LANG_PLATFORM == 201402L
 #		define GLM_LANG (GLM_LANG_CXX14 | GLM_LANG_EXT)
 #	elif __cplusplus == 201103L || GLM_LANG_PLATFORM == 201103L
 #		define GLM_LANG (GLM_LANG_CXX11 | GLM_LANG_EXT)
@@ -459,12 +458,16 @@
 #define GLM_SWIZZLE_OPERATOR		1
 #define GLM_SWIZZLE_FUNCTION		2
 
+#if defined(GLM_FORCE_XYZW_ONLY)
+#	undef GLM_FORCE_SWIZZLE
+#endif
+
 #if defined(GLM_SWIZZLE)
 #	pragma message("GLM: GLM_SWIZZLE is deprecated, use GLM_FORCE_SWIZZLE instead.")
 #	define GLM_FORCE_SWIZZLE
 #endif
 
-#if defined(GLM_FORCE_SWIZZLE) && (GLM_LANG & GLM_LANG_CXXMS_FLAG) && !defined(GLM_FORCE_XYZW_ONLY)
+#if defined(GLM_FORCE_SWIZZLE) && (GLM_LANG & GLM_LANG_CXXMS_FLAG)
 #	define GLM_CONFIG_SWIZZLE GLM_SWIZZLE_OPERATOR
 #elif defined(GLM_FORCE_SWIZZLE)
 #	define GLM_CONFIG_SWIZZLE GLM_SWIZZLE_FUNCTION
@@ -818,20 +821,12 @@ namespace detail
 ///////////////////////////////////////////////////////////////////////////////////
 // Configure the use of defaulted function
 
-#if GLM_HAS_DEFAULTED_FUNCTIONS
+#if GLM_HAS_DEFAULTED_FUNCTIONS && GLM_CONFIG_CTOR_INIT == GLM_CTOR_INIT_DISABLE
 #	define GLM_CONFIG_DEFAULTED_FUNCTIONS GLM_ENABLE
 #	define GLM_DEFAULT = default
 #else
 #	define GLM_CONFIG_DEFAULTED_FUNCTIONS GLM_DISABLE
 #	define GLM_DEFAULT
-#endif
-
-#if GLM_CONFIG_CTOR_INIT == GLM_CTOR_INIT_DISABLE && GLM_CONFIG_DEFAULTED_FUNCTIONS == GLM_ENABLE
-#	define GLM_CONFIG_DEFAULTED_DEFAULT_CTOR GLM_ENABLE
-#	define GLM_DEFAULT_CTOR GLM_DEFAULT
-#else
-#	define GLM_CONFIG_DEFAULTED_DEFAULT_CTOR GLM_DISABLE
-#	define GLM_DEFAULT_CTOR
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////

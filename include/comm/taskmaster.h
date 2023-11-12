@@ -107,7 +107,26 @@ public:
 
     //@param nthreads total number of job threads to spawn
     //@param nlong_threads number of low-prio job threads (<= nthreads)
-    taskmaster(uint nthreads, uint nlowprio_threads);
+    taskmaster(uint nthreads, uint nlowprio_threads)
+        : _qsize(0)
+        , _quitting(false)
+        , _nlowprio_threads(nlowprio_threads)
+    {
+        _taskdata.reserve_virtual(8192 * 16);
+        _signal_pool.resize(4096);
+        _free_signals.reserve(4096);
+        for (uint i = 0; i < _signal_pool.size(); ++i) {
+            _signal_pool[i].version = 0;
+            _free_signals.push(signal_handle(i));
+        }
+
+        _threads.alloc(nthreads);
+        _threads.for_each([&](threadinfo& ti, uints id) {
+            ti.order = uint(id);
+            ti.master = this;
+            ti.tid.create(threadfunc, &ti, 0, "taskmaster");
+            });
+    }
 
     ~taskmaster();
 
@@ -160,12 +179,8 @@ public:
             _ready_jobs[(int)priority].push_front(task);
 
             ++_qsize;
-            if (priority != EPriority::LOW) ++_hqsize;
         }
         _cv.notify_one();
-        if (priority != EPriority::LOW) {
-            _hcv.notify_one();
-        }
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
@@ -192,12 +207,8 @@ public:
             _ready_jobs[(int)priority].push_front(task);
 
             ++_qsize;
-            if (priority != EPriority::LOW) ++_hqsize;
         }
         _cv.notify_one();
-        if (priority != EPriority::LOW) {
-            _hcv.notify_one();
-        }
     }
 
     ///Push task (function and its arguments) into queue for processing by worker threads
@@ -224,12 +235,8 @@ public:
             _ready_jobs[(int)priority].push_front(task);
 
             ++_qsize;
-            if (priority != EPriority::LOW) ++_hqsize;
         }
         _cv.notify_one();
-        if (priority != EPriority::LOW) {
-            _hcv.notify_one();
-        }
     }
 
     /// Enter critical section; no two threads can be in the same critical section at the same time
@@ -237,32 +244,116 @@ public:
     //@param spin_count number of spins before trying to process other tasks
     //@note never call enter(A) enter(B) exit(A) exit(B) in that order, since it can cause
     // deadlock thanks to taskmaster's nature
-    void enter_critical_section(critical_section& critical_section, int spin_count = 1024);
+    void enter_critical_section(critical_section& critical_section, int spin_count = 1024)
+    {
+        for (;;) {
+            for (int i = 0; i < spin_count; ++i) {
+                if (critical_section.value == 0 && atomic::cas(&critical_section.value, 1, 0) == 0) {
+                    return;
+                }
+            }
+
+            invoker_base* task = 0;
+            const int order = get_order();
+            for (int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads&& order != -1);
+                if (can_run && _ready_jobs[prio].pop(task)) {
+                    --_qsize;
+                    run_task(task, get_order());
+                    break;
+                }
+            }
+            if (!task)
+                thread::wait(0);
+        }
+    }
+
 
     /// Leave critical section
     //@note only thread which entered the critical section can leave it
-    void leave_critical_section(critical_section& critical_section);
+    void leave_critical_section(critical_section& critical_section)
+    {
+        const int32 prev = atomic::cas(&critical_section.value, 0, 1);
+        DASSERTN(prev == 1);
+    }
+
 
     ///Wait for signal to become signaled
     //@param signal signal to wait for
     //@note each time a task is pushed to queue and has a signal associated, it increments the signal's counter.
     // When the task finishes it decrements the counter. Once the counter == 0, the signal is in signaled state.
     // Multiple tasks can use the same signal.
-    void wait(signal_handle signal);
+    void wait(signal_handle signal)
+    {
+        if (!signal.is_valid()) return;
+
+        const int order = get_order();
+        while (!is_signaled(signal, true)) {
+            invoker_base* task = 0;
+            for (int prio = 0; prio < (int)EPriority::COUNT; ++prio) {
+                const bool can_run = prio != (int)EPriority::LOW || (order < _nlowprio_threads&& order != -1);
+                if (can_run && _ready_jobs[prio].pop(task)) {
+                    --_qsize;
+                    run_task(task, get_order());
+                    break;
+                }
+            }
+            if (!task)
+                thread::wait(0);
+        }
+    }
 
     ///Terminate all task threads
     //@param empty_queue if true, wait until the task queue empties, false finish only currently processed tasks
-    void terminate(bool empty_queue);
+    void terminate(bool empty_queue)
+    {
+        if (empty_queue) {
+            while (_qsize > 0)
+                thread::wait(0);
+        }
+
+        _quitting = true;
+
+        notify((int)_threads.size());
+
+        //wait for cancellation
+        _threads.for_each([](threadinfo& ti) {
+            thread::join(ti.tid);
+            });
+    }
+
 
     ///Create standalone signal not associated with any task. It can be used to wait for any arbitrary stuff.
     //@note The signal's counter is initialized = 1 -> wait(signal) will wait untill counter == 0)
     // use taskmaster::trigger_signal(signal) do decrement the counter
     // if you just want to wait until some task finishes, you do not need to use this, see "Basic usage"
-    signal_handle create_signal();
+    signal_handle create_signal()
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+
+        signal_handle handle;
+        if (!_free_signals.pop(handle)) return invalid_signal;
+
+        signal& s = _signal_pool[handle.index()];
+        s.ref = 1;
+
+        return handle;
+    }
 
     ///Manually decrements signal's counter. When the counter reaches 0, the signal is in signaled state
     ///and waiting entities can progress further.
-    void trigger_signal(signal_handle handle);
+    void trigger_signal(signal_handle handle)
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+
+        signal& s = _signal_pool[handle.index()];
+        --s.ref;
+        if (s.ref == 0) {
+            s.version = (s.version + 1) % 0xffFF;
+            signal_handle free_handle = signal_handle::make(s.version, handle.index());
+            _free_signals.push(free_handle);
+        }
+    }
 
 protected:
 
@@ -452,21 +543,120 @@ private:
     }
 
     void* threadfunc(int order);
-    void run_task(invoker_base* task);
-    bool is_signaled(signal_handle handle, bool lock);
-    signal_handle alloc_signal();
-    void increment(signal_handle* handle);
-    void notify_all();
-    void wait();
+
+    void run_task(invoker_base* task, int order)
+    {
+        uints id = _taskdata.get_item_id((granule*)task);
+        //coidlog_devdbg("taskmaster", "thread " << order << " processing task id " << id);
+
+#ifdef _DEBUG
+        thread::set_name("<unknown task>"_T);
+#endif
+
+        DASSERT_RET(_taskdata.is_valid_id(id));
+        task->invoke();
+
+#ifdef _DEBUG
+        thread::set_name("<no task>"_T);
+#endif
+
+        const signal_handle handle = task->signal();
+        if (handle.is_valid()) {
+            std::unique_lock<std::mutex> lock(_signal_sync);
+            signal& s = _signal_pool[handle.index()];
+            --s.ref;
+            if (s.ref == 0) {
+                s.version = (s.version + 1) % 0xffFF;
+                signal_handle free_handle = signal_handle::make(s.version, handle.index());
+                _free_signals.push(free_handle);
+            }
+        }
+
+        _taskdata.del_range((granule*)task, align_to_chunks(task->size(), sizeof(granule)));
+    }
+
+    bool is_signaled(signal_handle handle, bool lock)
+    {
+        DASSERT_RET(handle.is_valid(), false);
+
+        signal& s = _signal_pool[handle.index()];
+
+        if (lock) _signal_sync.lock();
+        const uint version = s.version;
+        const uint ref = s.ref;
+        if (lock) _signal_sync.unlock();
+
+        return version != handle.version() || ref == 0;
+    }
+
+    signal_handle alloc_signal()
+    {
+        signal_handle handle;
+        if (!_free_signals.pop(handle)) return invalid_signal;
+
+        signal& s = _signal_pool[handle.index()];
+        s.ref = 1;
+
+        return handle;
+    }
+
+    void increment(signal_handle* handle)
+    {
+        std::unique_lock<std::mutex> lock(_signal_sync);
+        if (!handle) return;
+
+        if (handle->is_valid()) {
+            signal& s = _signal_pool[handle->index()];
+            if (is_signaled(*handle, false)) {
+                *handle = alloc_signal();
+            }
+            else {
+                ++s.ref;
+            }
+        }
+        else {
+            *handle = alloc_signal();
+        }
+    }
+
+    void notify() {
+        {
+            std::unique_lock<std::mutex> lock(_sync);
+            ++_qsize;
+        }
+        _cv.notify_one();
+    }
+
+    void notify(int n) {
+        {
+            std::unique_lock<std::mutex> lock(_sync);
+            _qsize += n;
+        }
+        _cv.notify_all();
+    }
+
+    void wait() {
+        std::unique_lock<std::mutex> lock(_sync);
+        while (!_qsize) // handle spurious wake-ups
+            _cv.wait(lock);
+        --_qsize;
+    }
+
+    bool try_wait() {
+        std::unique_lock<std::mutex> lock(_sync);
+        if (_qsize) {
+            --_qsize;
+            return true;
+        }
+        return false;
+    }
 
 private:
 
     std::mutex _sync;
     std::mutex _signal_sync;
-    std::condition_variable _cv;        //< for threads which can process low prio tasks
-    std::condition_variable _hcv;       //< for threads which can not process low prio tasks
+    std::condition_variable _cv;
     std::atomic_int _qsize;             //< current queue size, used also as a semaphore
-    std::atomic_int _hqsize;            //< current queue size without low prio tasks
     volatile bool _quitting;
 
     slotalloc_atomic<granule> _taskdata;

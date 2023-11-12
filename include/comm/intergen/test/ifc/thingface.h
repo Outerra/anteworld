@@ -28,16 +28,10 @@ public:
 
     // --- interface methods ---
 
-#pragma warning(push)
-#pragma warning(disable : 4191)
+    int hallo( int a, const coid::token& b, ifc_out coid::charstr& c );
 
-    int hallo( int a, const coid::token& b, ifc_out coid::charstr& c )
-    { return VT_CALL(int,(int,const coid::token&,coid::charstr&),1)(a,b,c); }
+    coid::charstr fallo( bool b, const char* str );
 
-    coid::charstr fallo( bool b, const char* str )
-    { return VT_CALL(coid::charstr,(bool,const char*),2)(b,str); }
-
-#pragma warning(pop)
 
 protected:
     // --- interface events (callbacks from host to client) ---
@@ -201,6 +195,17 @@ inline iref<T> thingface::get( T* _subclass_ )
 
     return create(_subclass_);
 }
+
+#pragma warning(push)
+#pragma warning(disable : 4191)
+
+inline int thingface::hallo( int a, const coid::token& b, coid::charstr& c )
+{ return VT_CALL(int,(int,const coid::token&,coid::charstr&),1)(a,b,c); }
+
+inline coid::charstr thingface::fallo( bool b, const char* str )
+{ return VT_CALL(coid::charstr,(bool,const char*),2)(b,str); }
+
+#pragma warning(pop)
 
 } //namespace
 } //namespace
