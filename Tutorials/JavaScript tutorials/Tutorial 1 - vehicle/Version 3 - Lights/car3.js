@@ -175,8 +175,8 @@ function init_chassis()
 	//When the left turn signal button was pressed, we want turn lights on the left side to glow 
 	TurnLeftMask = 0x3<<turnLightOffset;
 	//When the right turn signal button was pressed, we want turn lights on the right side to glow 
-	//Add number of previous left turn lights to the offset (or you can make another offset for right turn lights and use that....) 
-	TurnRightMask = 0x3<<(turnLightOffset + 2);
+	//Add previous left turn lights to the offset (or you can make another offset for right turn lights and use that....) 
+	TurnRightMask = 0x3<<(turnLightOffset + 0x2);
 	
 	//add main lights
 	//Here you don't have to identify lights for bit mask, because they were added as 4.parameter in add_spot_light() function while creating action handler
