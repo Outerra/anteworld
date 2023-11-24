@@ -206,8 +206,8 @@ ot::chassis_params TutorialCar::init_chassis(const coid::charstr& params)
 	// 1110 (binary) -> 0xe (hexadecimal) - right rear + right front + left rear
 	// 1111 (binary) -> 0xf (hexadecimal) - all turn lights (emergency lights)
 	TurnLeftMask = 0x3 << turnLightOffset;
-	//To create right turn light mask, add the number of previous left turn lights to the offset (or you can make another offset for right turn lights and use that....)
-	TurnRightMask = 0x3 << (turnLightOffset + 2);
+	//To create right turn light mask, add the previous left turn lights to the offset (or you can make another offset for right turn lights and use that....)
+	TurnRightMask = 0x3 << (turnLightOffset + 0x2);
 
 	//Load sound samples using load_sound() function
 	// param - string filename (audio file name, possibly with path)
