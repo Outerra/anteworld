@@ -476,16 +476,28 @@ class OtOtherToolsPanel(bpy.types.Panel):
         row.operator("view3d.ot_save_selected_obj_names")
       
         row = col.row()
-        row.operator("view3d.ot_reparent_all")
+        row.operator("view3d.ot_reparent_all_bone")
         
         row = col.row()
-        row.operator("view3d.ot_reparent_all_with_bone_parent")
+        row.operator("view3d.ot_reparent_all_with_bone_parent_bone")
         
         row = col.row()
-        row.operator("view3d.ot_reparent_selected")
+        row.operator("view3d.ot_reparent_selected_bone")
         
         row = col.row()
-        row.operator("view3d.ot_reparent_selected_with_siblings")
+        row.operator("view3d.ot_reparent_selected_with_siblings_bone")
+
+        row = col.row()
+        row.operator("view3d.ot_reparent_all_bone_relative")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_all_with_bone_parent_bone_relative")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_selected_bone_relative")
+        
+        row = col.row()
+        row.operator("view3d.ot_reparent_selected_with_siblings_bone_relative")
 
 
 class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
@@ -504,10 +516,10 @@ class OtOtherToolsSaveSelectedObjectNames(bpy.types.Operator):
         save_selected_obj_names(context)
         return {'FINISHED'}     
 
-class OtOtherToolsReparentAll(bpy.types.Operator):
-    '''Reparent all objects keeping the current transform'''
-    bl_idname = "view3d.ot_reparent_all"
-    bl_label = "Reparent all objects"
+class OtOtherToolsReparentAllBone(bpy.types.Operator):
+    '''Reparent all objects keeping the current transform using 'bone' option'''
+    bl_idname = "view3d.ot_reparent_all_bone"
+    bl_label = "Reparent all objects(bone)"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "OT tools"
@@ -517,13 +529,13 @@ class OtOtherToolsReparentAll(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        reparent_all(context)
+        reparent_all(context, False)
         return {'FINISHED'}    		
 
-class OtOtherToolsReparentAllWithBoneParent(bpy.types.Operator):
-    '''Reparent all objects with bone parent keeping the current transform'''
-    bl_idname = "view3d.ot_reparent_all_with_bone_parent"
-    bl_label = "Reparent all objects with bone parent"
+class OtOtherToolsReparentAllWithBoneParentBone(bpy.types.Operator):
+    '''Reparent all objects with bone parent keeping the current transform using 'bone' option'''
+    bl_idname = "view3d.ot_reparent_all_with_bone_parent_bone"
+    bl_label = "Reparent all objects with bone parent(bone)"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "OT tools"
@@ -533,14 +545,14 @@ class OtOtherToolsReparentAllWithBoneParent(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        reparent_all_bones(context)
+        reparent_all_bones(context, False)
         return {'FINISHED'}    		
 
         
-class OtOtherToolsReparentSelected(bpy.types.Operator):
-    '''Reparent selected objects keeping the current transform'''
-    bl_idname = "view3d.ot_reparent_selected"
-    bl_label = "Reparent selected objects"
+class OtOtherToolsReparentSelectedBone(bpy.types.Operator):
+    '''Reparent selected objects keeping the current transform using 'bone' option'''
+    bl_idname = "view3d.ot_reparent_selected_bone"
+    bl_label = "Reparent selected objects(bone)"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "OT tools"
@@ -550,13 +562,13 @@ class OtOtherToolsReparentSelected(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        reparent_selected(context)
+        reparent_selected(context, False)
         return {'FINISHED'}    		
 
-class OtOtherToolsReparentSelectedWithSiblings(bpy.types.Operator):
-    '''Reparent selected objects and their siblings keeping the current transform'''
-    bl_idname = "view3d.ot_reparent_selected_with_siblings"
-    bl_label = "Reparent selected objects with siblings"
+class OtOtherToolsReparentSelectedWithSiblingsBone(bpy.types.Operator):
+    '''Reparent selected objects and their siblings keeping the current transform using 'bone' option'''
+    bl_idname = "view3d.ot_reparent_selected_with_siblings_bone"
+    bl_label = "Reparent selected objects with siblings(bone)"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "OT tools"
@@ -566,7 +578,72 @@ class OtOtherToolsReparentSelectedWithSiblings(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        reparent_selected_with_siblings(context)
+        reparent_selected_with_siblings(context, False)
+        return {'FINISHED'}    		
+
+class OtOtherToolsReparentAllBoneRelative(bpy.types.Operator):
+    '''Reparent all objects keeping the current transform using 'bone relative' option'''
+    bl_idname = "view3d.ot_reparent_all_bone_relative"
+    bl_label = "Reparent all objects(bone relative)"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_all(context, True)
+        return {'FINISHED'}    		
+
+class OtOtherToolsReparentAllWithBoneParentBoneRelative(bpy.types.Operator):
+    '''Reparent all objects with bone parent keeping the current transform using 'bone relative' option'''
+    bl_idname = "view3d.ot_reparent_all_with_bone_parent_bone_relative"
+    bl_label = "Reparent all objects with bone parent(bone relative)"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_all_bones(context, True)
+        return {'FINISHED'}    		
+
+        
+class OtOtherToolsReparentSelectedBoneRelative(bpy.types.Operator):
+    '''Reparent selected objects keeping the current transform using 'bone relative' option'''
+    bl_idname = "view3d.ot_reparent_selected_bone_relative"
+    bl_label = "Reparent selected objects(bone relative)"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_selected(context, True)
+        return {'FINISHED'}    		
+
+class OtOtherToolsReparentSelectedWithSiblingsBoneRelative(bpy.types.Operator):
+    '''Reparent selected objects and their siblings keeping the current transform using 'bone relative' option'''
+    bl_idname = "view3d.ot_reparent_selected_with_siblings_bone_relative"
+    bl_label = "Reparent selected objects with siblings(bone relative)"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "OT tools"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        reparent_selected_with_siblings(context, True)
         return {'FINISHED'}    		
 
 
@@ -1360,7 +1437,7 @@ def save_selected_obj_names(context):
             f.write("%s\n" % on)
 			
 ##########################################################################################
-def reparent_selected(context):
+def reparent_selected(context, bone_relative):
     selected_objects = []
     for o in bpy.context.selected_objects:
         for ovl in bpy.context.view_layer.objects:
@@ -1368,26 +1445,26 @@ def reparent_selected(context):
                 selected_objects.append(ovl)
                 break
                 
-    reparent_selected_internal(context, selected_objects)
+    reparent_selected_internal(context, selected_objects, bone_relative)
     
 ##########################################################################################
 			
-def reparent_all(context):
-    reparent_selected_internal(context, bpy.context.view_layer.objects)
+def reparent_all(context, bone_relative):
+    reparent_selected_internal(context, bpy.context.view_layer.objects, bone_relative)
 
 ##########################################################################################
     
-def reparent_all_bones(context):
+def reparent_all_bones(context, bone_relative):
     selected_objects = []
     for o in bpy.context.view_layer.objects:
         if o.parent_bone != '':
             selected_objects.append(o)
     
-    reparent_selected_internal(context,selected_objects)
+    reparent_selected_internal(context,selected_objects, bone_relative)
 
 ##########################################################################################
 
-def reparent_selected_with_siblings(context):
+def reparent_selected_with_siblings(context, bone_relative):
     selected_objects = []
     parent_names = set()
     
@@ -1399,11 +1476,11 @@ def reparent_selected_with_siblings(context):
         if o.parent_bone in parent_names:
             selected_objects.append(o)
             
-    reparent_selected_internal(context,selected_objects)
+    reparent_selected_internal(context,selected_objects, bone_relative)
 
 ##########################################################################################
 
-def reparent_selected_internal(context, selected):
+def reparent_selected_internal(context, selected, bone_relative):
     parents = {}
     parent_bones = {}
     
@@ -1431,7 +1508,10 @@ def reparent_selected_internal(context, selected):
             bpy.context.view_layer.objects.active = parent
             
             if parent_bones[o.name] != '':  
-                bpy.ops.object.parent_set(type='BONE', keep_transform=True)    
+                if bone_relative==True:
+                    bpy.ops.object.parent_set(type='BONE_RELATIVE', keep_transform=True)
+                else:
+                    bpy.ops.object.parent_set(type='BONE', keep_transform=True)    
             else:
                 bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
     
@@ -1455,10 +1535,14 @@ classes = (OT_UL_OtVtxGroupUI,
     OtVegetationComputeWeights,
     OtAddLodCurveProperties,
     OtOtherToolsSaveSelectedObjectNames,
-    OtOtherToolsReparentAll,
-    OtOtherToolsReparentAllWithBoneParent,
-    OtOtherToolsReparentSelected,
-    OtOtherToolsReparentSelectedWithSiblings,
+    OtOtherToolsReparentAllBone,
+    OtOtherToolsReparentAllWithBoneParentBone,
+    OtOtherToolsReparentSelectedBone,
+    OtOtherToolsReparentSelectedWithSiblingsBone,
+    OtOtherToolsReparentAllBoneRelative,
+    OtOtherToolsReparentAllWithBoneParentBoneRelative,
+    OtOtherToolsReparentSelectedBoneRelative,
+    OtOtherToolsReparentSelectedWithSiblingsBoneRelative,
     OtAddCollisionMeshProperties,
     OtMirrorOnOffPanel,
     OtTriangulateOnOffPanel,
