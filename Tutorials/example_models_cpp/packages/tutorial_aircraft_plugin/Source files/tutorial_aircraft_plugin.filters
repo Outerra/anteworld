@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="tutorial_aircraft_plugin.cpp" />
+    <ClCompile Include="tutorial_aircraft_plugin.intergen.js.cpp" />
+    <ClCompile Include="tutorial_aircraft_plugin.intergen.lua.cpp" />
+    <ClCompile Include="tutorial_aircraft_plugin.intergen.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="ifc">
+      <UniqueIdentifier>{884fc570-9000-4c58-85c6-d8695bb1b333}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ifc\engine.h">
+      <Filter>ifc</Filter>
+    </ClInclude>
+    <ClInclude Include="ifc\engine.js.h">
+      <Filter>ifc</Filter>
+    </ClInclude>
+    <ClInclude Include="ifc\engine.lua.h">
+      <Filter>ifc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <hpp Include="tutorial_aircraft_plugin.hpp" />
+  </ItemGroup>
+</Project>
