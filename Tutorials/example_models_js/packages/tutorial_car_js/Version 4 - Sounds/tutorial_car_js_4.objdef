@@ -1,0 +1,11 @@
+{
+	"obj" : "sample_car_2",
+	"matlib" : "../tutorial_car",
+	"lod_size01" : 182,
+	"lod_size12" : 122,
+	"physics" : "vehicle",
+	"script" : "car4.js",
+	"description" : "",
+	"parameters" : "",
+	"tags" : "car"
+}
