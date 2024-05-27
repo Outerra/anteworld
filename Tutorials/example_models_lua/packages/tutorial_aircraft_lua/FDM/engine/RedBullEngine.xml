@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!--
+  File:     RedBullEngine.xml
+  Author:   Aero-Matic v 0.83
+
+  Inputs:
+    name:           RedBullEngine
+    type:           piston
+    power:          315 hp
+    augmented?      no
+    injected?       no
+-->
+
+<piston_engine name="RedBullEngine">
+  <minmp unit="INHG">         10.0 </minmp>
+  <maxmp unit="INHG">         28.5 </maxmp>
+  <displacement unit="IN3"> 598.50 </displacement>
+  <maxhp>        315.00 </maxhp>
+  <cycles>         4.0 </cycles>
+  <idlerpm>      700.0 </idlerpm>
+  <maxrpm>      2800.0 </maxrpm>
+  <sparkfaildrop>  0.1 </sparkfaildrop>
+  <volumetric-efficiency> 0.85 </volumetric-efficiency>
+  <man-press-lag> 0.1 </man-press-lag>
+  <static-friction  unit="HP"> 1.57 </static-friction>
+  <starter-torque> 252.00 </starter-torque>
+  <starter-rpm> 1400 </starter-rpm>
+ <!-- Defining <bsfc> over-rides the built-in horsepower calculations -->
+ <!--<bsfc>           0.45 </bsfc>-->
+  <stroke unit="IN">  4.375 </stroke>
+  <bore unit="IN">    5.125 </bore>
+  <cylinders>         7.0  </cylinders>
+  <compression-ratio>  8.0 </compression-ratio>
+</piston_engine>

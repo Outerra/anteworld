@@ -1,0 +1,9 @@
+{
+	"obj" : "tutorial_car_lua",
+	"matlib" : "../tutorial_car_lua",
+	"physics" : "vehicle",
+	"script" : "car4.lua",
+	"description" : "",
+	"parameters" : "",
+	"tags" : "car"
+}

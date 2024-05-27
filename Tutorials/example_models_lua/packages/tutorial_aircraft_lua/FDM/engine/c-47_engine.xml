@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!--
+  File:     r1830-90.xml
+  Author:   Aero-Matic v 0.83
+
+  Inputs:
+    name:           r1830-90
+    type:           piston
+    power:          1200 hp
+    augmented?      no
+    injected?       no
+-->
+
+<piston_engine name="c-47_engine">
+  <minmp unit="INHG">         10.0 </minmp>
+  <maxmp unit="INHG">         28.5 </maxmp>
+  <displacement unit="IN3"> 1830.00 </displacement>
+  <maxhp>        1800.00 </maxhp>
+  <cycles>         4.0 </cycles>
+  <idlerpm>      500.0 </idlerpm>
+  <maxrpm>      2800.0 </maxrpm>
+  <sparkfaildrop>  0.1 </sparkfaildrop>
+  <volumetric-efficiency> 0.85 </volumetric-efficiency>
+  <man-press-lag> 0.1 </man-press-lag>
+  <static-friction  unit="HP"> 6.00 </static-friction>
+  <starter-torque> 960.00 </starter-torque>
+  <starter-rpm> 1400 </starter-rpm>
+ <!-- Defining <bsfc> over-rides the built-in horsepower calculations -->
+ <!--<bsfc>           0.45 </bsfc>-->
+  <stroke unit="IN">  5.5 </stroke>
+  <bore unit="IN">    5.5 </bore>
+  <cylinders>         14.0  </cylinders>
+  <compression-ratio>  6.7 </compression-ratio>
+</piston_engine>

@@ -1,0 +1,11 @@
+{
+	"obj" : "Dominad",
+	"matlib" : "DA40-NG",
+	"physics" : "jsbsim/DA40-NG",
+	"script" : "DA40-NG.lua",
+	"description" : "",
+	"parameters" : "",
+	"fdm_root_dir" : "./FDM/",
+	"tags" : "airplane",
+	"hidden_meshes" : ["propel_blur#0@0"]
+}

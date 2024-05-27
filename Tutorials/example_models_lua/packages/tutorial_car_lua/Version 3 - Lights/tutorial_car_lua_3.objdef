@@ -1,0 +1,11 @@
+{
+	"obj" : "tutorial_car_lua",
+	"matlib" : "../tutorial_car_lua",
+	"lod_size01" : 182,
+	"lod_size12" : 122,
+	"physics" : "vehicle",
+	"script" : "car3.lua",
+	"description" : "",
+	"parameters" : "",
+	"tags" : "car"
+}
