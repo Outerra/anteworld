@@ -2,6 +2,8 @@
 //Welcome to the first tutorial on C++ programming in Outerra.
 //We recommend reviewing the Outerra/anteworld tutorial on Github ( https://github.com/Outerra/anteworld/wiki/Tutorial-1-%E2%80%90-car-(Cpp) ) before proceeding, as it provides detailed information.
 
+//Warning: Mods working with models (in this case, we are working with car model), need to have the files located under "packages" folder (example: Outerra World Sandbox\mods\example_models_cpp\packages\tutorial_car_cpp)
+
 //Include necessary files 
 //vehicle_script.h is needed, so we can implement essential functionalities for our vehicle
 #include <ot/vehicle_script.h>
@@ -81,10 +83,10 @@ class tutorial_car_plugin : public ot::vehicle_script
 	int eng_dir;
 	int left_turn;
 	int right_turn;
+	int current_camera_mode;
+	int previous_cam_mode;
+	float braking_power;
 	double time;
-
-	//Spot and point light parameters
-	ot::light_params light_params = ot::light_params(); // Initializes all fields to 0
 
 	//Geom and Sounds are smart pointers, pointing to geomob and sound groups, they are used for managing reference-counted objects 
 	iref<ot::geomob> geom = nullptr;
