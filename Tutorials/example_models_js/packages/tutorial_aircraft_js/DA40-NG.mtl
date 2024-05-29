@@ -61,7 +61,7 @@
 		"is_display" : false,
 		"shader" : "",
 		"alpha_coverage" : false,
-		"color" : "0.878,0.878,0.878,1.0",
+		"color" : "1.0,1.0,0.0,1.0",
 		"f0" : "0.039",
 		"roughness" : "0.2",
 		"emissive_color" : "0.0,0.0,0.0",

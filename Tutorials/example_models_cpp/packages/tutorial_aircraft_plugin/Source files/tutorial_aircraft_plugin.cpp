@@ -96,6 +96,15 @@ void tutorial_aircraft_plugin::engine(int flags, uint code, uint channel, int ha
 	}
 }
 
+
+void tutorial_aircraft_plugin::brakes(float val, uint code, uint channel, int handler_id)
+{
+	this->braking = val;
+	this->jsbsim->operator()("fcs/center-brake-cmd-norm", val);
+	this->jsbsim->operator()("fcs/left-brake-cmd-norm", val);
+	this->jsbsim->operator()("fcs/right-brake-cmd-norm", val);
+};
+
 // Function to handle landing lights events
 void tutorial_aircraft_plugin::landing_lights(float val, uint code, uint channel, int handler_id)
 {
@@ -181,24 +190,25 @@ ot::chassis_params tutorial_aircraft_plugin::init_chassis(const coid::charstr& p
 	sources::prop_exterior = add_sound_emitter_id(bones::propeller, 0, 3.0f);
 
 	// Set up landing lights
-	light_params = { .size = 0.1f, .angle = 100.f, .edge = 0.25f, .intensity = 5.f, .color = { 1.0f, 1.0f, 1.0f, 0.0f }, .fadeout = 0.05f, };
-	add_spot_light({ 4.5f, 1.08f, 0.98f }, { -0.1f, 1.f, 0.3f }, light_params);
-	add_spot_light({ -4.5f, 1.08f, 0.98f }, { 0.1f, 1.f, 0.3f }, light_params);
+	ot::light_params light_parameters = { .size = 0.1f, .angle = 100.f, .edge = 0.25f, .intensity = 5.f, .color = { 1.0f, 1.0f, 1.0f, 0.0f }, .fadeout = 0.05f, };
+	add_spot_light({ 4.5f, 1.08f, 0.98f }, { -0.1f, 1.f, 0.3f }, light_parameters);
+	add_spot_light({ -4.5f, 1.08f, 0.98f }, { 0.1f, 1.f, 0.3f }, light_parameters);
 
 	// Set up navigation lights
-	light_params = { .size = 0.035f, .angle = 100.f, .edge = 1.f, .intensity = 20.f, .color = { 1.0f, 1.0f, 1.0f, 0.0f }, .range = 0.0001f, .fadeout = 0.1f, };
-	nav_light_offset = add_point_light({ 5.08f, 0.18f, 1.33f }, light_params);
+	light_parameters = { .size = 0.035f, .angle = 100.f, .edge = 1.f, .intensity = 20.f, .color = { 1.0f, 1.0f, 1.0f, 0.0f }, .range = 0.0001f, .fadeout = 0.1f, };
+	nav_light_offset = add_point_light({ 5.08f, 0.18f, 1.33f }, light_parameters);
 
-	light_params.color = { 0.f, 1.f, 0.f, 0.f };
-	add_point_light({ -5.05f, 0.18f, 1.33f }, light_params);
+	light_parameters.color = { 0.f, 1.f, 0.f, 0.f };
+	add_point_light({ -5.05f, 0.18f, 1.33f }, light_parameters);
 
+	//Register event handler
+	register_event_handler("air/engines/on", &tutorial_aircraft_plugin::engine);
 	//Register axis handlers
+	register_axis_handler("air/controls/brake", &tutorial_aircraft_plugin::brakes, { .minval = 0.f, .maxval = 1.f, .cenvel = 0.5f, .vel = 1.f, .positions = 0 });
 	register_axis_handler("air/lights/landing_lights", &tutorial_aircraft_plugin::landing_lights, { .minval = 0.f, .maxval = 1.f, .cenvel = 0.f, .vel = 10.f });
 	register_axis_handler("air/lights/nav_lights", &tutorial_aircraft_plugin::navigation_lights, { .minval = 0.f, .maxval = 1.f, .cenvel = 0.f, .vel = 10.f });
 	register_axis_handler("air/controls/aileron", &tutorial_aircraft_plugin::ailerons, { .minval = -1.f, .maxval = 1.f, .cenvel = 0.5f, .vel = 0.5f, .positions = 0 });
 	register_axis_handler("air/controls/elevator", &tutorial_aircraft_plugin::elevator, { .minval = -1.f, .maxval = 1.f, .cenvel = 0.5f, .vel = 0.5f, .positions = 0 });
-	//Register event handler
-	register_event_handler("air/engines/on", &tutorial_aircraft_plugin::engine);
 
 	//Return chassis parameters
 	return {
@@ -221,6 +231,7 @@ void tutorial_aircraft_plugin::initialize(bool reload)
 
 	// Set initial values for the aircraft
 	this->started = false;
+	this->braking = 0;
 
 	//Safety check for jsbsim pointer to avoid crash
 	if (!this->jsbsim)
@@ -397,5 +408,19 @@ void tutorial_aircraft_plugin::update_frame(float dt)
 		this->snd->stop(sources::prop_interior);
 		this->snd->stop(sources::rumble_exterior);
 		this->snd->stop(sources::rumble_interior);
+	}
+
+	//(Temporary) parking brake, when in idle state 
+	if (!this->started && propeller_rpm < 5)
+	{
+		this->jsbsim->operator()("fcs/center-brake-cmd-norm", 1);
+		this->jsbsim->operator()("fcs/left-brake-cmd-norm", 1);
+		this->jsbsim->operator()("fcs/right-brake-cmd-norm", 1);
+	}
+	else if (this->braking < 0.1)
+	{
+		this->jsbsim->operator()("fcs/center-brake-cmd-norm", 0);
+		this->jsbsim->operator()("fcs/left-brake-cmd-norm", 0);
+		this->jsbsim->operator()("fcs/right-brake-cmd-norm", 0);
 	}
 }

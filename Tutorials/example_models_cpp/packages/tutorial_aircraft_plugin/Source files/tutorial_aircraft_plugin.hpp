@@ -79,10 +79,12 @@ class tutorial_aircraft_plugin : public ot::aircraft_script
 	void navigation_lights(float val, uint code, uint channel, int handler_id);	
 	
 	/*Note: by default, the actions are handled internally, allowing gameplay without direct user intervention. However, sometimes it is needed to
-	customize or fine-tune aircraft behavior, therefore in this case, the engine, ailerons and elevator functionality is also handled here.*/
+	customize or fine-tune aircraft behavior, therefore in this case, the engine, brakes, ailerons and elevator functionality is also handled here.*/
 
-	// Function to handle events, when engine starts/stop
+	// Function to handle event, when engine starts/stop
 	void engine(int flags, uint code, uint channel, int handler_id);
+	// Function to handle event, when brake button is pressed
+	void brakes(float val, uint code, uint channel, int handler_id);
 	// Function to handle ailerons 
 	void ailerons(float val, uint code, uint channel, int handler_id);
 	// Function to handle elevator
@@ -90,9 +92,9 @@ class tutorial_aircraft_plugin : public ot::aircraft_script
 
 	// Flag indicating whether the aircraft has started
 	bool started;
+	// Braking value
+	float braking;
 
-	// Parameters for lights
-	ot::light_params light_params;
 	// Offset for navigation lights
 	uint nav_light_offset;
 

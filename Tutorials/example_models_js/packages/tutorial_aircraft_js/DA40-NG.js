@@ -81,7 +81,7 @@ function engine()
         this.jsbsim['propulsion/magneto_cmd'] = 0;
     }
 }
-//"**this.jsbsim['property']**" is used, to set/get property belonging to JSBSim interface. 
+//"this.jsbsim['property']" is used, to set/get property belonging to JSBSim interface. 
 //For information on JSBSim, visit the JSBSim & Aeromatic page (https://github.com/Outerra/anteworld/wiki/JSBSim-&-Aeromatic).
 //For a list of usable JSBSim properties, refer to the JSBSim properties page (https://github.com/Outerra/anteworld/wiki/JSBSim-properties).
 
@@ -171,11 +171,17 @@ function init_chassis()
     /*Note: by default, JSBSim actions are handled internally, allowing gameplay without direct user intervention. However, sometimes it is needed to 
     customize or fine-tune aircraft behavior, therefore in this case, the following handlers are handled in script.*/
     this.register_event("air/engines/on", engine);
-    this.register_axis("air/controls/aileron", { minval: -1, maxval: 1, cenvel: 0.5, vel: 0.5, positions: 0 }, function(v){
+    this.register_axis("air/controls/aileron", { minval: -1, maxval: 1, center: 0.5, vel: 0.5, positions: 0 }, function(v){
        	this.jsbsim['fcs/aileron-cmd-norm'] = v;
     });
-	this.register_axis("air/controls/elevator", { minval: -1, maxval: 1, cenvel: 0.5, vel: 0.5, positions: 0 }, function(v){
+	this.register_axis("air/controls/elevator", { minval: -1, maxval: 1, center: 0.5, vel: 0.5, positions: 0 }, function(v){
         this.jsbsim['fcs/elevator-cmd-norm'] = -v;
+    });
+    this.register_axis("air/controls/brake", { minval: 0}, function(v) { 
+        this.braking = v;
+    	this.jsbsim['fcs/center-brake-cmd-norm'] = v;
+        this.jsbsim['fcs/left-brake-cmd-norm'] = v;
+        this.jsbsim['fcs/right-brake-cmd-norm'] = v;
     });
   
 	return {
@@ -200,6 +206,7 @@ function initialize()
 	this.set_fps_camera_pos({x:0, y:1, z:1.4});
     
     this.started = 0;
+    this.braking = 0;
 	
 	//Set initial value for JSBSim properties
 	//Turn off engine (commands are normalized)
@@ -371,5 +378,18 @@ function update_frame(dt)
 		this.snd.stop(sources.rumble_int);
     }	
     
+    //Parking brake when in idle state 
+    if(!this.started && propeller_rpm < 5)
+    {
+        this.jsbsim['fcs/center-brake-cmd-norm'] = 1;
+        this.jsbsim['fcs/left-brake-cmd-norm'] = 1;
+        this.jsbsim['fcs/right-brake-cmd-norm'] = 1;
+    }
+    else if (this.braking < 0.1)
+    {
+        this.jsbsim['fcs/center-brake-cmd-norm'] = 0;
+        this.jsbsim['fcs/left-brake-cmd-norm'] = 0;
+        this.jsbsim['fcs/right-brake-cmd-norm'] = 0;
+    } 
 }
 
