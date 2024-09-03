@@ -24,7 +24,7 @@ function engine_action()
 	this.fade(this.started === 1  ? "Engine start" : "Engine stop");
     
     //To not apply force on wheels, when the engine has stopped 
-    if(!this.started)
+    if(this.started === 0)
     {
         this.wheel_force(wheels.FLwheel, 0);
         this.wheel_force(wheels.FRwheel, 0);
@@ -65,11 +65,24 @@ function init_chassis()
 	wheels.RRwheel = this.add_wheel('wheel_r1', wheel_params); //rear right wheel (will have ID 3)
 
 	//Add action handlers
-	//In this case call engine_action function, when engine ON/OFF button is presssed ('E') (these inputs are binded in vehicle.cfg file, more info in "Version 0 - Info" or Outerra wiki)
+	//In this case call engine_action function, when engine ON/OFF button ('E') is presssed (these inputs are binded in vehicle.cfg file, more info in "Version 0 - Info" or Outerra wiki)
 	this.register_event("vehicle/engine/on", engine_action);
 	
-    //In this case call reverse_action function, when reverse button is presssed ('R') 
+    //Call reverse_action function, when reverse button ('R') is presssed 
 	this.register_event("vehicle/engine/reverse", reverse_action);
+
+    //Toggle the state of "this.hand_brake_input" each time, the hand brake button ('Space') is pressed  
+    this.register_event("vehicle/controls/hand_brake", function(v){
+        this.hand_brake_input ^= 1;
+    }); 
+
+    //When accelerating (holding 'W' button), store the value of "power" action in "this.power_input"
+    this.register_axis("vehicle/controls/power", {minval: 0, center: Infinity}, function(v){
+        this.power_input = v;
+    }); 
+
+    //Note: the hand brake and power are handled through script, to avoid bug, where parking brake cannot be engaged right after the power input was released 
+    //(because by default, the centering is lower, and takes some time, until the value drops to 0)
 
 	//Return parameters (if not defined, they will be set to default parameters)
 	return {
@@ -89,6 +102,8 @@ function init_vehicle()
 	this.started = 0;
 	this.eng_dir = 1;
     this.braking_power = 0;
+    this.power_input = 0;
+    this.hand_brake_input = 1;
     
 	//"this" is also used to refer to already defined functions from vehicle interface, such as set_fps_camera_pos function (other members can be found on Outerra wiki) 
 	
@@ -115,27 +130,33 @@ function update_frame(dt, engine, brake, steering, parking)
 		//Calculate force, which will be applied on wheels to move the car
 		let redux = this.eng_dir >= 0 ? 0.2 : 0.6;
 		//You can use Math library
-		engine = ENGINE_FORCE * Math.abs(engine);
+		let eng_power = ENGINE_FORCE * this.power_input;
         //Determine the force value based on whether the car should move forward or backward
 		let force = (kmh >= 0) === (this.eng_dir >= 0)
-			? engine / (redux * kmh + 1)
-			: engine;
+			? eng_power / (redux * kmh + 1)
+			: eng_power;
 		//Add wind resistance
 		force -= FORCE_LOSS;
 		//Make sure, that force can not be negative
-		force = Math.max(0.0, Math.min(force, engine));
+		force = Math.max(0.0, Math.min(force, eng_power));
 		
-		//Calculate force and direction, which will be used to add force to wheels
-		engine = force * this.eng_dir;
+		//Multiply with this.eng_dir (will be 1 or -1), to set direction
+		force *= this.eng_dir;
 	
+        //Release the parking brake, when accelerating, while started
+        if(this.hand_brake_input !== 0 && force > 0)
+        {
+            this.hand_brake_input = 0;
+        }        
+        
         //Use wheel_force function to apply propelling force on wheel
         //wheel_force is used to apply a propelling force on wheel and move the car.
         //1.parameter - wheel, you want to affect (takes the wheel ID, in this case, the car has front-wheel drive)
         //2.parameter - force, you want to exert on the wheel hub in forward/backward  direction (in Newtons)
-        this.wheel_force(wheels.FLwheel, engine);
-        this.wheel_force(wheels.FRwheel, engine);
+        this.wheel_force(wheels.FLwheel, force);
+        this.wheel_force(wheels.FRwheel, force);
         //You can also use -1 as 1.parameter (instead wheel ID), this will affect all wheels
-        //Example: this.wheel_force(-1, engine)    
+        //Example: this.wheel_force(-1, force)  
     }
 
 	//Define steering sensitivity
@@ -150,7 +171,7 @@ function update_frame(dt, engine, brake, steering, parking)
 	//Example: this.steer(-2, steering)
 
     //Set the braking value, which will be applied on wheels, based on the type of brake 
-    if(parking !== 0)
+    if(this.hand_brake_input !== 0)
     {
         // Apply full braking force when the parking brake is engaged 
         this.braking_power = BRAKE_FORCE;

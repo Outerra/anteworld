@@ -36,7 +36,7 @@ function engine_action()
 	this.started = this.started === 0 ? 1 : 0;
 	this.fade(this.started === 1  ? "Engine start" : "Engine stop");
     
-    if(!this.started)
+    if(this.started === 0)
     {
         this.wheel_force(wheels.FLwheel, 0);
         this.wheel_force(wheels.FRwheel, 0);
@@ -101,15 +101,15 @@ function init_chassis()
 	//3.parameter - light properties
     //4.parameter - string name of the bone, to which you want to bind the light (this will make the lights offset and direction to be relative to the defined bone instead of model pivot)
 	//Add front lights (offset relative to model pivot is given for the lights and direction is set to forward by {y:1})
-	this.add_spot_light({x: -0.55, y: 2.2, z: 0.68}, {y: 1}, light_props);  //left front light
-	this.add_spot_light({x: 0.55, y: 2.2, z: 0.68}, {y: 1}, light_props);   //right front light
+	this.add_spot_light({x: -0.55, y: 2.2, z: 0.68}, {y: 1.0}, light_props);  //left front light
+	this.add_spot_light({x: 0.55, y: 2.2, z: 0.68}, {y: 1.0}, light_props);   //right front light
 
 	//Change the light properties in "light_props" and use them for another lights
 	light_props = { size: 0.1, angle: 160, edge: 0.8, color: { x: 1.0 }, range: 150, fadeout: 0.05 };
 	
 	//Add tail lights
-	this.add_spot_light({x: -0.05,y: -0.06,z: 0.0}, {y: 1}, light_props, "tail_light_l0");  //left tail light
-	this.add_spot_light({x: 0.05,y: -0.06,z: 0.0}, {y: 1}, light_props, "tail_light_r0");  //right tail light 	
+	this.add_spot_light({x: -0.05,y: -0.06,z: 0.0}, {y: 1.0}, light_props, "tail_light_l0");  //left tail light
+	this.add_spot_light({x: 0.05,y: -0.06,z: 0.0}, {y: 1.0}, light_props, "tail_light_r0");  //right tail light 	
 	//Warning: In this case, the direction of this light is now opposite to front lights, even though direction is still {y:1}, because the light is now relative to tail light bone, which has opposite direction
 	
 	//Add brake lights
@@ -118,8 +118,8 @@ function init_chassis()
 	//Here's another example regarding light direction: while the brake lights are relative to the model pivot, the direction is specified as {y:-1}, indicating the opposite direction, therefore the lights will illuminate in the backward direction
 	//Add brake lights and store the offset of the first light in "brake_light_offset"
 	let brake_light_offset =  
-	this.add_spot_light({x: -0.43, y: -2.11, z: 0.62}, {y: -1}, light_props);  //left brake light (0b01)
-	this.add_spot_light({x: 0.43, y: -2.11, z: 0.62}, {y: -1}, light_props); 	 //right brake light (0b10)
+	this.add_spot_light({x: -0.43, y: -2.11, z: 0.62}, {y: -1.0}, light_props);  //left brake light (0b01)
+	this.add_spot_light({x: 0.43, y: -2.11, z: 0.62}, {y: -1.0}, light_props); 	 //right brake light (0b10)
 	
 	//Now we have to specify bit mask (brake_mask), for that we have to use bit logic
 	//Our 2 brake lights are defined as follows:
@@ -133,8 +133,8 @@ function init_chassis()
 	//Add reverse lights
 	light_props = { size: 0.04, angle: 120, edge: 0.8, range: 100, fadeout: 0.05 };
 	let rev_light_offset =
-	this.add_spot_light({x: -0.5, y: -2.11, z: 0.715}, {y: -1}, light_props);	 //left reverse light (0b01)
-	this.add_spot_light({x: 0.5, y: -2.11, z: 0.715}, {y: -1}, light_props);	 //right reverse light (0b10)
+	this.add_spot_light({x: -0.5, y: -2.11, z: 0.715}, {y: -1.0}, light_props);	 //left reverse light (0b01)
+	this.add_spot_light({x: 0.5, y: -2.11, z: 0.715}, {y: -1.0}, light_props);	 //right reverse light (0b10)
 	
 	// 01 (binary) -> 1 (decimal) - left reverse light 
 	// 10 (binary) -> 2 (decimal) - right reverse light 
@@ -178,11 +178,20 @@ function init_chassis()
 	//Here you don't have to identify lights for bit mask, because they were added as 4.parameter in add_spot_light() function while creating action handler
 	light_props = { size: 0.05, angle: 110, edge: 0.08, range: 110, fadeout: 0.05 };
 	light_entity.main_light_offset = 
-	this.add_spot_light({x: -0.45, y: 2.2, z: 0.68}, {y: 1}, light_props);  //left main light
-	this.add_spot_light({x: 0.45, y: 2.2, z: 0.68}, {y: 1}, light_props);  //right main light
+	this.add_spot_light({x: -0.45, y: 2.2, z: 0.68}, {y: 1.0}, light_props);  //left main light
+	this.add_spot_light({x: 0.45, y: 2.2, z: 0.68}, {y: 1.0}, light_props);  //right main light
     
 	this.register_event("vehicle/engine/on", engine_action);
 	this.register_event("vehicle/engine/reverse", reverse_action); 
+    
+    this.register_event("vehicle/controls/hand_brake", function(v){
+        this.hand_brake_input ^= 1;
+    }); 
+
+    this.register_axis("vehicle/controls/power", {minval: 0, center: Infinity}, function(v){
+        this.power_input = v;
+    });     
+    
 	this.register_axis("vehicle/controls/open", {minval: 0, maxval: 1, center: 0, vel: 0.6}, function(v) {
 		let door_dir = {z:-1};
 		let door_angle = v * 1.5;
@@ -246,6 +255,8 @@ function init_vehicle()
 	this.started = 0;
 	this.eng_dir = 1;
     this.braking_power = 0;
+    this.power_input = 0;
+    this.hand_brake_input = 1;
     
   	this.set_fps_camera_pos({x: -0.4, y: 0.16, z: 1.3});
 }
@@ -254,7 +265,7 @@ function update_frame(dt, engine, brake, steering, parking)
 {
 	let brake_dir = {x:1};
 	let brake_angle = brake * 0.4;	
-	let accel_dir = {y:(-engine * 0.02), z:(-engine * 0.02)}
+	let accel_dir = {y:(-this.power_input * 0.02), z:(-this.power_input * 0.02)}
 	this.geom.rotate_joint_orig(bones.brake_pedal, brake_angle, brake_dir);
 	this.geom.move_joint_orig(bones.accel_pedal, accel_dir)
 	
@@ -263,16 +274,21 @@ function update_frame(dt, engine, brake, steering, parking)
 	if (this.started === 1)
 	{
         let redux = this.eng_dir >= 0 ? 0.2 : 0.6;
-        engine = ENGINE_FORCE * Math.abs(engine);
+        let eng_power = ENGINE_FORCE * this.power_input;
         let force = (kmh >= 0) === (this.eng_dir >= 0)
-            ? engine / (redux * kmh + 1)
-            : engine;
+            ? eng_power / (redux * kmh + 1)
+            : eng_power;
         force -= FORCE_LOSS;
-        force = Math.max(0.0, Math.min(force, engine));
-        engine = force * this.eng_dir;
+        force = Math.max(0.0, Math.min(force, eng_power));
+        force *= this.eng_dir;
 	
-        this.wheel_force(wheels.FLwheel, engine);
-        this.wheel_force(wheels.FRwheel, engine);    
+        if(this.hand_brake_input !== 0 && force > 0)
+        {
+            this.hand_brake_input = 0;
+        }
+        
+        this.wheel_force(wheels.FLwheel, force);
+        this.wheel_force(wheels.FRwheel, force);    
     }
 	
 	
@@ -291,7 +307,7 @@ function update_frame(dt, engine, brake, steering, parking)
 	//Note: add this code before adding rolling friction to brakes.
 	this.light_mask(light_entity.brake_mask, brake > 0);
 
-	if(parking !== 0)
+	if(this.hand_brake_input !== 0)
     {
         this.braking_power = BRAKE_FORCE;
     } 

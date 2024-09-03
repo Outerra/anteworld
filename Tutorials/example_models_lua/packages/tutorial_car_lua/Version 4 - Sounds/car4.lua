@@ -61,19 +61,18 @@ function engine_action(self)
 	--  2.parameter - reference distance value(this will affect all sounds emitted from this emitter)
 	self.snd:set_ref_distance(sound_entity.src_eng_start_stop, ref_distance);
 
-    -- Changed the "if self.started == false" statement...
-	if self.started == true then 
-		-- play_sound function is used to play sound once, discarding older sounds
-		-- 1.parameter - emitter (source ID) 
-		-- 2.parameter - sound (sound ID))
-		self.snd:play_sound(sound_entity.src_eng_start_stop, sound_entity.snd_starter);
-	else 
+	if self.started == false then 
 		-- function "stop" discards all sounds playing on given emitter
 		self.snd:stop(sound_entity.src_eng_running);
 		self.snd:play_sound(sound_entity.src_eng_start_stop, sound_entity.snd_eng_stop);
         
         self:wheel_force(wheels.FLwheel, 0);
         self:wheel_force(wheels.FRwheel, 0);
+	else 
+		-- play_sound function is used to play sound once, discarding older sounds
+		-- 1.parameter - emitter (source ID) 
+		-- 2.parameter - sound (sound ID))
+		self.snd:play_sound(sound_entity.src_eng_start_stop, sound_entity.snd_starter);
 	end
 end
 
@@ -82,6 +81,14 @@ function reverse_action(self, v)
     self:fade(self.eng_dir > 0 and "Forward" or "Reverse");
     
     self:light_mask(light_entity.rev_mask, self.eng_dir < 0);
+end
+
+function hand_brake_action(self, v)
+    self.hand_brake_input = self.hand_brake_input == 0 and 1 or 0;
+end
+
+function power_action(self, v)
+    self.power_input = v;
 end
 
 function door_action(self, v)
@@ -197,7 +204,10 @@ function ot.vehicle_script:init_chassis()
 
     self:register_event("vehicle/engine/on", engine_action);
     self:register_event("vehicle/engine/reverse", reverse_action);
+    self:register_event("vehicle/controls/hand_brake", hand_brake_action);
 	self:register_event("vehicle/lights/emergency", emergency_lights_action);
+
+	self:register_axis("vehicle/controls/power", {minval = 0, center = 100}, power_action); 
 	self:register_axis("vehicle/controls/open", {minval = 0, maxval = 1, center = 0, vel = 0.6}, door_action); 
 	self:register_axis("vehicle/lights/passing", {minval = 0, maxval = 1, center = 0, vel = 10, positions = 2 }, passing_lights_action);
 	self:register_axis("vehicle/lights/main", {minval = 0, maxval = 1, center = 0, vel = 10, positions = 2 }, main_lights_action);
@@ -226,7 +236,9 @@ function ot.vehicle_script:init_vehicle()
 	self.geom = self:get_geomob(0);
     self.started = false;
 	self.eng_dir = 1;
+    self.power_input = 0;
     self.braking_power = 0;
+    self.hand_brake_input = 1;
     
 	self:set_fps_camera_pos({x = -0.4, y = 0.16, z = 1.3});
    
@@ -246,7 +258,7 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
 
 	local brake_dir = {x = 1};
 	local brake_angle = brake * 0.4;	
-	local accel_dir = {y = (-engine * 0.02), z = (-engine * 0.02)}
+	local accel_dir = {y = (-self.power_input * 0.02), z = (-self.power_input * 0.02)}
     
 	self.geom:rotate_joint_orig(bones.brake_pedal, brake_angle, brake_dir);
 	self.geom:move_joint_orig(bones.accel_pedal, accel_dir)
@@ -274,15 +286,15 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
 
     if self.started == true then
 		local redux = self.eng_dir >= 0 and 0.2 or 0.6;
-		engine = ENGINE_FORCE * math.abs(engine);
-		local force = (kmh >= 0) == (self.eng_dir >= 0) and (engine / (redux * kmh + 1)) or engine;
+		local eng_power = ENGINE_FORCE * self.power_input;
+		local force = (kmh >= 0) == (self.eng_dir >= 0) and (eng_power / (redux * kmh + 1)) or eng_power;
         force = force - FORCE_LOSS;
-		force = math.max(0.0, math.min(force, engine));
-		engine = force * self.eng_dir;
+		force = math.max(0.0, math.min(force, eng_power));
+		force = force * self.eng_dir;
         
         -- Move only when there is no sound playing on given emitter (to not be able to move when car is starting, but after the starter sound ends)
         if self.snd:is_playing(sound_entity.src_eng_start_stop) then
-            engine = 0;
+            force = 0;
         --If the car has started and there isn't active loop on given emitter, play loop
         else
             -- Calculate and set volume pitch and gain for emitter
@@ -312,10 +324,15 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
             -- Can take 3.parameter - bool value (default: true), if true - previous loops will be removed, otherwise the new sound is added to the loop chain
             -- Example: self.snd:enqueue_loop(sound_entity.src_eng_running, sound_entity.snd_eng_running);
         end
+        
+        if self.hand_brake_input ~= 0 and force > 0 then
+            self.hand_brake_input = 0
+        end
+        
+        self:wheel_force(wheels.FLwheel, force);
+        self:wheel_force(wheels.FRwheel, force);
     end  
     
-    self:wheel_force(wheels.FLwheel, engine);
-	self:wheel_force(wheels.FRwheel, engine);
     
 	if kmh > SPEED_GAUGE_MIN then
         self.geom:rotate_joint_orig(bones.speed_gauge, (kmh - SPEED_GAUGE_MIN) * RAD_PER_KMH, {x = 0,y = 1,z = 0});    
@@ -330,7 +347,7 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
 	
 	self:light_mask(light_entity.brake_mask, brake > 0);
     
-    if parking ~= 0 then 
+    if self.hand_brake_input ~= 0 then 
         self.braking_power = BRAKE_FORCE; 
     elseif brake ~= 0 then
         self.braking_power = brake * BRAKE_FORCE;

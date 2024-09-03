@@ -39,6 +39,16 @@ function reverse_action(self, v)
     self:fade(self.eng_dir > 0 and "Forward" or "Reverse");
 end
 
+-- Called, when hand brake button is pressed ('Space')
+function hand_brake_action(self, v)
+    self.hand_brake_input = self.hand_brake_input == 0 and 1 or 0;
+end
+
+-- Called, when power button is pressed ('W')
+function power_action(self, v)
+    self.power_input = v;
+end
+
 function ot.vehicle_script:init_chassis()	
     -- Define physical wheel parameters
     local wheel_params = {
@@ -66,8 +76,17 @@ function ot.vehicle_script:init_chassis()
     -- In this case call engine_action function, when engine ON/OFF button is presssed ('E') (these inputs are binded in vehicle.cfg file, more info in "Version 0 - Info" or Outerra wiki)
     self:register_event("vehicle/engine/on", engine_action);
 	
-    -- In this case call reverse_action function, when reverse button is presssed ('R') 
+    -- Call reverse_action function, when reverse button is presssed ('R') 
     self:register_event("vehicle/engine/reverse", reverse_action);
+    
+    -- Call the hand_brake_action, when hand brake button ('Space') is pressed 
+    self:register_event("vehicle/controls/hand_brake", hand_brake_action);
+    
+    -- Call the power_action, when power button ('W') is pressed 
+    self:register_axis("vehicle/controls/power", {minval = 0, center = 100}, power_action); 
+
+    -- Note: the hand brake and power are handled through script, to avoid bug, where parking brake cannot be engaged right after the power input was released 
+    -- (because by default, the centering is lower, and takes some time, until the value drops to 0)
 
     -- Return parameters (if not defined, they will be set to default parameters)
     return {
@@ -86,7 +105,9 @@ function ot.vehicle_script:init_vehicle()
 	-- self.started creates "started" variable for all instances of sample car, but future changes will affect only the current instance of an object, in which the code is being executed
     self.started = false;
 	self.eng_dir = 1;
+    self.power_input = 0;
     self.braking_power = 0;
+    self.hand_brake_input = 1;
     
     -- "self:" is also used to refer to already defined functions from vehicle interface, such as set_fps_camera_pos function (other members can be found on Outerra wiki) 
 
@@ -112,25 +133,30 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
         -- Calculate force, which will be applied on wheels to move the car
 		local redux = self.eng_dir >= 0 and 0.2 or 0.6;
         -- You can use math library
-		engine = ENGINE_FORCE * math.abs(engine);
+		local eng_power = ENGINE_FORCE * self.power_input;
         -- Determine the force value based on whether the car should move forward or backward
-		local force = (kmh >= 0) == (self.eng_dir >= 0) and (engine / (redux * kmh + 1)) or engine;
+		local force = (kmh >= 0) == (self.eng_dir >= 0) and (eng_power / (redux * kmh + 1)) or eng_power;
 		-- Add wind resistance
         force = force - FORCE_LOSS;
         -- Make sure, that force can not be negative
-		force = math.max(0.0, math.min(force, engine));
+		force = math.max(0.0, math.min(force, eng_power));
 		
         -- Calculate force and direction, which will be used to add force to wheels
-		engine = force * self.eng_dir;
+		force = force * self.eng_dir;
+        
+        -- Release the hand brake automatically, when accelerating while started
+        if self.hand_brake_input ~= 0 and force > 0 then
+            self.hand_brake_input = 0
+        end
         
         -- Use wheel_force function to apply propelling force on wheel
         -- wheel_force is used to apply a propelling force on wheel and move the car.
         -- 1.parameter - wheel, you want to affect (takes the wheel ID, in this case, the car has front-wheel drive)
         -- 2.parameter - force, you want to exert on the wheel hub in forward/backward  direction (in Newtons)
-        self:wheel_force(wheels.FLwheel, engine);
-        self:wheel_force(wheels.FRwheel, engine);
+        self:wheel_force(wheels.FLwheel, force);
+        self:wheel_force(wheels.FRwheel, force);
         -- You can also use -1 as 1.parameter (instead wheel ID), this will affect all wheels
-        -- Example: this.wheel_force(-1, engine)
+        -- Example: this.wheel_force(-1, force)
         
     end  
     
@@ -146,7 +172,7 @@ function ot.vehicle_script:update_frame(dt, engine, brake, steering, parking)
 	-- Example: this.steer(-2, steering)
     
     -- Set the braking value, which will be applied on wheels, based on the type of brake 
-    if parking ~= 0 then 
+    if self.hand_brake_input ~= 0 then 
         -- Apply full braking force when the parking brake is engaged 
         self.braking_power = BRAKE_FORCE; 
     elseif brake ~= 0 then

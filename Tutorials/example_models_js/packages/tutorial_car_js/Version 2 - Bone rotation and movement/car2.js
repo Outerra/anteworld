@@ -31,7 +31,7 @@ function engine_action()
 	this.started = this.started === 0 ? 1 : 0;
 	this.fade(this.started === 1  ? "Engine start" : "Engine stop");
     
-    if(!this.started)
+    if(this.started === 0)
     {
         this.wheel_force(wheels.FLwheel, 0);
         this.wheel_force(wheels.FRwheel, 0);
@@ -73,6 +73,15 @@ function init_chassis()
 	this.register_event("vehicle/engine/on", engine_action);
 	this.register_event("vehicle/engine/reverse", reverse_action); 
 	
+    this.register_event("vehicle/controls/hand_brake", function(v){
+        this.hand_brake_input ^= 1;
+    });     
+
+    this.register_axis("vehicle/controls/power", {minval: 0, center: Infinity}, function(v){
+        this.power_input = v;
+    }); 
+    
+    
 	//Declare additional action handler to open/close driver's door (when 'O' is pressed)
 	//In this case, use register_axis function. Value handlers like this, let you change the opening range, speed and other parameters (more in "Version 0 - Info" or on Outerra Wiki) 
     //Another way to use action handlers, is to directly write the functionality, instead of calling another function
@@ -105,12 +114,14 @@ function init_vehicle()
 {	
 	//Get instance geometry interface, which will be used for current instance (to rotate bone, move bone, etc. )
     //get_geomob function is used to get instance geometry interface
-	//parameter - ID of geometry object (default 0)
+	//parameter - ID of geometry object (default 0, which is the main body)
 	this.geom = this.get_geomob(0);
 	
 	this.started = 0;
 	this.eng_dir = 1;
     this.braking_power = 0;
+    this.power_input = 0;
+    this.hand_brake_input = 1;
 
   	this.set_fps_camera_pos({x: -0.4, y: 0.16, z: 1.3});
 }
@@ -122,7 +133,7 @@ function update_frame(dt, engine, brake, steering, parking)
 	//Brake pedal rotation angle will depend on the brake value
 	let brake_angle = brake * 0.4;	
 	//You can also use more than one axis
-	let accel_dir = {y:(-engine * 0.02), z:(-engine * 0.02)}
+	let accel_dir = {y:(-this.power_input * 0.02), z:(-this.power_input * 0.02)}
 	
 	//Rotate brake pedal
 	this.geom.rotate_joint_orig(bones.brake_pedal, brake_angle, brake_dir);
@@ -137,16 +148,21 @@ function update_frame(dt, engine, brake, steering, parking)
 	if (this.started === 1)
 	{
         let redux = this.eng_dir >= 0 ? 0.2 : 0.6;
-        engine = ENGINE_FORCE * Math.abs(engine);
+        let eng_power = ENGINE_FORCE * this.power_input;
         let force = (kmh >= 0) === (this.eng_dir >= 0) 
-            ? engine / (redux * kmh + 1)
-            : engine;
+            ? eng_power / (redux * kmh + 1)
+            : eng_power;
         force -= FORCE_LOSS;
-        force = Math.max(0.0, Math.min(force, engine));
-        engine = force * this.eng_dir;
+        force = Math.max(0.0, Math.min(force, eng_power));
+        force *= this.eng_dir;
         
-        this.wheel_force(wheels.FLwheel, engine);
-        this.wheel_force(wheels.FRwheel, engine);
+        if(this.hand_brake_input !== 0 && force > 0)
+        {
+            this.hand_brake_input = 0;
+        }
+        
+        this.wheel_force(wheels.FLwheel, force);
+        this.wheel_force(wheels.FRwheel, force);
 	}
 		
 	//Rotate speed gauge
@@ -166,7 +182,7 @@ function update_frame(dt, engine, brake, steering, parking)
 	//3.parameter (must be in {} brackets) - axis, around which you want to rotate (in this case you rotate around Z axis) and the direction of rotation (-1 or 1))
 	this.geom.rotate_joint_orig(bones.steer_wheel, 10.5*steering, {z:1});
 
-    if(parking !== 0)
+    if(this.hand_brake_input !== 0)
     {
         this.braking_power = BRAKE_FORCE;
     }

@@ -71,7 +71,9 @@ class tutorial_car_plugin : public ot::vehicle_script
 	//for axis handlers - float val, uint code, uint channel, int handler_id 
 	void engine(int flags, uint code, uint channel, int handler_id);
 	void reverse(int flags, uint code, uint channel, int handler_id);
+	void hand_brake(int flags, uint code, uint channel, int handler_id);
 	void emergency_lights(int flags, uint code, uint channel, int handler_id);
+	void power(float val, uint code, uint channel, int handler_id);
 	void passing_lights(float val, uint code, uint channel, int handler_id);
 	void turn_lights(float val, uint code, uint channel, int handler_id);
 	void main_lights(float val, uint code, uint channel, int handler_id);
@@ -80,12 +82,14 @@ class tutorial_car_plugin : public ot::vehicle_script
 	//Declare variables
 	bool started;
 	bool emer;
+	bool hand_brake_val;
 	int eng_dir;
 	int left_turn;
 	int right_turn;
 	int current_camera_mode;
 	int previous_cam_mode;
 	float braking_power;
+	float power_input;
 	double time;
 
 	//Geom and Sounds are smart pointers, pointing to geomob and sound groups, they are used for managing reference-counted objects 

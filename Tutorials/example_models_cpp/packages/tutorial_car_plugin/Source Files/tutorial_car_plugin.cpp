@@ -95,12 +95,27 @@ void tutorial_car_plugin::reverse(int flags, uint code, uint channel, int handle
 	//if this->eng_dir < 0, rev_mask lights will turn on (bit mask will affect the specified lights) 
 	light_mask(lights_entity::rev_mask, this->eng_dir < 0);
 }
+
+//Function used to toggle hand brake value
+void tutorial_car_plugin::hand_brake(int flags, uint code, uint channel, int handler_id)
+{
+	//Bitwise operator XOR (^) used, to switch the value each time, this function is called.
+	this->hand_brake_val = this->hand_brake_val == true ? false : true;
+}
+
 //Function used to turn on/off emergency lights
 void tutorial_car_plugin::emergency_lights(int flags, uint code, uint channel, int handler_id)
 {
 	//Bitwise operator XOR (^) used, to switch the value each time, this function is called.
 	this->emer ^= 1;
 }
+
+//Function used to store power input value
+void tutorial_car_plugin::power(float val, uint code, uint channel, int handler_id)
+{
+	this->power_input = val;
+}
+
 //Function used to turn on/off passing lights
 void tutorial_car_plugin::passing_lights(float val, uint code, uint channel, int handler_id)
 {
@@ -110,6 +125,7 @@ void tutorial_car_plugin::passing_lights(float val, uint code, uint channel, int
 	//In this case it will affect 2 front lights and 2 tail lights, because every light is represented as 1 bit
 	//and as 1.parameter we used hexadecimal 0x0..0xf which works with 4 bits (0000....1111), we can also use 0x00..0xff which will work with first 8 bits
 }
+
 //Function used to turn on/off main lights
 void tutorial_car_plugin::main_lights(float val, uint code, uint channel, int handler_id)
 {
@@ -117,6 +133,7 @@ void tutorial_car_plugin::main_lights(float val, uint code, uint channel, int ha
 	//This way, there is no need for a mask, like with brake & turn lights...
 	light_mask(0x3, val == 1, lights_entity::main_light_offset);
 }
+
 //Function used to toggle turn lights
 void tutorial_car_plugin::turn_lights(float val, uint code, uint channel, int handler_id)
 {
@@ -307,6 +324,9 @@ ot::chassis_params tutorial_car_plugin::init_chassis(const coid::charstr& params
 
 	//Register action handlers, which are called, when binded input/object changes it's state.
 
+	//Note: the hand brake and power are handled through script, to avoid bug, where parking brake cannot be engaged right after the power input was released 
+	//(because by default, the centering is lower, and takes some time, until the value drops to 0)
+
 	//Register event handlers, invoked on key or button press (for example a fire action)
 	// 1.parameter name - path to input binding (config_file/group/action) where: 
 	//						"config_file" is the name of .cfg file, in which we have the binding defined(these can be found in bin / defaults / iomap directory, where vehicle.cfg is for vehicles, air.cfg is for aircraft etc.)
@@ -318,8 +338,9 @@ ot::chassis_params tutorial_car_plugin::init_chassis(const coid::charstr& params
 	// returns slot id or -1 on fail
 	register_event_handler("vehicle/engine/on", &tutorial_car_plugin::engine);
 	register_event_handler("vehicle/engine/reverse", &tutorial_car_plugin::reverse);
+	register_event_handler("vehicle/controls/hand_brake", &tutorial_car_plugin::hand_brake);
 	register_event_handler("vehicle/lights/emergency", &tutorial_car_plugin::emergency_lights);
-
+	
 	//Register value handlers, they are receiving a tracked value which is by default in -1..1 range
 	// 1.parameter name - hierarchic action name (config_file/group/action)
 	// 2.parameter handler - handler for changed value (our callback function)
@@ -328,6 +349,7 @@ ot::chassis_params tutorial_car_plugin::init_chassis(const coid::charstr& params
 	// 5.parameter def_val - optional default action value
 	// 6.parameter group - activation group where the action is assigned (can be enabled/disabled together)
 	// returns slot id or -1 on fail
+	register_axis_handler("vehicle/controls/power", &tutorial_car_plugin::power, { .minval = 0.f, .maxval = 1.f, .cenvel = 100.f, .vel = 10.f });
 	register_axis_handler("vehicle/lights/passing", &tutorial_car_plugin::passing_lights, { .minval = 0.f, .maxval = 1.f, .cenvel = 0.f, .vel = 10.f });
 	register_axis_handler("vehicle/lights/main", &tutorial_car_plugin::main_lights, { .minval = 0.f, .maxval = 1.f, .cenvel = 0.f, .vel = 10.f });
 	register_axis_handler("vehicle/lights/turn", &tutorial_car_plugin::turn_lights, { .minval = -1.f, .maxval = 1.f, .cenvel = 0.f, .vel = 10.f });
@@ -369,12 +391,14 @@ void tutorial_car_plugin::init_vehicle(bool reload)
 	//Initialize variables for your instance (use "this" keyword for changes to affect only current instance)
 	this->started = false;
 	this->emer = false;
+	this->hand_brake_val = true;
 	this->eng_dir = 1;
 	this->left_turn = 0;
 	this->right_turn = 0;
 	this->current_camera_mode = 0;
 	this->previous_cam_mode = 0;
 	this->braking_power = 0.f;
+	this->power_input = 0.f;
 	this->time = 0.0;
 
 	//Get geomob interface
@@ -412,9 +436,17 @@ void tutorial_car_plugin::update_frame(float dt, float engine, float brake, floa
 		return;
 	}
 
+	// Rotate brake pedal
+	float brake_angle = brake * 0.4f;
+	this->geom->rotate_joint_orig(bones::brake_pedal, brake_angle, { 1, 0, 0 });
+	
+	//move_joint_orig function is used to move joint to given position
+	//1.parameter - joint you want to move
+	//2.parameter - movement axis and direction
+	this->geom->move_joint_orig(bones::accel_pedal, { 0, (-this->power_input * 0.02f), (-this->power_input * 0.02f) });
+
 	//Get current ground speed, using "speed" function (returns current speed in m/s, multiply with 3.6 to get km/h or 2.23693629 to get mi/h)
 	float kmh = glm::abs(speed() * 3.6f); //We want to get the absolute value
-
 
 	//Get_camera_mode returns current camera mode (0 - FPS camera mode, 1 - TPS camera mode, 2 - TPS follow camera mod )
 	this->current_camera_mode = this->get_camera_mode();
@@ -446,28 +478,22 @@ void tutorial_car_plugin::update_frame(float dt, float engine, float brake, floa
 		//Calculate force value, depending on the direction
 		float redux = this->eng_dir >= 0 ? 0.2f : 0.6f;
 		//glm library can be used
-		engine = ENGINE_FORCE * glm::abs(engine);
+		float eng_power = ENGINE_FORCE * this->power_input;
 		float force = (kmh >= 0) == (this->eng_dir >= 0)
-			? engine / (redux * kmh + 1)
-			: engine;
+			? eng_power / (redux * kmh + 1)
+			: eng_power;
 		//simulate resistance
 		force -= FORCE_LOSS;
 		//Make sure, that force can not be negative
-		force = glm::max(0.f, glm::min(force, engine));
+		force = glm::max(0.f, glm::min(force, eng_power));
 		//Calculate force and direction, which will be used to add force to wheels
-		engine = force * this->eng_dir;
-
-		//Use wheel_force function to apply propelling force on wheel and move the car
-		//1.parameter - wheel, you want to affect (takes the wheel ID, in this case, the car has front-wheel drive)
-		//2.parameter - force, you want to exert on the wheel hub in forward/backward  direction (in Newtons)
-		this->wheel_force(wheels::FL_wheel, engine);
-		this->wheel_force(wheels::FR_wheel, engine);
+		force *= this->eng_dir;
 
 		//Move only when there is no sound playing on given emitter (to not be able to move when car is starting, but after the starter sound ends)
 		//"is_playing" function checks, if there is sound playing on given emitter
 		if (this->sounds->is_playing(sounds_entity::src_eng_start_stop))
 		{
-			engine = 0;
+			force = 0;
 		}
 		else
 		{
@@ -494,6 +520,18 @@ void tutorial_car_plugin::update_frame(float dt, float engine, float brake, floa
 				this->sounds->play_loop(sounds_entity::src_eng_running, sounds_entity::snd_eng_running);
 			}
 		}
+
+		//Release the parking brake, when accelerating, while started
+		if (this->hand_brake_val == true && force > 0)
+		{
+			this->hand_brake_val = false;
+		}
+
+		//Use wheel_force function to apply propelling force on wheel and move the car
+		//1.parameter - wheel, you want to affect (takes the wheel ID, in this case, the car has front-wheel drive)
+		//2.parameter - force, you want to exert on the wheel hub in forward/backward  direction (in Newtons)
+		this->wheel_force(wheels::FL_wheel, force);
+		this->wheel_force(wheels::FR_wheel, force);
 	}
 
 	//Define steering sensitivity
@@ -509,7 +547,7 @@ void tutorial_car_plugin::update_frame(float dt, float engine, float brake, floa
 	light_mask(lights_entity::brake_mask, brake > 0);
 
 	//Set the braking value, which will be applied on wheels, based on the type of brake 
-	if (parking != 0)
+	if (this->hand_brake_val == true)
 	{
 		// Apply full braking force when the parking brake is engaged 
 		this->braking_power = BRAKE_FORCE;

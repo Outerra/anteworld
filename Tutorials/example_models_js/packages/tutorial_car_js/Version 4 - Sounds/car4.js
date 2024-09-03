@@ -59,16 +59,8 @@ function engine_action()
 	// 1.parameter - emitter
 	// 2.parameter - reference distance value(this will affect all sounds emitted from this emitter)
 	this.snd.set_ref_distance(sound_entity.src_eng_start_stop, ref_distance);
-
-    //Changed the "if(!this.started)" statement...
-	if(this.started) 
-	{
-		//play_sound function is used to play sound once, discarding older sounds
-		//1.parameter - emitter (source ID) 
-		//2.parameter - sound (sound ID))
-		this.snd.play_sound(sound_entity.src_eng_start_stop, sound_entity.snd_starter);
-	}
-	else 
+        
+    if(this.started === 0)
 	{
 		//function "stop" discards all sounds playing on given emitter
 		this.snd.stop(sound_entity.src_eng_running);
@@ -77,6 +69,14 @@ function engine_action()
         this.wheel_force(wheels.FLwheel, 0);
         this.wheel_force(wheels.FRwheel, 0);
 	}
+	else if(this.started === 1) 
+	{
+		//play_sound function is used to play sound once, discarding older sounds
+		//1.parameter - emitter (source ID) 
+		//2.parameter - sound (sound ID))
+		this.snd.play_sound(sound_entity.src_eng_start_stop, sound_entity.snd_starter);
+	}
+
 }
 
 function reverse_action(v)
@@ -162,6 +162,15 @@ function init_chassis()
     
 	this.register_event("vehicle/engine/on", engine_action);
     this.register_event("vehicle/engine/reverse", reverse_action); 
+    
+    this.register_event("vehicle/controls/hand_brake", function(v){
+        this.hand_brake_input ^= 1;
+    }); 
+
+    this.register_axis("vehicle/controls/power", {minval: 0, center: Infinity}, function(v){
+        this.power_input = v;
+    });     
+    
 	this.register_axis("vehicle/controls/open", {minval:0, center:0, vel:0.6}, function(v) {
 		let door_dir = {z: -1};
 		let door_angle = v * 1.5;
@@ -173,7 +182,7 @@ function init_chassis()
 	this.register_axis("vehicle/lights/main", {minval: 0, maxval: 1, center: 0, vel: 10, positions: 2 }, function(v) {	
 		this.light_mask(0x3, v === 1, light_entity.main_light_offset);
 	});
-	this.register_axis("vehicle/lights/turn", {minval: -1, maxval: 1, center: 0 vel: 10, }, function(v) {
+	this.register_axis("vehicle/lights/turn", {minval: -1, maxval: 1, center: 0, vel: 10 }, function(v) {
 		if(v === 0)
 		{
 			this.left_turn = this.right_turn = 0;
@@ -212,6 +221,8 @@ function init_vehicle()
 	this.started = 0;
 	this.eng_dir = 1;
     this.braking_power = 0;
+    this.power_input = 0;
+    this.hand_brake_input = 1;
     
   	this.set_fps_camera_pos({x: -0.4, y: 0.16, z: 1.3});
 
@@ -229,9 +240,11 @@ function init_vehicle()
 
 function update_frame(dt, engine, brake, steering, parking)
 {
+    
+    
 	let brake_dir = {x:1};
 	let brake_angle = brake * 0.4;	
-	let accel_dir = {y:(-engine * 0.02), z:(-engine * 0.02)}
+	let accel_dir = {y:(-this.power_input * 0.02), z:(-this.power_input * 0.02)}
 	this.geom.rotate_joint_orig(bones.brake_pedal, brake_angle, brake_dir);
 	this.geom.move_joint_orig(bones.accel_pedal, accel_dir)
 	
@@ -263,21 +276,18 @@ function update_frame(dt, engine, brake, steering, parking)
 	if(this.started === 1)
 	{
         let redux = this.eng_dir >= 0 ? 0.2 : 0.6;
-        engine = ENGINE_FORCE * Math.abs(engine);
+        let eng_power = ENGINE_FORCE * this.power_input;
         let force = (kmh >= 0) === (this.eng_dir >= 0 ) 
-            ? engine / (redux * kmh + 1)
-            : engine;
+            ? eng_power / (redux * kmh + 1)
+            : eng_power;
         force -= FORCE_LOSS;
-        force = Math.max(0.0, Math.min(force, engine));
-        engine = force * this.eng_dir;
-        
-        this.wheel_force(wheels.FLwheel, engine);
-        this.wheel_force(wheels.FRwheel, engine);
+        force = Math.max(0.0, Math.min(force, eng_power));
+        force *= this.eng_dir;
 
         //Move only when there is no sound playing on given emitter (to not be able to move when car is starting, but after the starter sound ends)
         if(this.snd.is_playing(sound_entity.src_eng_start_stop))
         {
-            engine = 0;
+            force = 0;
         } //If car has started and there isn't active loop on given emitter, play loop
         else
         {
@@ -309,8 +319,15 @@ function update_frame(dt, engine, brake, steering, parking)
             //Can take 3.parameter - bool value (default: true), if true - previous loops will be removed, otherwise the new sound is added to the loop chain
             //Example: this.snd.enqueue_loop(sound_entity.src_eng_running, sound_entity.snd_eng_running);
         }
+        
+        if(this.hand_brake_input !== 0 && force > 0)
+        {
+            this.hand_brake_input = 0;
+        }
+        
+        this.wheel_force(wheels.FLwheel, force);
+        this.wheel_force(wheels.FRwheel, force);
 	}
-
 	
 	if(kmh > SPEED_GAUGE_MIN)
 	{
@@ -324,8 +341,8 @@ function update_frame(dt, engine, brake, steering, parking)
 	this.geom.rotate_joint_orig(bones.steer_wheel, 10.5 * steering, {z: 1});
 
 	this.light_mask(light_entity.brake_mask, brake > 0);
- 
-	if(parking !== 0)
+
+	if(this.hand_brake_input !== 0)
     {
         this.braking_power = BRAKE_FORCE;
     } 
