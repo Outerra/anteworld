@@ -81,7 +81,7 @@ function engine()
         this.jsbsim['propulsion/magneto_cmd'] = 0;
     }
 }
-//"this.jsbsim['property']" is used, to set/get property belonging to JSBSim interface. 
+//"**this.jsbsim['property']**" is used, to set/get property belonging to JSBSim interface. 
 //For information on JSBSim, visit the JSBSim & Aeromatic page (https://github.com/Outerra/anteworld/wiki/JSBSim-&-Aeromatic).
 //For a list of usable JSBSim properties, refer to the JSBSim properties page (https://github.com/Outerra/anteworld/wiki/JSBSim-properties).
 
