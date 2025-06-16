@@ -1,0 +1,8 @@
+texture_path = "projectile.dds",
+images = [ 
+(image) {
+	name = "projectile",
+	pos =  { x = 0, y = 0},
+	size =  { x = 2000, y = 544 }
+}
+]
