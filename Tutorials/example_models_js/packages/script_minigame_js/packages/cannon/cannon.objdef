@@ -1,0 +1,9 @@
+{
+	"obj" : "cannon_1",
+	"matlib" : "cannon",
+	"physics" : "gameob",
+	"script" : "cannon.js",
+	"description" : "",
+	"parameters" : "",
+	"tags" : ""
+}

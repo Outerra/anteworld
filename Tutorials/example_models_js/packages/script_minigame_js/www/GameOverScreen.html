@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Over</title>
+    <style>
+        body {
+            background-color: black;
+            color: red;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 100px;
+        }
+        h1 {
+            font-size: 60px;
+        }
+        #invader-count {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        #score {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        button {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+            color: white;
+        }
+    </style>
+    <script>
+        var $module;
+        
+        function load_game_stats() 
+        {
+            if ($module) 
+            {
+                var destroyed_val = $module.get_value_num(0, 0);
+                var score_val = $module.get_value_num(0, 1);
+                document.getElementById('invader-count').innerHTML = "Invaders destroyed: " + destroyed_val.value;
+                document.getElementById('score').innerHTML = "Score: " + score_val.value;
+            } else {
+                document.getElementById('invader-count').innerHTML = "Unable to retrieve game data.";
+            }
+        }
+
+        function restart_game() 
+        {
+            if ($module) 
+            {
+                $module.set_value_num(0, 0, 1);
+                window.close();
+            }
+        }
+
+        function exit_game() 
+        {
+            if ($module) 
+            {
+                $module.set_value_num(0, 1, 1);
+                window.close();
+            }
+        }
+
+        window.onload = load_game_stats;
+    </script>
+</head>
+<body>
+
+    <h1>Game Over</h1>
+
+    <div id="score">Score: ...</div>
+    <div id="invader-count">Invaders destroyed: ...</div>
+
+    <button onclick="restart_game()">Restart Game</button>
+    <button onclick="exit_game()">Exit Game</button>
+
+</body>
+</html>
