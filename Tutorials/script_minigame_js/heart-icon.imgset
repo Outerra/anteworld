@@ -1,8 +1,0 @@
-texture_path = "heart-icon.dds",
-images = [ 
-(image) {
-	name = "heart",
-	pos =  { x = 0, y = 0},
-	size =  { x = 256, y = 256 }
-}
-]
