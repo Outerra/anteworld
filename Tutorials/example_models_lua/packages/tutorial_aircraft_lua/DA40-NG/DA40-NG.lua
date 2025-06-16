@@ -100,6 +100,10 @@ function elevator_action(self, v)
     self.jsbsim:set_property('fcs/elevator-cmd-norm', -v);
 end
 
+function rudder_action(self, v)
+    self.jsbsim:set_property('fcs/rudder-cmd-norm', -v);
+end
+
 function brake_action(self, v)
     self.braking = v;
     self.jsbsim:set_property('fcs/center-brake-cmd-norm', v);
@@ -194,6 +198,7 @@ function ot.aircraft_script:init_chassis()
     self:register_event("air/engines/on", engine);
     self:register_axis("air/controls/aileron", { minval = -1, maxval = 1, center = 0.5, vel = 0.5, positions = 0 }, aileron_action );
 	self:register_axis("air/controls/elevator", { minval = -1, maxval = 1, center = 0.5, vel = 0.5, positions = 0 }, elevator_action );
+	self:register_axis("air/controls/rudder", { minval = -1, maxval = 1, center = 0.5, vel = 0.5, positions = 0 }, rudder_action );
     self:register_axis("air/controls/brake", { minval = 0}, brake_action );
   
 	return {
