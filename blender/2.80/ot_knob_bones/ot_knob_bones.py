@@ -31,6 +31,13 @@ ANIMATION_TYPES = (
     ('translateZ', 'Translate Z', 'Translate in direction of bone Z axis.'),
 )
 
+ACCESS_TYPES = (
+    ('interior', 'Interior', 'The knob is accessible only from inside the object.'),
+    ('exterior', 'Exterior', 'The knob is accessible only from outside the object.'),
+    ('both', 'Both', 'The knob is accessible from both inside and outside the object.'),
+)
+
+
 class DEFAULT_VALUES:
     vel = 1.0
     acc = 1000.0
@@ -42,6 +49,7 @@ class DEFAULT_VALUES:
     
 TYPE_PROPERTY_NAME = "ot_knob_type"
 HANDLES_PROPERTY_NAME = "ot_knob_handles"
+ACCESS_PROPERTY_NAME = "ot_knob_access"
 
 ACTION_NAME_PROPERTY_NAME = "ot_knob_action_name"
 ACTION_VELOCITY_PROPERTY_NAME = "ot_knob_action_velocity"
@@ -56,9 +64,11 @@ ANIMATION_TYPE_PROPERTY_NAME = "ot_knob_anim_type"
 ANIMATION_MIN_VALUE_PROPERTY_NAME = "ot_knob_anim_min"
 ANIMATION_MAX_VALUE_PROPERTY_NAME = "ot_knob_anim_max"
 
+
 ALL_PROPERTY_NAMES = {
     TYPE_PROPERTY_NAME,
     HANDLES_PROPERTY_NAME,
+    ACCESS_PROPERTY_NAME,
     ACTION_NAME_PROPERTY_NAME,
     ACTION_VELOCITY_PROPERTY_NAME,
     ACTION_ACCELERATION_PROPERTY_NAME,
@@ -86,6 +96,12 @@ def on_type_change(self, context):
     
     bone[TYPE_PROPERTY_NAME] = props.type
         
+def on_access_change(self, context):
+    bone = get_bone(context)
+    props = context.scene.ot_control_element_prop
+    
+    bone[ACCESS_PROPERTY_NAME] = props.access
+    
 # handles callbacks
 def on_handles_change(self, context):
     bone = get_bone(context)
@@ -183,6 +199,7 @@ def on_anim_max_change(self, context):
 class OT_control_element_properties(bpy.types.PropertyGroup):
     use_control: bpy.props.BoolProperty(name="Use knob", description="serialize controlbone", default=False)
     type: bpy.props.EnumProperty(name="Hand pose type", description="Element type", items=CONTROL_TYPES, update=on_type_change)
+    access: bpy.props.EnumProperty(name="Access type", description="Access type", items = ACCESS_TYPES, update=on_access_change)
     
     use_handles: bpy.props.BoolProperty(name="Use handles", description="serialize this field", default=False, update=on_handles_change)
     handles: bpy.props.StringProperty(name="Handles", description="Comma separated list of bone names", default="", maxlen=1024, update=on_handles_change)
@@ -357,7 +374,7 @@ class OT_WM_OT_create_knob(bpy.types.Operator):
         {'type': 'lever', 'min': 0, 'max': 1, 'center': 0, 'positions': 0, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 45},          #lever
         #special controls under
         {'type': 'lever', 'min': 0, 'max': 1, 'center': 0, 'positions': 2, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 30},          #lever
-        {'type': 'stick', 'min': 0, 'max': 2, 'center': 0, 'positions': 3, 'anim_type': 'rotateX', 'anim_min': -15, 'anim_max': 15},        #gear_stick
+        {'type': 'stick', 'min': 0, 'max': 2, 'center': 0, 'positions': 3, 'anim_type': 'rotateX', 'anim_min': -15, 'anim_max': 10},        #gear_stick
         {'type': 'pedal', 'min': 0, 'max': 1, 'center': 0, 'positions': 0, 'anim_type': 'rotateX', 'anim_min': 0, 'anim_max': 30},          #pedal
     )
     
@@ -406,6 +423,7 @@ class OT_WM_OT_create_knob(bpy.types.Operator):
         
         def handle_option_properties(props, option_defaults):
             props.type = option_defaults['type'];
+            props.access = 'interior'
             props.use_control = True
             props.use_action = False
             
@@ -595,6 +613,11 @@ class OT_PT_control_element_panel(bpy.types.Panel):
         anim_max_label = 'Maximum ' + ('(deg)' if is_rot else '(cm)')
         draw_property(col, props, "anim_min", None, None, anim_min_label)
         draw_property(col, props, "anim_max", None, None, anim_max_label)
+
+        col = row.box()
+        col.label(text="Other data")
+
+        draw_property(col, props, "access");
 
         buttons_row = layout.row()
         buttons_row.operator(OT_WM_OT_copy_knob.bl_idname)
